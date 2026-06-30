@@ -1,20 +1,34 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# MyIP
 
-# Run and deploy your AI Studio app
+Aplicación web para obtener información y análisis de direcciones IP.
 
-This contains everything you need to run your app locally.
+## Requisitos
 
-View your app in AI Studio: https://ai.studio/apps/60d50d3b-b9c9-4997-a8b9-4483f425df24
+- Node.js
+- npm
 
-## Run Locally
+## Instalación
 
-**Prerequisites:**  Node.js
+git clone https://github.com/mcasrom/myip.git
+cd myip
+npm install
 
+## Desarrollo
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+npm run dev
+
+## Compilar
+
+npm run build
+
+## Producción
+
+npm start
+
+## Variables de entorno
+
+cp .env.example .env
+
+## Licencia
+
+MIT
