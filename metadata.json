@@ -1,0 +1,6 @@
+{
+  "name": "MyIP",
+  "description": "Plataforma de diagnóstico de salud digital para usuarios finales con un modelo de seguridad freemium y análisis educativo de IPs.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
