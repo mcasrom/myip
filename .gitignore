@@ -57,3 +57,7 @@ node_modules/
 # Misc
 *.sqlite3
 *.db
+myip.sqlite3
+myip.sqlite3-*
+*.bak.*
+port_audit_report.json
