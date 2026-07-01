@@ -295,3 +295,69 @@ un flujo SMTP aparte, y documentar antes de tocar.
       alerts.ts, gating UI en UpgradePanel.tsx, geo-lookup server-side,
       revisar 400 en /api/auth/register, cambiar cron a '0 8 * * *'
       tras validar
+
+## Sesión 2026-07-01 (cierre 2) — Bug de falso positivo en alertas + fix
+
+### Bug encontrado: cron reportaba "Alerta enviada" aunque Resend fallara
+Al simular un cambio real de reputación (Spamhaus ZEN clean:true->false en
+un registro historico via UPDATE manual en scan_history), se confirmo que
+compareScans() y el disparo de sendEmail() funcionan correctamente, PERO:
+Resend devolvio 403 (modo sandbox, solo permite enviar al email propio
+verificado, no a threatradar-osint@viajeinteligencia.com) y el cron logueo
+igualmente "[CRON] Alerta enviada a ... 1 cambio(s)" - el codigo no
+comprobaba el booleano que devuelve sendEmail().
+Fix aplicado via patch_cron_email_result.py (anchor-based): ahora se
+captura `const emailSent = await sendEmail(...)` y solo se loguea "Alerta
+enviada" si emailSent===true; si no, se loguea
+"[CRON] FALLO al enviar alerta a ..." como console.error. Verificado con
+tsc --noEmit limpio.
+
+### Cron validado end-to-end (ambas ramas)
+- [x] Caso "sin cambios": confirmado en sesion anterior
+- [x] Caso "con cambios" + envio exitoso/fallido: confirmado, con el fix
+      de arriba ya no hay falsos positivos en el log
+- [ ] Pendiente para produccion real: verificar dominio viajeinteligencia.com
+      en resend.com/domains y configurar RESEND_FROM con ese dominio (en
+      sandbox de Resend solo se puede enviar al email propio verificado)
+
+### PRÓXIMO PASO
+- [ ] Decidir si notificar tambien open->closed (pendiente sesiones previas)
+- [ ] Investigar feature "Informes PDF/Email premium" (Configura SMTP)
+- [ ] Extraer alerts.ts como modulo separado
+- [ ] Gating UI en UpgradePanel.tsx
+- [ ] Geo-lookup server-side
+- [ ] Revisar 400 en /api/auth/register
+- [ ] Cambiar cron.schedule de '*/2 * * * *' a '0 8 * * *' antes de produccion
+
+## Sesión 2026-07-01 (cierre 2) — Bug de falso positivo en alertas + fix
+
+### Bug encontrado: cron reportaba "Alerta enviada" aunque Resend fallara
+Al simular un cambio real de reputación (Spamhaus ZEN clean:true->false en
+un registro historico via UPDATE manual en scan_history), se confirmo que
+compareScans() y el disparo de sendEmail() funcionan correctamente, PERO:
+Resend devolvio 403 (modo sandbox, solo permite enviar al email propio
+verificado, no a threatradar-osint@viajeinteligencia.com) y el cron logueo
+igualmente "[CRON] Alerta enviada a ... 1 cambio(s)" - el codigo no
+comprobaba el booleano que devuelve sendEmail().
+Fix aplicado via patch_cron_email_result.py (anchor-based): ahora se
+captura `const emailSent = await sendEmail(...)` y solo se loguea "Alerta
+enviada" si emailSent===true; si no, se loguea
+"[CRON] FALLO al enviar alerta a ..." como console.error. Verificado con
+tsc --noEmit limpio.
+
+### Cron validado end-to-end (ambas ramas)
+- [x] Caso "sin cambios": confirmado en sesion anterior
+- [x] Caso "con cambios" + envio exitoso/fallido: confirmado, con el fix
+      de arriba ya no hay falsos positivos en el log
+- [ ] Pendiente para produccion real: verificar dominio viajeinteligencia.com
+      en resend.com/domains y configurar RESEND_FROM con ese dominio (en
+      sandbox de Resend solo se puede enviar al email propio verificado)
+
+### PRÓXIMO PASO
+- [ ] Decidir si notificar tambien open->closed (pendiente sesiones previas)
+- [ ] Investigar feature "Informes PDF/Email premium" (Configura SMTP)
+- [ ] Extraer alerts.ts como modulo separado
+- [ ] Gating UI en UpgradePanel.tsx
+- [ ] Geo-lookup server-side
+- [ ] Revisar 400 en /api/auth/register
+- [ ] Cambiar cron.schedule de '*/2 * * * *' a '0 8 * * *' antes de produccion

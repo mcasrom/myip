@@ -1168,13 +1168,17 @@ cron.schedule('*/2 * * * *', async () => {
         const [curr, prev] = history;
         const { hasChanges, changes } = compareScans(prev, curr);
         if (hasChanges) {
-          await sendEmail({
+          const emailSent = await sendEmail({
             to: u.email,
             subject: 'MyIP: Cambios detectados en tu red',
             text: changes.join('\n'),
             html: `<h2>Cambios detectados en tu IP ${curr.targetIp}</h2><ul>${changes.map(c => `<li>${c}</li>`).join('')}</ul>`,
           });
-          console.log(`[CRON] Alerta enviada a ${u.email}: ${changes.length} cambio(s)`);
+          if (emailSent) {
+            console.log(`[CRON] Alerta enviada a ${u.email}: ${changes.length} cambio(s)`);
+          } else {
+            console.error(`[CRON] FALLO al enviar alerta a ${u.email} (${changes.length} cambio(s) detectados pero el email no se entrego)`);
+          }
         } else {
           console.log(`[CRON] Sin cambios para ${u.email}`);
         }
