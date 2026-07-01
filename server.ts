@@ -684,6 +684,20 @@ app.post('/api/scan', optionalAuth, async (req: any, res) => {
   const isPremium = user?.isPremium ?? false;
   const isGuest = user?.isGuest ?? false;
 
+  // [PATCH ip_address sync] Actualiza la IP conocida del usuario en cada scan
+  // exitoso, para que el cron de alertas recurrentes deje de excluirlo por
+  // tener ip_address = 'pending'.
+  if (user) {
+    const resolvedEmailForIp = req.authUser || (email ? String(email).toLowerCase().trim() : undefined);
+    if (resolvedEmailForIp) {
+      try {
+        authDb.updateUserFields(resolvedEmailForIp, { ipAddress: ip });
+      } catch (e) {
+        console.error('[SCAN] No se pudo actualizar ip_address:', e);
+      }
+    }
+  }
+
   if (isGuest && user && user.scanCount >= 3) {
     return res.status(429).json({ error: 'Límite de invitado alcanzado (3/3). Crea una cuenta con email.', rateLimited: true, isGuestLimit: true });
   }

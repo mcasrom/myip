@@ -244,3 +244,54 @@ alertas automaticas — de ahi este sprint.
       de sesiones anteriores, no confirmado si es problema real
 - [ ] Geo-lookup (ipapi.co) sigue bloqueado por CORS/ETP en navegador,
       pendiente mover a server-side igual que se hizo con /api/ip/detect
+
+## Sesión 2026-07-01 (noche, continuación) — Validación end-to-end del cron
+
+### Bug raíz encontrado y arreglado: ip_address nunca se actualizaba
+Síntoma: el cron nunca procesaba a ningún usuario premium, aunque
+is_premium=1 y hubiera scans en scan_history.
+Causa: createUserWithPassword guarda ip_address='pending' en el registro
+inicial, y NINGUNA ruta llamaba a updateUserFields() después para
+sincronizarla con la IP real detectada en cada scan. El filtro del cron
+(`ipAddress !== 'pending'`) excluía a todos los usuarios para siempre.
+Fix aplicado via patch_scan_ip_update.py (anchor-based, backup automático):
+dentro de POST /api/scan, tras resolver `user`/`isPremium`/`isGuest`, se
+añadió una llamada a authDb.updateUserFields(email, { ipAddress: ip })
+cuando hay usuario identificado. Verificado con tsc --noEmit limpio y
+confirmado en SQLite: ip_address pasó de 'pending' a la IP real tras el
+primer scan.
+
+### Usuario de prueba premium con email real creado
+threatradar-osint@viajeinteligencia.com (password: MyipDev2026!, ver
+create_premium_test_user.ts) — necesario porque Resend no entrega a
+direcciones ficticias tipo test_dev@example.com. is_premium=1,
+ip_address=1.146.112.212 confirmados en SQLite.
+
+### Cron validado end-to-end (caso "sin cambios")
+Con el fix de ip_address, el cron (cada 2 min, modo test) SÍ detecta al
+usuario premium, ejecuta el scan via POST /api/scan interno, y
+compareScans() se ejecuta correctamente:
+  [CRON] Sin cambios para threatradar-osint@viajeinteligencia.com
+Confirma que la lógica de comparación funciona; falta validar el caso
+"con cambios" (envío real de email) sin depender de que Resend entregue
+a tiempo — decisión pendiente: simular un cambio editando reputation_json
+de un registro histórico en vez de esperar un cambio orgánico real.
+
+### Hallazgo nuevo, SIN INVESTIGAR: feature "Informes PDF/Email premium"
+En el panel premium aparece "Envío de Informes PDF/Email de Alto Valor"
+que al probarse devuelve "Reporte generado. Configura SMTP." — sistema
+distinto al de alertas (que usa Resend, ya integrado). No se ha tocado
+código para esto todavía; pendiente decidir si se reutiliza Resend o es
+un flujo SMTP aparte, y documentar antes de tocar.
+
+### PRÓXIMO PASO
+- [ ] Simular cambio de reputación (Spamhaus ZEN clean:true en el
+      registro histórico id=24) para forzar rama "con cambios" del cron
+      y confirmar que sendEmail() se invoca sin excepción (aunque el
+      email no llegue por temas de Resend, no es lo que estamos validando)
+- [ ] Decidir si notificar también open->closed (pendiente de sesión anterior)
+- [ ] Investigar feature "Informes PDF/Email premium" (Configura SMTP)
+- [ ] Resto de pendientes de sesión anterior siguen abiertos: extraer
+      alerts.ts, gating UI en UpgradePanel.tsx, geo-lookup server-side,
+      revisar 400 en /api/auth/register, cambiar cron a '0 8 * * *'
+      tras validar
