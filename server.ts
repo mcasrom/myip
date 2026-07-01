@@ -12,6 +12,7 @@ import { spawn } from 'child_process';
 import { createHash } from 'crypto';
 import cookieParser from 'cookie-parser';
 import * as authDb from './db';
+import cron from 'node-cron';
 dotenv.config();
 
 // ============================================================================
@@ -1101,6 +1102,75 @@ async function startServer() {
       };
     }
   }
+// ============================================================================
+// ALERTAS RECURRENTES — Compara scan nuevo vs ultimo guardado, notifica cambios
+// ============================================================================
+function compareScans(prev: any, curr: any): { hasChanges: boolean; changes: string[] } {
+  const changes: string[] = [];
+  try {
+    const prevPorts = JSON.parse(prev.ports_json || '[]');
+    const currPorts = JSON.parse(curr.ports_json || '[]');
+    for (const cp of currPorts) {
+      const pp = prevPorts.find((p: any) => p.port === cp.port);
+      if (pp && pp.status === 'closed' && cp.status === 'open') {
+        changes.push(`El puerto ${cp.port} (${cp.service}) se ha ABIERTO desde el ultimo analisis.`);
+      }
+    }
+    const prevRep = JSON.parse(prev.reputation_json || '[]');
+    const currRep = JSON.parse(curr.reputation_json || '[]');
+    for (const cr of currRep) {
+      const pr = prevRep.find((r: any) => r.listName === cr.listName);
+      if (pr && pr.clean === true && cr.clean === false) {
+        changes.push(`Tu IP ha entrado en la lista negra ${cr.listName} desde el ultimo analisis.`);
+      }
+    }
+  } catch (e) {
+    console.error('[COMPARE SCANS] Error:', e);
+  }
+  return { hasChanges: changes.length > 0, changes };
+}
+
+// Cron de prueba: cada 2 minutos en dev. Cambiar a diario ('0 8 * * *') antes de produccion.
+cron.schedule('*/2 * * * *', async () => {
+  console.log('[CRON] Ejecutando chequeo de alertas premium...');
+  const users = authDb.getAllUsers().filter(u =>
+    u.isPremium && u.ipAddress && u.ipAddress !== 'pending' && u.ipAddress !== '0.0.0.0'
+  );
+  for (const u of users) {
+    try {
+      const res = await fetch(`http://localhost:${PORT}/api/scan`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetIp: u.ipAddress, email: u.email }),
+      });
+      if (!res.ok) {
+        console.log(`[CRON] Scan fallido para ${u.email}: ${res.status}`);
+        continue;
+      }
+      await res.json();
+
+      const history = authDb.getScanHistory(u.email, 2);
+      if (history.length === 2) {
+        const [curr, prev] = history;
+        const { hasChanges, changes } = compareScans(prev, curr);
+        if (hasChanges) {
+          await sendEmail({
+            to: u.email,
+            subject: 'MyIP: Cambios detectados en tu red',
+            text: changes.join('\n'),
+            html: `<h2>Cambios detectados en tu IP ${curr.targetIp}</h2><ul>${changes.map(c => `<li>${c}</li>`).join('')}</ul>`,
+          });
+          console.log(`[CRON] Alerta enviada a ${u.email}: ${changes.length} cambio(s)`);
+        } else {
+          console.log(`[CRON] Sin cambios para ${u.email}`);
+        }
+      }
+    } catch (e) {
+      console.error(`[CRON] Error procesando ${u.email}:`, e);
+    }
+  }
+});
+
   console.log(`[DEV] Accounts created: ${devAccounts.join(', ')} — all premium, no rate limits.`);
 
   app.listen(PORT, '0.0.0.0', () => {

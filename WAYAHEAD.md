@@ -196,3 +196,51 @@ usuario tenga que acordarse de volver a comprobar. Roadmap:
       y/o Telegram (patron ya usado en ThreatRadar: bot dedicado)
 - [ ] Gating por plan: free = scan manual bajo demanda, premium = alertas
       automaticas recurrentes
+
+## Sesión 2026-07-01 (cierre) — Alertas recurrentes (v1, sin desplegar)
+
+### Implementado (solo local, NO desplegado a Hetzner todavia)
+- Instalado node-cron + @types/node-cron
+- Nueva función `compareScans(prev, curr)` en server.ts: compara ports_json
+  (puerto cerrado->abierto) y reputation_json (limpio->en blacklist) entre
+  dos registros de scan_history.
+- Cron job (cron.schedule) que cada 2 min (MODO TEST, cambiar a diario
+  '0 8 * * *' antes de produccion): itera usuarios premium con IP real,
+  llama a POST /api/scan internamente (localhost:PORT, reutiliza TODA la
+  logica existente sin duplicar codigo), y si compareScans detecta cambios,
+  envia email via sendEmail() (Resend, ya integrado).
+- Reutiliza scan_history existente como baseline — NO se creo tabla nueva,
+  se usa authDb.getScanHistory(email, 2) para comparar los 2 ultimos scans.
+- Fix TS: curr.target_ip -> curr.targetIp (nombre de campo del tipo
+  ScanRecord en db.ts es camelCase, no snake_case).
+
+### Decision de producto (contexto de negocio)
+Se descarto integrar speedtest-cli (usuario ya usa herramientas externas
+solo cuando sospecha problema puntual, no aporta valor diferencial).
+Analisis: escaneo puntual gratis ya esta resuelto en el mercado (GRC
+ShieldsUp, ipvoid). El valor monetizable real es MONITOREO CONTINUO +
+alertas automaticas — de ahi este sprint.
+
+### PROXIMO SPRINT (siguiente sesion)
+- [ ] Verificar npx tsc --noEmit limpio (pendiente confirmar en esta sesion)
+- [ ] Reiniciar server y validar el cron end-to-end: esperar 2 min, revisar
+      logs [CRON] Ejecutando... / [CRON] Sin cambios / [CRON] Alerta enviada
+- [ ] Necesita al menos 2 registros en scan_history para un mismo email
+      premium para que compareScans tenga algo que comparar (history.length
+      === 2). Probar forzando 2 scans manuales seguidos con el mismo user
+      premium antes de confiar en el cron.
+- [ ] Si un puerto pasa de open->closed no se notifica (solo closed->open),
+      revisar si eso es el comportamiento deseado o se quiere notificar
+      ambos sentidos
+- [ ] Cambiar cron.schedule de '*/2 * * * *' a '0 8 * * *' (diario) SOLO
+      cuando el flujo este validado end-to-end
+- [ ] server.ts sigue escribiendo/leyendo el archivo entero como monolito;
+      valorar extraer compareScans + cron a modulo separado (alerts.ts)
+      antes de que crezca mas
+- [ ] Gating por plan: confirmar que free NO recibe estas alertas (ya
+      filtrado por isPremium en el cron, pero falta UI que comunique esto
+      como feature premium en UpgradePanel.tsx)
+- [ ] Bug menor sin resolver: 400 en /api/auth/register visto en pruebas
+      de sesiones anteriores, no confirmado si es problema real
+- [ ] Geo-lookup (ipapi.co) sigue bloqueado por CORS/ETP en navegador,
+      pendiente mover a server-side igual que se hizo con /api/ip/detect
