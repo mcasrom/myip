@@ -27,6 +27,36 @@ export default function UpgradePanel({
   const [cardName, setCardName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [devCode, setDevCode] = useState('');
+  const [devEmail, setDevEmail] = useState('');
+  const [devMsg, setDevMsg] = useState<string | null>(null);
+  const [devMsgType, setDevMsgType] = useState<'success' | 'error'>('error');
+
+  const handleDevCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!devCode.trim()) { setDevMsg('Introduce un código.'); setDevMsgType('error'); return; }
+    const useEmail = email || devEmail.trim();
+    if (!useEmail) { setDevMsg('Introduce un email.'); setDevMsgType('error'); return; }
+    try {
+      const regRes = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: useEmail })
+      });
+      const regData = await regRes.json();
+      if (!regRes.ok) { setDevMsg(regData.error); setDevMsgType('error'); return; }
+      if (!email) onUpgradeSuccess(regData.user);
+      const codeRes = await fetch('/api/premium/redeem-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: useEmail, code: devCode })
+      });
+      const codeData = await codeRes.json();
+      if (!codeRes.ok) { setDevMsg(codeData.error); setDevMsgType('error'); return; }
+      setDevMsg(codeData.message); setDevMsgType('success');
+      onUpgradeSuccess(codeData.user);
+    } catch { setDevMsg('Error de conexión.'); setDevMsgType('error'); }
+  };
 
   const handleCardNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let value = e.target.value.replace(/\D/g, '');
@@ -141,7 +171,7 @@ export default function UpgradePanel({
   };
 
   return (
-    <div className="space-y-8 text-slate-800">
+    <div id="upgrade-plans-section" className="space-y-8 text-slate-800">
       
       {/* Monetization Header */}
       <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-950 text-white p-6 sm:p-8 rounded-3xl shadow-md relative overflow-hidden">
@@ -157,6 +187,49 @@ export default function UpgradePanel({
           Apoya el desarrollo de esta plataforma para costear servidores, dominio y energía. Elige el plan que mejor se adapte a tus necesidades de seguridad, auditoría y marca.
         </p>
       </div>
+
+      {/* Developer access — code field is blank, no hints */}
+      {!isPremium && (
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-4">
+          <h3 className="text-sm font-bold text-slate-700 font-mono">Acceso Desarrollador</h3>
+          <form onSubmit={handleDevCode} className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-end">
+            <div className="sm:col-span-4 space-y-1">
+              <label className="text-[10px] font-mono uppercase text-slate-400 font-bold">Email</label>
+              <input
+                type="email"
+                placeholder="tu@email.com"
+                value={email || devEmail}
+                onChange={(e) => setDevEmail(e.target.value)}
+                disabled={!!email}
+                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+              />
+            </div>
+            <div className="sm:col-span-4 space-y-1">
+              <label className="text-[10px] font-mono uppercase text-slate-400 font-bold">Código</label>
+              <input
+                type="password"
+                placeholder="Introduce tu código"
+                value={devCode}
+                onChange={(e) => setDevCode(e.target.value.toUpperCase())}
+                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+              />
+            </div>
+            <div className="sm:col-span-4">
+              <button
+                type="submit"
+                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-xl text-sm transition-all flex items-center justify-center gap-2"
+              >
+                <ShieldCheck className="w-4 h-4" /> Activar Premium
+              </button>
+            </div>
+            {devMsg && (
+              <div className={`sm:col-span-12 text-sm font-mono ${devMsgType === 'success' ? 'text-emerald-600' : 'text-rose-500'}`}>
+                {devMsg}
+              </div>
+            )}
+          </form>
+        </div>
+      )}
 
       {/* Tiers Selector Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -364,7 +437,7 @@ export default function UpgradePanel({
         </div>
 
         {/* Right Side: Payment Form / Confirmation */}
-        <div className="lg:col-span-5">
+        <div className="lg:col-span-5 space-y-6">
           {!isPremium ? (
             <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
               {/* Form Header */}

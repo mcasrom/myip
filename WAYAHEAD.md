@@ -144,3 +144,55 @@ scripts/port_audit.py). Archivo viejo borrado del repo, añadido a
 - [ ] Revisar 400 en /api/auth/register visto en consola durante pruebas
       (probablemente password de prueba < 8 caracteres, no confirmado)
 - [ ] WiFi Hotspot Analyzer: audit failed (code 1), revisar dependencia nmcli
+
+## Sesión 2026-07-01 (noche) — WiFi Hotspot Analyzer arreglado
+
+### Bug 1: gateway UnboundLocalError (crash total, code 1)
+scripts/wifi_audit.py nunca calculaba la variable `gateway` antes de usarla
+en el ping de latencia. Fix: nuevo Step 4c, gateway obtenido via
+`ip route show default` + regex, antes del Step 5 que lo consume.
+
+### Bug 2: parser de iwconfig no leia Frequency/Signal/Bit Rate
+El regex buscaba esos datos en la MISMA linea que "ESSID", pero iwconfig
+los pone en la linea siguiente (Mode:Managed Frequency:... Signal level:...).
+Fix: parseo linea por linea sin el filtro `if "ESSID" in line`, cada regex
+se evalua independientemente en cada linea del output.
+
+### Bug 3: mismatch de campo gateway vs gateway_ip
+Frontend (LocalNetworkDiagnostic.tsx) esperaba `data.gateway`, Python
+devolvia `gateway_ip`. Fix: alias añadido en server.ts justo antes de
+devolver el JSON al frontend (data.gateway = data.gateway_ip).
+
+### Seguridad: /api/wifi/audit bloqueado en produccion
+Este endpoint ejecuta nmcli/iwconfig/ping contra la interfaz de red del
+PROCESO NODE, no del navegador del usuario. En produccion (Hetzner) eso
+interrogaria la red del SERVIDOR, no del cliente -> inutil + fuga de
+topologia interna del servidor a cualquier usuario que llame el endpoint.
+Fix: guard `if (NODE_ENV === 'production') return 403` al inicio del
+handler. Esta funcion solo tiene sentido corriendo local/dev.
+
+Verificado con curl: gateway, frequency_ghz, signal_dbm, link_speed_mbps
+todos poblados correctamente tras los 3 fixes.
+
+### Decision de producto: no integrar speedtest-cli
+Se evaluo añadir test de velocidad real (descarga/subida) via speedtest-cli.
+Descartado: el usuario ya usa herramientas de speedtest externas solo
+cuando sospecha un problema puntual, no como parte de un chequeo rutinario.
+No aporta valor diferencial al producto, añade dependencia y latencia
+(15-30s) al audit. link_speed_mbps (tasa de enlace WiFi via iwconfig) se
+mantiene como esta, sin pretender ser velocidad de internet real.
+
+### Siguiente gran pieza: Alertas recurrentes (monetizable)
+Analisis de mercado: escaneo puntual de puertos/reputacion ya esta resuelto
+gratis en el mercado (GRC ShieldsUp, ipvoid, apps de router ISP). El valor
+real y monetizable es MONITOREO CONTINUO: "avisanos si tu IP entra en una
+blacklist nueva o se abre un puerto que antes estaba cerrado", sin que el
+usuario tenga que acordarse de volver a comprobar. Roadmap:
+- [ ] Cron periodico (diario/semanal segun plan) que re-ejecute el scan
+      guardado por usuario (requiere историal de baseline por usuario)
+- [ ] Comparacion diff vs ultimo scan guardado (puertos que cambiaron,
+      nuevas entradas en blacklist)
+- [ ] Notificacion via email (Resend, ya integrado en otros proyectos SIEG)
+      y/o Telegram (patron ya usado en ThreatRadar: bot dedicado)
+- [ ] Gating por plan: free = scan manual bajo demanda, premium = alertas
+      automaticas recurrentes

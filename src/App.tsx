@@ -33,13 +33,11 @@ import PWAInstallBanner from './components/PWAInstallBanner';
 import LocalNetworkDiagnostic from './components/LocalNetworkDiagnostic';
 import { ScanResult, UserSession } from './types';
 import { castilloManifesto } from './data/guides';
-// @ts-ignore
-import socialPreviewImg from './assets/images/myip_social_preview_1782808165197.jpg';
-// @ts-ignore
-import socialIconImg from './assets/images/myip_social_icon_1782808235532.jpg';
+import socialPreviewImg from './assets/images/myip_preview.jpg';
+import socialIconImg from './assets/images/myip_icon.jpg';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'home' | 'dashboard' | 'guides' | 'about' | 'profile' | 'legal'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'dashboard' | 'guides' | 'about' | 'profile' | 'legal' | 'methodology'>('home');
   const [homeSubTab, setHomeSubTab] = useState<'public' | 'local'>('public');
   const [detectedIp, setDetectedIp] = useState<string>('');
   const [isSimulatedIp, setIsSimulatedIp] = useState<boolean>(false);
@@ -49,7 +47,7 @@ export default function App() {
   const [scanning, setScanning] = useState<boolean>(false);
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
   const [rateLimitError, setRateLimitError] = useState<string | null>(null);
-  const [legalConsentAccepted, setLegalConsentAccepted] = useState<boolean>(false);
+  const [legalConsentAccepted, setLegalConsentAccepted] = useState<boolean>(true);
   
   // Premium simulations
   const [premiumAlerts, setPremiumAlerts] = useState<any[]>([]);
@@ -59,23 +57,112 @@ export default function App() {
   // Notifications banner
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'warning' | 'info' } | null>(null);
 
+  // Dev auto-login (only in local development, stripped in production build)
+  useEffect(() => {
+    const savedUser = localStorage.getItem('myip_user');
+    if (savedUser) {
+      try { setUser(JSON.parse(savedUser)); } catch {}
+      return;
+    }
+    // Dev mode auto-login — removed in production
+    if (import.meta.env.DEV) {
+      fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: 'miguel@dev.com' })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.user?.isPremium) {
+          setUser(data.user);
+          localStorage.setItem('myip_user', JSON.stringify(data.user));
+        }
+      })
+      .catch(() => {});
+    }
+  }, []);
+
   // Auto-detect IP on load
   useEffect(() => {
     async function detectIp() {
       try {
-        const res = await fetch('/api/ip/detect');
-        const data = await res.json();
-        setDetectedIp(data.ip);
-        setIsSimulatedIp(data.isSimulated);
-        setIpGeo(data.geo);
+        const fetchWithTimeout = (url: string, ms: number) => 
+          Promise.race([
+            fetch(url).then(r => r.json()),
+            new Promise((_, rej) => setTimeout(() => rej(new Error('Timeout')), ms))
+          ]);
+
+        let publicIp = '';
+
+        // PRIMARY: ipify.org (detects real public IP from browser)
+        try {
+          const ipData = await fetchWithTimeout('https://api.ipify.org?format=json', 4000) as any;
+          if (ipData?.ip && !['127.0.0.1', '::1', '0.0.0.0'].includes(ipData.ip)) {
+            publicIp = ipData.ip;
+            console.log('[IP DETECTION] ipify:', publicIp);
+          }
+        } catch (e) {
+          console.warn('[IP DETECTION] ipify failed:', e);
+        }
+
+        // FALLBACK: Server-side detection (works when behind proxy)
+        if (!publicIp) {
+          try {
+            const serverIp = await fetchWithTimeout('/api/ip/detect', 3000) as any;
+            if (serverIp?.ip && !['127.0.0.1', '::1', '0.0.0.0', 'unknown'].includes(serverIp.ip)) {
+              publicIp = serverIp.ip;
+              console.log('[IP DETECTION] Server-side:', publicIp);
+            }
+          } catch (e) {
+            console.warn('[IP DETECTION] Server-side failed:', e);
+          }
+        }
+
+        if (!publicIp) {
+          throw new Error('No public IP detected from any source');
+        }
+
+        setDetectedIp(publicIp);
+        setIsSimulatedIp(false);
+
+        // Geo lookup
+        try {
+          const geoData = await fetchWithTimeout(`https://ipapi.co/${publicIp}/json/`, 4000) as any;
+          if (!geoData.error) {
+            setIpGeo({
+              country: geoData.country_name || 'Desconocido',
+              countryCode: geoData.country_code || 'XX',
+              region: geoData.region || 'Región desconocida',
+              city: geoData.city || 'Ciudad desconocida',
+              isp: geoData.org || 'ISP desconocido',
+            });
+            return;
+          }
+        } catch {}
+        
+        try {
+          const geoData = await fetchWithTimeout('https://ipinfo.io/json', 4000) as any;
+          setIpGeo({
+            country: geoData.country || 'Desconocido',
+            countryCode: geoData.country || 'XX',
+            region: geoData.region || 'Región desconocida',
+            city: geoData.city || 'Ciudad desconocida',
+            isp: geoData.org || 'ISP desconocido',
+          });
+        } catch {
+          setIpGeo({ country: 'N/A', countryCode: 'XX', region: 'N/A', city: 'N/A', isp: 'N/A' });
+        }
       } catch (err) {
-        console.error('Error detecting IP:', err);
-        setDetectedIp('185.230.124.5'); // Stable fallback public IP for presentation
-        setIpGeo({ country: 'España', countryCode: 'ES', region: 'Madrid', city: 'Madrid', isp: 'Telefonica de España' });
+        console.error('[IP DETECTION] All methods failed:', err);
+        setDetectedIp('');
+        setIpGeo(null);
       }
     }
     detectIp();
   }, []);
+
+  // Manual IP input (fallback when auto-detection fails)
+  const effectiveIp = detectedIp;
 
   // Check for Stripe redirect parameters (payment_success or payment_cancel)
   useEffect(() => {
@@ -135,6 +222,12 @@ export default function App() {
 
   // Perform IP scan
   const handlePerformScan = async () => {
+    // Capture targetIp immediately to avoid stale state issues
+    const targetIp = detectedIp;
+    if (!targetIp) {
+      triggerToast('Introduce tu IP pública o espera a que se detecte automáticamente.', 'warning');
+      return;
+    }
     if (!legalConsentAccepted) {
       triggerToast('Por favor, acepta la Declaración de Consentimiento y Uso Autorizado de Red antes de escanear.', 'warning');
       return;
@@ -143,39 +236,50 @@ export default function App() {
     setRateLimitError(null);
     setScanResult(null);
 
-    // Dynamic sweep duration of 4.5 seconds for incredible immersive UX
-    await new Promise((resolve) => setTimeout(resolve, 4500));
-
     try {
+      console.log('[SCAN] Starting scan for IP:', targetIp);
       const res = await fetch('/api/scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: user ? user.email : null })
+        credentials: 'include',
+        body: JSON.stringify({
+          targetIp,
+          email: user ? user.email : null
+        })
       });
 
+      console.log('[SCAN] Response status:', res.status);
       const data = await res.json();
+      console.log('[SCAN] Response data keys:', Object.keys(data));
 
       if (!res.ok) {
         if (res.status === 429) {
           setRateLimitError(data.error);
           triggerToast('Límite de escaneo gratuito alcanzado.', 'warning');
-          setActiveTab('profile'); // Send them to upgrade or view details
+          setActiveTab('profile');
         } else {
           throw new Error(data.error || 'Error durante el análisis.');
         }
         return;
       }
 
+      if (!data.ip || !data.score) {
+        throw new Error('Respuesta inválida del servidor: faltan datos críticos.');
+      }
+
+      console.log('[SCAN] Setting scanResult and switching to dashboard...');
+      
+      // Both state updates together to prevent race conditions
       setScanResult(data);
+      setActiveTab('dashboard');
+      
       triggerToast('¡Análisis de Salud Digital completado con éxito!', 'success');
       
-      // Update local user scanning count if logged in
       if (user) {
         setUser(prev => prev ? { ...prev, scanCount: prev.scanCount + 1 } : null);
       }
-
-      setActiveTab('dashboard');
     } catch (err: any) {
+      console.error('[SCAN] Error:', err);
       triggerToast(err.message || 'Error de conexión con el motor de diagnóstico.', 'warning');
     } finally {
       setScanning(false);
@@ -184,17 +288,19 @@ export default function App() {
 
   const handleLoginSuccess = (loggedInUser: any) => {
     setUser(loggedInUser);
-    setDetectedIp(loggedInUser.ipAddress);
-    triggerToast(`Bienvenido de nuevo, ${loggedInUser.email}`, 'success');
+    localStorage.setItem('myip_user', JSON.stringify(loggedInUser));
+    triggerToast(`Bienvenido de vuelta, ${loggedInUser.email}`, 'success');
   };
 
   const handleUpgradeSuccess = (updatedUser: any) => {
     setUser(updatedUser);
+    localStorage.setItem('myip_user', JSON.stringify(updatedUser));
     triggerToast('¡Felicidades! Tu cuenta ha sido elevada a Premium 👑', 'success');
   };
 
   const handleLogout = () => {
     setUser(null);
+    localStorage.removeItem('myip_user');
     setScanResult(null);
     triggerToast('Sesión cerrada correctamente.', 'info');
   };
@@ -306,6 +412,14 @@ export default function App() {
               Biblioteca How-To
             </button>
             <button
+              onClick={() => setActiveTab('methodology')}
+              className={`px-4 py-2 rounded-lg text-xs font-semibold tracking-wide transition-all ${
+                activeTab === 'methodology' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-300 hover:text-white'
+              }`}
+            >
+              Metodología & Fuentes
+            </button>
+            <button
               onClick={() => setActiveTab('legal')}
               className={`px-4 py-2 rounded-lg text-xs font-semibold tracking-wide transition-all ${
                 activeTab === 'legal' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-300 hover:text-white'
@@ -358,10 +472,14 @@ export default function App() {
             <div className="text-center space-y-4">
               <div className="inline-flex items-center gap-2 bg-white border border-slate-200 shadow-sm px-3 py-1.5 rounded-full text-xs text-indigo-600 font-semibold font-mono">
                 <Wifi className="w-3.5 h-3.5 text-indigo-500" />
-                Tu Red en Tiempo Real: {detectedIp}
+              {!detectedIp ? (
+                <span className="text-amber-600">Detectando tu IP pública... <button onClick={() => window.location.reload()} className="underline ml-1">Reintentar</button></span>
+              ) : (
+                <>Tu IP pública real: <strong>{detectedIp}</strong></>
+              )}
               </div>
               <h2 className="text-3xl md:text-5xl font-extrabold tracking-tight text-slate-900 font-display">
-                ¿Qué tan segura es tu <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-indigo-800">conexión actual</span>?
+                Analiza la seguridad de tu <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-indigo-800">conexión actual</span> antes que un atacante
               </h2>
               <p className="text-sm md:text-base text-slate-500 max-w-2xl mx-auto leading-relaxed">
                 Diagnostica vulnerabilidades de red, comprueba reputación de IP en listas negras y verifica el estado de tu router o conexión WiFi actual.
@@ -474,7 +592,10 @@ export default function App() {
                     <button 
                       onClick={() => {
                         setActiveTab('profile');
-                        triggerToast('Elige un plan premium para desbloquear todo el potencial.', 'info');
+                        setTimeout(() => {
+                          const el = document.getElementById('upgrade-plans-section');
+                          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }, 100);
                       }}
                       className="mt-3 w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold py-1.5 rounded-lg text-[10px] transition shadow-sm"
                     >
@@ -572,17 +693,32 @@ export default function App() {
 
                   {/* Big Scan Button */}
                   <div className="mt-6 flex justify-center">
-                    <button
-                      onClick={handlePerformScan}
-                      className={`font-bold py-4 px-10 rounded-2xl text-base tracking-wide transition-all shadow-md flex items-center gap-3 uppercase font-mono ${
-                        legalConsentAccepted 
-                          ? 'bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer' 
-                          : 'bg-slate-200 text-slate-400 cursor-not-allowed opacity-80'
-                      }`}
-                    >
-                      <Cpu className={`w-5 h-5 ${scanning ? 'animate-spin' : ''}`} />
-                      {scanning ? 'Ejecutando Diagnóstico...' : 'Analizar mi conexión ahora'}
-                    </button>
+                    {!effectiveIp ? (
+                      <div className="text-center space-y-3 max-w-sm mx-auto">
+                        <p className="text-xs text-red-700 bg-red-50 border border-red-200 px-4 py-3 rounded-xl">
+                          ⛔ No se pudo detectar tu IP automáticamente. El escaneo requiere detección automática para garantizar que solo analizas tu propia conexión. Desactiva bloqueadores o recarga la página.
+                        </p>
+                        <button
+                          onClick={() => window.location.reload()}
+                          className="text-xs text-indigo-600 hover:underline font-bold"
+                        >
+                          Recargar página →
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handlePerformScan()}
+                        className={`font-bold py-4 px-10 rounded-2xl text-base tracking-wide transition-all shadow-md flex items-center gap-3 uppercase font-mono ${
+                          legalConsentAccepted 
+                            ? 'bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer' 
+                            : 'bg-slate-200 text-slate-400 cursor-not-allowed opacity-80'
+                        }`}
+                      >
+                        <Cpu className={`w-5 h-5 ${scanning ? 'animate-spin' : ''}`} />
+                        {scanning ? 'Ejecutando Diagnóstico...' : `Analizar ${effectiveIp}`}
+                      </button>
+                    )}
                   </div>
 
                   {rateLimitError && (
@@ -810,13 +946,17 @@ export default function App() {
                   </h3>
 
                   <div className="space-y-4">
-                    {scanResult.ports.map((p, idx) => (
-                      <div 
-                        key={idx} 
+                    {scanResult.ports.map((p, idx) => {
+                      const isUnknown = p.status === 'unknown';
+                      return (
+                      <div
+                        key={idx}
                         className={`p-5 rounded-xl border space-y-3 transition-all ${
-                          p.status === 'open' 
-                            ? 'bg-rose-50/20 border-rose-200 shadow-sm' 
-                            : 'bg-emerald-50/10 border-emerald-150/80 shadow-sm'
+                          isUnknown
+                            ? 'bg-slate-50/50 border-slate-200 shadow-sm'
+                            : p.status === 'open'
+                              ? 'bg-rose-50/20 border-rose-200 shadow-sm'
+                              : 'bg-emerald-50/10 border-emerald-150/80 shadow-sm'
                         }`}
                       >
                         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-150 pb-2.5">
@@ -830,7 +970,7 @@ export default function App() {
                           </div>
 
                           <div className="flex items-center gap-2">
-                            {p.status === 'open' && (
+                            {!isUnknown && p.status === 'open' && (
                               <span className={`text-[10px] font-bold uppercase px-2.5 py-0.5 rounded ${
                                 p.risk === 'high' ? 'text-red-700 bg-red-50 border border-red-100' :
                                 p.risk === 'medium' ? 'text-amber-700 bg-amber-50 border border-amber-100' :
@@ -840,11 +980,13 @@ export default function App() {
                               </span>
                             )}
                             <span className={`text-[10px] font-mono font-bold uppercase px-2.5 py-0.5 rounded-full ${
-                              p.status === 'open' 
-                                ? 'text-rose-700 bg-rose-50 border border-rose-200' 
-                                : 'text-emerald-700 bg-emerald-50 border border-emerald-200'
+                              isUnknown
+                                ? 'text-slate-600 bg-slate-100 border border-slate-300'
+                                : p.status === 'open'
+                                  ? 'text-rose-700 bg-rose-50 border border-rose-200'
+                                  : 'text-emerald-700 bg-emerald-50 border border-emerald-200'
                             }`}>
-                              {p.status === 'open' ? 'Expuesto 🔓' : 'Protegido 🔒'}
+                              {isUnknown ? '⚠ No Verificado' : p.status === 'open' ? 'Expuesto 🔓' : 'Protegido 🔒'}
                             </span>
                           </div>
                         </div>
@@ -860,7 +1002,7 @@ export default function App() {
                           </div>
                         </div>
 
-                        {p.status === 'open' && (
+                        {!isUnknown && p.status === 'open' && (
                           <div className="flex justify-end pt-2">
                             <button
                               onClick={() => {
@@ -878,7 +1020,8 @@ export default function App() {
                           </div>
                         )}
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -1051,6 +1194,209 @@ export default function App() {
           </div>
         )}
 
+        {/* TAB: METODOLOGÍA & FUENTES */}
+        {activeTab === 'methodology' && (
+          <div className="max-w-4xl mx-auto space-y-10 py-4 text-slate-800 animate-fade-in">
+            <div className="bg-gradient-to-br from-slate-900 to-indigo-950 text-white p-8 rounded-3xl shadow-md space-y-4 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center border border-white/10">
+                  <Search className="w-6 h-6 text-emerald-400" />
+                </div>
+                <div>
+                  <span className="text-[10px] font-mono tracking-widest text-indigo-300 uppercase font-bold">Transparencia Total</span>
+                  <h2 className="text-xl sm:text-2xl font-bold font-sans">Metodología y Fuentes de Datos</h2>
+                </div>
+              </div>
+              <p className="text-sm text-slate-300 leading-relaxed max-w-3xl">
+                MyIP no inventa datos. Cada resultado proviene de APIs de seguridad profesionales y verificación directa. Aquí explicamos exactamente qué usamos, cómo funciona y qué limitaciones tiene cada fuente.
+              </p>
+            </div>
+
+            {/* Sección 1: Detección de IP */}
+            <div className="bg-white border border-slate-200 p-6 rounded-2xl space-y-4 shadow-sm">
+              <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                <span className="w-6 h-6 rounded-lg bg-indigo-50 text-indigo-600 font-bold flex items-center justify-center text-xs">1</span>
+                Detección de IP Pública
+              </h3>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Tu IP pública se detecta <strong>directamente desde tu navegador</strong>, no desde nuestro servidor. Esto garantiza que siempre ves tu IP real, no la del servidor.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                  <h4 className="text-xs font-bold text-slate-700">ipify.org (Primario)</h4>
+                  <p className="text-[11px] text-slate-500 mt-1">API gratuita, sin registro, sin CORS. Devuelve solo tu IP pública en formato JSON. Sin límite conocido.</p>
+                  <a href="https://www.ipify.org/" target="_blank" rel="noopener noreferrer" className="text-[10px] text-indigo-600 hover:underline mt-1 inline-block">https://www.ipify.org/</a>
+                </div>
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                  <h4 className="text-xs font-bold text-slate-700">ipapi.co (Geolocalización)</h4>
+                  <p className="text-[11px] text-slate-500 mt-1">1,000 consultas/día gratis. Proporciona país, ciudad, región y ISP asociado a tu IP.</p>
+                  <a href="https://ipapi.co/" target="_blank" rel="noopener noreferrer" className="text-[10px] text-indigo-600 hover:underline mt-1 inline-block">https://ipapi.co/</a>
+                </div>
+              </div>
+            </div>
+
+            {/* Sección 2: Escaneo de Puertos */}
+            <div className="bg-white border border-slate-200 p-6 rounded-2xl space-y-4 shadow-sm">
+              <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                <span className="w-6 h-6 rounded-lg bg-indigo-50 text-indigo-600 font-bold flex items-center justify-center text-xs">2</span>
+                Escaneo de Puertos
+              </h3>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Usamos un <strong>script Python propio</strong> (<code className="bg-slate-100 px-1 rounded font-mono">port_audit.py</code>) basado en <strong>nmap</strong> (herramienta open-source de escaneo de red) para verificar en tiempo real el estado de cada puerto. Esto es un escaneo TCP directo y real, no una suposición.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                  <h4 className="text-xs font-bold text-slate-700">port_audit.py + nmap (Método principal)</h4>
+                  <p className="text-[11px] text-slate-500 mt-1">Script Python del autor que ejecuta nmap contra la IP objetivo. Verifica puertos 22, 80, 443, 3306, 8080 y más. Devuelve estado real: abierto, cerrado o filtrado. Sin suposiciones.</p>
+                  <a href="https://nmap.org/" target="_blank" rel="noopener noreferrer" className="text-[10px] text-indigo-600 hover:underline mt-1 inline-block">nmap.org — Herramienta open-source</a>
+                </div>
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                  <h4 className="text-xs font-bold text-slate-700">Shodan / Censys (APIs externas, opcional)</h4>
+                  <p className="text-[11px] text-slate-500 mt-1">Si están configuradas, se consultan primero como referencia. Pero el escaneo real siempre lo hace nuestro script con nmap. No dependemos de terceros para los resultados.</p>
+                  <a href="https://www.shodan.io/" target="_blank" rel="noopener noreferrer" className="text-[10px] text-indigo-600 hover:underline mt-1 inline-block">shodan.io</a>
+                </div>
+              </div>
+              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-[11px] text-emerald-800">
+                <strong>Transparencia:</strong> Cada escaneo es una conexión TCP real desde nuestro servidor hacia la IP objetivo. No asumimos nada. Si un puerto no responde, se reporta como "filtrado" (firewall), no como "cerrado". Los resultados son verificables con nmap directamente.
+              </div>
+            </div>
+
+            {/* Sección 3: Reputación de IP */}
+            <div className="bg-white border border-slate-200 p-6 rounded-2xl space-y-4 shadow-sm">
+              <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                <span className="w-6 h-6 rounded-lg bg-indigo-50 text-indigo-600 font-bold flex items-center justify-center text-xs">3</span>
+                Reputación de IP (Listas Negras)
+              </h3>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Consultamos múltiples fuentes de reputación en tiempo real para verificar si tu IP ha sido reportada por actividad maliciosa.
+              </p>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-200 bg-slate-50">
+                      <th className="p-3 font-semibold text-slate-600">Fuente</th>
+                      <th className="p-3 font-semibold text-slate-600">Tipo</th>
+                      <th className="p-3 font-semibold text-slate-600">Coste</th>
+                      <th className="p-3 font-semibold text-slate-600">Qué detecta</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="border-b border-slate-100">
+                      <td className="p-3 font-semibold">Spamhaus ZEN</td>
+                      <td className="p-3">DNSBL</td>
+                      <td className="p-3 text-emerald-600">Gratis</td>
+                      <td className="p-3">Spam, botnets, malware residencial</td>
+                    </tr>
+                    <tr className="border-b border-slate-100">
+                      <td className="p-3 font-semibold">Barracuda RBL</td>
+                      <td className="p-3">DNSBL</td>
+                      <td className="p-3 text-emerald-600">Gratis</td>
+                      <td className="p-3">Reputación de envío de email</td>
+                    </tr>
+                    <tr className="border-b border-slate-100">
+                      <td className="p-3 font-semibold">AbuseIPDB</td>
+                      <td className="p-3">API REST</td>
+                      <td className="p-3 text-emerald-600">Gratis (1,000/día)</td>
+                      <td className="p-3">Reportes de abuso: brute force, DDoS, spam</td>
+                    </tr>
+                    <tr className="border-b border-slate-100">
+                      <td className="p-3 font-semibold">VirusTotal</td>
+                      <td className="p-3">API REST</td>
+                      <td className="p-3 text-emerald-600">Gratis (500/día)</td>
+                      <td className="p-3">80+ motores de seguridad analizando la IP</td>
+                    </tr>
+                    <tr>
+                      <td className="p-3 font-semibold">Project Honey Pot</td>
+                      <td className="p-3">DNSBL</td>
+                      <td className="p-3 text-emerald-600">Gratis</td>
+                      <td className="p-3">Harvesters de email, spammers</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Sección 4: Análisis IA */}
+            <div className="bg-white border border-slate-200 p-6 rounded-2xl space-y-4 shadow-sm">
+              <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                <span className="w-6 h-6 rounded-lg bg-indigo-50 text-indigo-600 font-bold flex items-center justify-center text-xs">4</span>
+                Análisis de Inteligencia Artificial
+              </h3>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Los resultados técnicos se traducen a lenguaje comprensible usando modelos de IA. No inventan datos: interpretan los resultados reales del escaneo.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                  <h4 className="text-xs font-bold text-slate-700">Google Gemini 2.0 Flash</h4>
+                  <p className="text-[11px] text-slate-500 mt-1">Traduce resultados técnicos a explicaciones en español accesibles. 1,500 consultas/día gratis.</p>
+                  <a href="https://aistudio.google.com/" target="_blank" rel="noopener noreferrer" className="text-[10px] text-indigo-600 hover:underline mt-1 inline-block">aistudio.google.com</a>
+                </div>
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                  <h4 className="text-xs font-bold text-slate-700">xAI Grok (Premium)</h4>
+                  <p className="text-[11px] text-slate-500 mt-1">Genera informes ejecutivos profesionales. Beta con cuota generosa.</p>
+                  <a href="https://console.x.ai/" target="_blank" rel="noopener noreferrer" className="text-[10px] text-indigo-600 hover:underline mt-1 inline-block">console.x.ai</a>
+                </div>
+              </div>
+            </div>
+
+            {/* Sección 5: Anti-Fraude */}
+            <div className="bg-white border border-slate-200 p-6 rounded-2xl space-y-4 shadow-sm">
+              <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                <span className="w-6 h-6 rounded-lg bg-indigo-50 text-indigo-600 font-bold flex items-center justify-center text-xs">5</span>
+                Sistema Anti-Fraude
+              </h3>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Para proteger los recursos del servidor (cada escaneo consume APIs de pago), implementamos límites reales:
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                  <h4 className="text-xs font-bold text-slate-700">Por IP</h4>
+                  <p className="text-[11px] text-slate-500 mt-1">1 escaneo cada 24 horas (usuarios gratuitos). Ilimitado para Premium.</p>
+                </div>
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                  <h4 className="text-xs font-bold text-slate-700">Por Huella de Navegador</h4>
+                  <p className="text-[11px] text-slate-500 mt-1">Máximo 3 escaneos por 7 días. Evita eludir límites cambiando IP o usando modo incógnito.</p>
+                </div>
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                  <h4 className="text-xs font-bold text-slate-700">Invitados</h4>
+                  <p className="text-[11px] text-slate-500 mt-1">3 escaneos totales sin registro. Sin datos personales requeridos.</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Sección 6: Lo que NO hacemos */}
+            <div className="bg-white border border-slate-200 p-6 rounded-2xl space-y-4 shadow-sm">
+              <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                <span className="w-6 h-6 rounded-lg bg-rose-50 text-rose-600 font-bold flex items-center justify-center text-xs">!</span>
+                Lo que NO hacemos
+              </h3>
+              <ul className="space-y-2 text-xs text-slate-600">
+                <li className="flex gap-2 items-start">
+                  <span className="text-rose-500 font-bold mt-0.5">✗</span>
+                  <span><strong>No inventamos datos.</strong> Cada resultado viene de un escaneo TCP real con nmap vía nuestro script Python. Si algo falla, se reporta como "no verificado", nunca como "cerrado" asumido.</span>
+                </li>
+                <li className="flex gap-2 items-start">
+                  <span className="text-rose-500 font-bold mt-0.5">✗</span>
+                  <span><strong>No escaneamos IPs de terceros.</strong> Solo se puede escanear la IP que el navegador detecta como propia. Bloqueamos IPs privadas y ranges internos.</span>
+                </li>
+                <li className="flex gap-2 items-start">
+                  <span className="text-rose-500 font-bold mt-0.5">✗</span>
+                  <span><strong>No usamos tu SMTP personal.</strong> Los emails se envían vía Resend API, sin exponer credenciales de Gmail.</span>
+                </li>
+                <li className="flex gap-2 items-start">
+                  <span className="text-rose-500 font-bold mt-0.5">✗</span>
+                  <span><strong>No almacenamos contraseñas.</strong> No hay contraseñas. El registro es solo email, sin verificación falsa.</span>
+                </li>
+                <li className="flex gap-2 items-start">
+                  <span className="text-rose-500 font-bold mt-0.5">✗</span>
+                  <span><strong>No realizamos exploits ni ataques.</strong> Solo verificamos si puertos estándar responden (SYN/ACK). Sin fuerza bruta, sin inyección, sin exploits.</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        )}
+
         {/* TAB 4.5: LEGAL & COMPLIANCE FRAMEWORK */}
         {activeTab === 'legal' && (
           <div className="max-w-4xl mx-auto space-y-10 py-4 text-slate-800 animate-fade-in">
@@ -1205,20 +1551,18 @@ export default function App() {
               onLogout={handleLogout} 
             />
 
-            {/* Upgrade Panel Segment */}
-            {user && (
-              <div className="border-t border-slate-150 pt-8">
-                <UpgradePanel
-                  email={user.email}
-                  isPremium={user.isPremium}
-                  onUpgradeSuccess={handleUpgradeSuccess}
-                  onSimulateAlert={handleSimulateAlert}
-                  onSendReport={handleSendReport}
-                  reportSending={reportSending}
-                  reportMessage={reportMessage}
-                />
-              </div>
-            )}
+            {/* Upgrade Panel Segment — always visible, dev code first */}
+            <div className="border-t border-slate-150 pt-8">
+              <UpgradePanel
+                email={user?.email || ''}
+                isPremium={user?.isPremium || false}
+                onUpgradeSuccess={handleUpgradeSuccess}
+                onSimulateAlert={handleSimulateAlert}
+                onSendReport={handleSendReport}
+                reportSending={reportSending}
+                reportMessage={reportMessage}
+              />
+            </div>
           </div>
         )}
 

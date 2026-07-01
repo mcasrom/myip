@@ -996,6 +996,16 @@ app.get('/api/scan/history/:id', optionalAuth, async (req: any, res) => {
 
 // WiFi Audit — real detection via nmcli/iwconfig/ping
 app.post('/api/wifi/audit', async (req, res) => {
+  // Este audit ejecuta nmcli/iwconfig/ping contra la interfaz de red del
+  // PROCESO que corre el servidor. En produccion (Hetzner/Vercel) eso seria
+  // la red del servidor, no la del usuario -> inutil y fuga de topologia
+  // interna. Solo tiene sentido en localhost/dev.
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(403).json({
+      error: 'WiFi audit no disponible en modo servidor remoto. Requiere ejecucion local.',
+      available: false
+    });
+  }
   try {
     const pythonPath = process.env.PYTHON_PATH || 'python3';
     const proc = spawn(pythonPath, ['./scripts/wifi_audit.py'], { timeout: 15000 });
@@ -1007,6 +1017,8 @@ app.post('/api/wifi/audit', async (req, res) => {
       if (code === 0) {
         try {
           const data = JSON.parse(output);
+          // Alias: el frontend espera "gateway", el script Python devuelve "gateway_ip"
+          data.gateway = data.gateway_ip || 'No detectado';
           res.json(data);
         } catch {
           res.status(500).json({ error: 'Invalid JSON from wifi audit', raw: output, stderr: errOut });
