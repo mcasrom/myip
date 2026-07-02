@@ -138,29 +138,15 @@ export default function App() {
         setDetectedIp(publicIp);
         setIsSimulatedIp(false);
 
-        // Geo lookup
+        // Geo lookup (server-side, evita CORS/ETP igual que /api/ip/detect)
         try {
-          const geoData = await fetchWithTimeout(`https://ipapi.co/${publicIp}/json/`, 4000) as any;
-          if (!geoData.error) {
-            setIpGeo({
-              country: geoData.country_name || 'Desconocido',
-              countryCode: geoData.country_code || 'XX',
-              region: geoData.region || 'Región desconocida',
-              city: geoData.city || 'Ciudad desconocida',
-              isp: geoData.org || 'ISP desconocido',
-            });
-            return;
-          }
-        } catch {}
-        
-        try {
-          const geoData = await fetchWithTimeout('https://ipinfo.io/json', 4000) as any;
+          const geoData = await fetchWithTimeout(`/api/geo/lookup?ip=${publicIp}`, 4000) as any;
           setIpGeo({
             country: geoData.country || 'Desconocido',
-            countryCode: geoData.country || 'XX',
+            countryCode: geoData.countryCode || 'XX',
             region: geoData.region || 'Región desconocida',
             city: geoData.city || 'Ciudad desconocida',
-            isp: geoData.org || 'ISP desconocido',
+            isp: geoData.isp || 'ISP desconocido',
           });
         } catch {
           setIpGeo({ country: 'N/A', countryCode: 'XX', region: 'N/A', city: 'N/A', isp: 'N/A' });

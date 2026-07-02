@@ -503,6 +503,49 @@ app.get('/api/ip/detect', async (req, res) => {
   }
 });
 
+// Geo-lookup: hecho server-side para evitar bloqueos de CORS/ETP en el
+// navegador del cliente (mismo motivo que /api/ip/detect).
+app.get('/api/geo/lookup', async (req, res) => {
+  const ip = (req.query.ip as string || '').trim();
+  if (!ip) return res.status(400).json({ error: 'Se requiere parametro ip.' });
+
+  try {
+    const r = await fetch(`https://ipapi.co/${ip}/json/`);
+    if (r.ok) {
+      const data = await r.json() as any;
+      if (!data.error) {
+        return res.json({
+          country: data.country_name || 'Desconocido',
+          countryCode: data.country_code || 'XX',
+          region: data.region || 'Region desconocida',
+          city: data.city || 'Ciudad desconocida',
+          isp: data.org || 'ISP desconocido',
+        });
+      }
+    }
+  } catch (e) {
+    console.warn('[GEO LOOKUP] ipapi.co fallo:', e);
+  }
+
+  try {
+    const r2 = await fetch('https://ipinfo.io/json');
+    if (r2.ok) {
+      const data2 = await r2.json() as any;
+      return res.json({
+        country: data2.country || 'Desconocido',
+        countryCode: data2.country || 'XX',
+        region: data2.region || 'Region desconocida',
+        city: data2.city || 'Ciudad desconocida',
+        isp: data2.org || 'ISP desconocido',
+      });
+    }
+  } catch (e) {
+    console.warn('[GEO LOOKUP] ipinfo.io fallo:', e);
+  }
+
+  res.status(502).json({ country: 'N/A', countryCode: 'XX', region: 'N/A', city: 'N/A', isp: 'N/A' });
+});
+
 // Auth: Registro real con contrasena (bcrypt). Rechaza si el email ya tiene cuenta.
 app.post('/api/auth/register', async (req, res) => {
   const { email, password, clientIp } = req.body;

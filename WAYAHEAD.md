@@ -557,3 +557,18 @@ curl -X POST /api/scan con targetIp=8.8.8.8 confirma:
 - VirusTotal no aparece para usuario no-premium (comportamiento esperado,
   no relacionado con el fix).
 Fix cerrado y validado end-to-end.
+
+## Sesión 2026-07-02 (tarde) — geo-lookup server-side
+
+Fix: geo-lookup (ipapi.co/ipinfo.io) movido de client-side a server-side,
+mismo patrón que /api/ip/detect, para evitar bloqueos CORS/ETP en navegador.
+
+- server.ts: nuevo endpoint GET /api/geo/lookup?ip=X con fallback
+  ipapi.co -> ipinfo.io hecho desde el servidor.
+- src/App.tsx: llamada única a /api/geo/lookup en vez de fetch directo
+  a ipapi.co/ipinfo.io desde el navegador.
+- Verificado en runtime: curl /api/geo/lookup?ip=8.8.8.8 responde con
+  datos geo reales (Brisbane, QLD, AU, Telstra vía fallback ipinfo.io).
+- tsc --noEmit limpio.
+
+Pendiente: gating UI en UpgradePanel.tsx (siguiente en la cola).
