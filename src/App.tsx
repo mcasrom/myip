@@ -328,7 +328,7 @@ export default function App() {
       const res = await fetch('/api/premium/send-report', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: user.email, reportType: type })
+        body: JSON.stringify({ email: user.email, reportType: type, scanData: scanResult })
       });
       const data = await res.json();
       setReportMessage(data.message);

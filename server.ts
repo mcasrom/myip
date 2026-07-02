@@ -1131,6 +1131,9 @@ app.post('/api/premium/send-report', async (req, res) => {
           <h3 style="font-size: 14px; color: #334155; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px;">Análisis</h3>
           <div style="font-size: 13px; line-height: 1.6; white-space: pre-wrap;">${(scanData.analysisText || '').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/### (.*)/g, '<h4 style="margin: 12px 0 4px; color: #4338ca;">$1</h4>')}</div>
         ` : '<p style="color: #64748b;">Tu reporte está listo. Inicia sesión en MyIP para ver los detalles completos.</p>'}
+        <div style="text-align: center; margin-top: 20px;">
+          <a href="${process.env.APP_URL || 'http://localhost:3000'}" style="display: inline-block; background: #4338ca; color: white; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-size: 13px; font-weight: 600;">Iniciar sesión en MyIP</a>
+        </div>
       </div>
       <div style="background: #f1f5f9; padding: 16px; border-radius: 0 0 12px 12px; text-align: center; font-size: 11px; color: #94a3b8;">
         MyIP &copy; 2026 M. Castillo — Herramienta de auditoría de seguridad
