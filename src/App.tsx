@@ -839,9 +839,10 @@ export default function App() {
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-bold text-slate-700">{rep.listName}</span>
                           <span className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold uppercase ${
+                            rep.unverified ? 'text-slate-500 bg-slate-100 border border-slate-200' :
                             rep.clean ? 'text-emerald-700 bg-emerald-50 border border-emerald-100' : 'text-rose-700 bg-rose-50 border border-rose-100'
                           }`}>
-                            {rep.clean ? 'Limpio' : 'Reportado ⚠️'}
+                            {rep.unverified ? 'Sin verificar' : rep.clean ? 'Limpio' : 'Reportado ⚠️'}
                           </span>
                         </div>
                         <p className="text-[11px] text-slate-500 leading-relaxed">{rep.details}</p>

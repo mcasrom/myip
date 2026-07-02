@@ -516,3 +516,32 @@ construido:
 Nota: NO se ha tocado código para nada de esto. Es roadmap de referencia para
 cuando se decida arrancar un sprint de "Security Score visual" u otro de esta
 lista, empezar por los de esfuerzo bajo-medio.
+
+## Sesión 2026-07-02 (tarde) — Badge reputación "Sin verificar" + fix seguridad botnet_checker.py
+
+Bug encontrado: cuando falta API key (AbuseIPDB/VirusTotal), el badge de
+reputación mostraba "Limpio" (verde) en vez de indicar que no se verificó
+nada — falsa sensación de seguridad para el usuario.
+
+Fix aplicado:
+- server.ts: checkAbuseIPDB() y checkVirusTotal() ahora devuelven
+  `unverified: true` cuando falta la API key (antes solo `clean: true`).
+  Propagado también al fallback de Promise.race en catch (línea ~882).
+- src/App.tsx (badge Reputación en Listas Negras, ~línea 841-846):
+  tercer estado visual "Sin verificar" (gris, slate) antes de
+  clean/reportado. Verificado visualmente, tsc --noEmit limpio.
+
+Seguridad: scripts/botnet_checker.py tenía ABUSEIPDB_API_KEY hardcodeada
+en texto plano. Movida a .env (ABUSEIPDB_API_KEY=...), script reescrito
+para leer via os.getenv() + python-dotenv. Confirmado: la key NUNCA
+quedó commiteada en git history (git log -p sin resultados), no requiere
+rotación. .env ya estaba en .gitignore.
+
+Pendiente verificación en runtime: reiniciar server (fuser -k + restart)
+y curl /api/scan para confirmar `unverified` en la respuesta JSON real
+antes de dar por cerrado el fix visual.
+
+Pendientes de sesiones anteriores (sin tocar hoy):
+- gating UI en UpgradePanel.tsx
+- geo-lookup server-side (ipapi.co client-side en src/App.tsx, bloqueado por CORS/ETP)
+- cron ya en producción (0 8 * * *), no confundir con este pendiente

@@ -210,9 +210,9 @@ async function getPortsFromNmap(ip: string, profile: string = 'quick'): Promise<
 // ============================================================================
 // Reputation: AbuseIPDB
 // ============================================================================
-async function checkAbuseIPDB(ip: string): Promise<{ score: number; reports: number; clean: boolean; details: string }> {
+async function checkAbuseIPDB(ip: string): Promise<{ score: number; reports: number; clean: boolean; unverified?: boolean; details: string }> {
   const apiKey = process.env.ABUSEIPDB_API_KEY;
-  if (!apiKey) return { score: 0, reports: 0, clean: true, details: 'API key no configurada.' };
+  if (!apiKey) return { score: 0, reports: 0, clean: true, unverified: true, details: 'API key no configurada.' };
   try {
     const data = await fetchJson(`https://api.abuseipdb.com/api/v2/check?ipAddress=${ip}&maxAgeInDays=90`, {
       'Key': apiKey, 'Accept': 'application/json',
@@ -234,9 +234,9 @@ async function checkAbuseIPDB(ip: string): Promise<{ score: number; reports: num
 // ============================================================================
 // Reputation: VirusTotal
 // ============================================================================
-async function checkVirusTotal(ip: string): Promise<{ malicious: number; clean: boolean; details: string }> {
+async function checkVirusTotal(ip: string): Promise<{ malicious: number; clean: boolean; unverified?: boolean; details: string }> {
   const apiKey = process.env.VIRUSTOTAL_API_KEY;
-  if (!apiKey) return { malicious: 0, clean: true, details: 'API key no configurada.' };
+  if (!apiKey) return { malicious: 0, clean: true, unverified: true, details: 'API key no configurada.' };
   try {
     const data = await fetchJson(`https://www.virustotal.com/api/v3/ip_addresses/${ip}`, {
       'x-apikey': apiKey, 'Accept': 'application/json',
@@ -875,17 +875,17 @@ app.post('/api/scan', optionalAuth, async (req: any, res) => {
       checkAbuseIPDB(ip),
       new Promise((_, rej) => setTimeout(() => rej(new Error('AbuseIPDB timeout')), 5000))
     ]);
-    reputation.push({ listName: 'AbuseIPDB', clean: (abuse as any).clean, details: (abuse as any).details, score: (abuse as any).score });
+    reputation.push({ listName: 'AbuseIPDB', clean: (abuse as any).clean, unverified: (abuse as any).unverified, details: (abuse as any).details, score: (abuse as any).score });
   } catch (err) {
     console.log('[REPUTATION] Partial:', err);
     if (reputation.length === 0) {
-      reputation = [{ listName: 'Spamhaus ZEN', clean: true, details: 'Consulta no disponible.' }, { listName: 'AbuseIPDB', clean: true, details: 'Consulta no disponible.' }];
+      reputation = [{ listName: 'Spamhaus ZEN', clean: true, unverified: true, details: 'Consulta no disponible.' }, { listName: 'AbuseIPDB', clean: true, unverified: true, details: 'Consulta no disponible.' }];
     }
   }
 
   if (isPremium) {
     const vt = await checkVirusTotal(ip);
-    reputation.push({ listName: 'VirusTotal', clean: vt.clean, details: vt.details, malicious: vt.malicious });
+    reputation.push({ listName: 'VirusTotal', clean: vt.clean, unverified: vt.unverified, details: vt.details, malicious: vt.malicious });
   }
 
   // --- SSL ---
