@@ -647,11 +647,22 @@ si aplica, revisar).
 
 Pendiente en el laptop de Miguel (fuera de mi alcance desde el sandbox):
 1. Copiar backup_myip_db.sh al repo local (~/myip) y darle permisos exec.
-2. Anadir a crontab: 0 3 * * * /home/miguel/myip/backup_myip_db.sh >> /home/miguel/myip/backup.log 2>&1
+2. Anadir a crontab (usuario real /home/miguelc/, NO /home/miguel/):
+   0 3 * * * /home/miguelc/myip/backup_myip_db.sh >> /home/miguelc/myip/backup.log 2>&1
 3. Idealmente, ademas de local, sincronizar backups/ al Hetzner (rsync)
    o a otro disco fisico — backup solo local no protege contra fallo del
    propio laptop. Sin implementar, queda anotado para otra sesion rapida.
 4. Verificar .gitignore no versiona backups/*.gz (no deberian subirse al repo).
+
+Pendiente: que hacer con este cron cuando myip se despliegue en el Hetzner
+(deploy user, 178.105.80.193). Hoy myip vive solo en el laptop Lubuntu, este
+cron es local. Cuando se despliegue al server:
+- Revisar si el path de la DB cambia (ruta absoluta distinta bajo
+  /home/deploy/apps/myip/ en vez de /home/miguelc/myip/) — el script ya
+  resuelve rutas relativas via $(dirname "$0") asi que en principio
+  deberia funcionar igual solo copiando el script, pero VERIFICAR permisos
+  del usuario deploy sobre el directorio antes de dar por hecho que corre.
+  DECISION PENDIENTE, no bloqueante para el pendiente actual del laptop.
 
 Pendientes de cola sin tocar hoy: capa analitica sobre scan_history,
 roadmap Security Score visual / "sin cambios hace X dias" / etc.,
