@@ -600,3 +600,40 @@ Verificado en runtime:
 tsc --noEmit limpio en todas las verificaciones.
 
 Sprint UpgradePanel/gating: CERRADO.
+
+## Sesión 2026-07-02 (tarde) — Auditoría de almacenamiento real
+
+Se verificó qué se guarda de verdad en myip.sqlite3 (no solo lo que
+se ofrece/menciona en la UI):
+
+- users (5 filas): auth real bcrypt, persistente. OK.
+- sessions (11 filas): tokens con expiración. OK.
+- scan_history (160 filas): histórico REAL de escaneos con
+  reputation_json/ports_json/geo_json/analysis_text. Se guarda SOLO
+  para usuarios logueados (server.ts linea ~1012, `if (user)`) — no
+  hay riesgo de que tráfico anónimo/demo llene la tabla sin control.
+  Escritura real vive en db.ts (saveScanRecord), importado en
+  server.ts como `authDb.saveScanRecord(...)`.
+
+Problema encontrado: WAL sin checkpoint automatico configurado —
+myip.sqlite3-wal llego a pesar 2.6MB vs 135K de datos reales en la DB
+principal (probable causa: kills abruptos del proceso durante dev en
+vez de shutdown limpio, antes del checkpoint automatico por defecto de
+SQLite ~1000 paginas/4MB).
+
+Fix:
+1. Checkpoint manual inmediato: PRAGMA wal_checkpoint(TRUNCATE) —
+   consolido a myip.sqlite3 (905K reales), wal a 0.
+2. db.ts: agregado `db.pragma('wal_autocheckpoint = 100')` (checkpoint
+   cada ~400KB en vez de ~4MB) para que no vuelva a acumularse tanto
+   entre reinicios de desarrollo. Verificado: wal en 0 tras restart.
+
+Pendientes anotados (NO abordados hoy, quedan en la cola):
+- Backup real de myip.sqlite3 fuera del laptop (si el disco muere, se
+  pierden usuarios reales + historico completo). Sin verificar aun.
+- scan_history existe con datos reales pero NADA lee getScanHistory()
+  todavia para clustering/anomalias/tendencias — la base esta lista,
+  falta la capa analitica (ML wayahead, mencionado en conversaciones
+  anteriores sobre ThreatRadar/GEORISK, aplicable aqui tambien).
+- Auditoria de narrativa vs realidad en ThreatRadar/GEORISK (Hetzner):
+  queda como sesion aparte, mayor alcance.

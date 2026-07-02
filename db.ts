@@ -6,6 +6,10 @@ import path from 'path';
 
 const db = new Database(path.join(process.cwd(), 'myip.sqlite3'));
 db.pragma('journal_mode = WAL');
+// Checkpoint automatico mas frecuente (cada 100 paginas ~400KB en vez de
+// las 1000 paginas ~4MB por defecto) para evitar que el .wal crezca sin
+// control entre reinicios del server durante desarrollo.
+db.pragma('wal_autocheckpoint = 100');
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS users (
