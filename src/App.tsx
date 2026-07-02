@@ -1517,8 +1517,8 @@ export default function App() {
                     </tr>
                     <tr className="border-b border-slate-100">
                       <td className="p-3 font-semibold">Privacidad y Alertas de Red</td>
-                      <td className="p-3 text-rose-700 bg-rose-50/20">No tiene almacenamiento nativo de auditorías ni alertas SSL en background de forma automática sin scripts bash complejos.</td>
-                      <td className="p-3 text-emerald-800 bg-emerald-50/20 font-medium">Alertas 24/7 de caídas de puertos e informes PDF descargables o enviados por email al instante.</td>
+                      <td className="p-3 text-rose-700 bg-rose-50/20">No tiene almacenamiento nativo de auditorías ni monitoreo automático en background sin scripts bash complejos.</td>
+                      <td className="p-3 text-emerald-800 bg-emerald-50/20 font-medium">Chequeo diario automático: te avisa por email si se abre un nuevo puerto o tu IP entra en una blacklist.</td>
                     </tr>
                   </tbody>
                 </table>
