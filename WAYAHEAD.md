@@ -703,9 +703,17 @@ Hetzner (deploy user, 178.105.80.193), hay que resolver:
 6. **wifi_audit.py** ya esta bloqueado en production (`403` explicito si
    NODE_ENV === production) — correcto por diseno, no requiere accion.
 
-7. **Recursos estimados** (sin verificar contra el Hetzner real todavia):
-   RAM ~60-120MB en reposo (mismo patron que ThreatRadar: Express +
-   better-sqlite3 embebido, sin DB server aparte), picos cortos de CPU
-   durante nmap (acotado por timeout), disco ligero (DB SQLite pequeña +
-   dist/ de pocos MB). Verificar margen real con:
-   `ssh deploy@178.105.80.193 "free -h && df -h && nproc"`
+7. **Recursos verificados en el Hetzner real (2026-07-02)**:
+   `free -h`: 3.7Gi total, 2.2Gi available (la metrica real, no el "free"
+   engañoso de la primera columna) — margen amplio para los ~60-120MB
+   estimados de myip. Swap 8Gi total, solo 108Mi usados — sistema sano,
+   sin presion de memoria real.
+   `df -h /`: 38G total, 25G usados (68%), 12G libres — con margen pero no
+   holgado; vigilar crecimiento (scan_history de myip + urlhaus_feed de
+   ThreatRadar + GEORISK snapshots) periodicamente, no urgente hoy.
+   `nproc`: 2 — este es el recurso mas ajustado del server, no la RAM.
+   Los picos de nmap de myip son cortos pero compiten con Next.js SSR de
+   viajeinteligencia, cron OSINT de ThreatRadar, GEORISK v2 API, etc. No
+   bloqueante para desplegar, pero primera sospechosa si aparece latencia
+   rara en otra app coincidiendo con un escaneo de myip.
+   `nmap`: confirmado en /usr/bin/nmap, dependencia ya resuelta.
