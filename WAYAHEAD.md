@@ -637,3 +637,22 @@ Pendientes anotados (NO abordados hoy, quedan en la cola):
   anteriores sobre ThreatRadar/GEORISK, aplicable aqui tambien).
 - Auditoria de narrativa vs realidad en ThreatRadar/GEORISK (Hetzner):
   queda como sesion aparte, mayor alcance.
+
+## Sesión 2026-07-02 (tarde/noche) — Backup rotativo myip.sqlite3
+
+Añadido `backup_myip_db.sh`: usa `sqlite3 .backup` (online, consistente con
+WAL activo, no requiere parar el server), comprime a .gz, rota backups
+>14 dias. Backups en carpeta local `backups/` (ya cubierta por .gitignore
+si aplica, revisar).
+
+Pendiente en el laptop de Miguel (fuera de mi alcance desde el sandbox):
+1. Copiar backup_myip_db.sh al repo local (~/myip) y darle permisos exec.
+2. Anadir a crontab: 0 3 * * * /home/miguel/myip/backup_myip_db.sh >> /home/miguel/myip/backup.log 2>&1
+3. Idealmente, ademas de local, sincronizar backups/ al Hetzner (rsync)
+   o a otro disco fisico — backup solo local no protege contra fallo del
+   propio laptop. Sin implementar, queda anotado para otra sesion rapida.
+4. Verificar .gitignore no versiona backups/*.gz (no deberian subirse al repo).
+
+Pendientes de cola sin tocar hoy: capa analitica sobre scan_history,
+roadmap Security Score visual / "sin cambios hace X dias" / etc.,
+auditoria narrativa ThreatRadar/GEORISK.
