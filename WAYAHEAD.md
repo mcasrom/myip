@@ -572,3 +572,31 @@ mismo patrón que /api/ip/detect, para evitar bloqueos CORS/ETP en navegador.
 - tsc --noEmit limpio.
 
 Pendiente: gating UI en UpgradePanel.tsx (siguiente en la cola).
+
+## Sesión 2026-07-02 (tarde) — Gating UpgradePanel: fix vulnerabilidad bypass de pago
+
+Revisado UpgradePanel.tsx completo (616 líneas): gating visual correcto
+en todo el componente (tiers, dev-code, panel premium, form de pago).
+No se encontraron bugs de UI.
+
+Vulnerabilidad real encontrada en server.ts: POST /api/premium/upgrade
+activaba isPremium=true con solo un email, sin verificar tarjeta ni
+pasar por Stripe. Es el fallback correcto SOLO cuando Stripe no está
+configurado (modo demo local), pero sin ningún guard, en producción con
+Stripe activo cualquiera podría llamar el endpoint directo y saltarse
+el pago real por completo.
+
+Fix: guard `if (getStripe()) return 403` al inicio del endpoint —
+bloquea el fallback de demo en cuanto STRIPE_SECRET_KEY esté configurada
+en producción, forzando el flujo real (create-checkout-session -> pago
+Stripe -> verify-session). En local (sin key) sigue funcionando igual
+que siempre para pruebas.
+
+Verificado en runtime:
+- Sin STRIPE_SECRET_KEY (estado actual): /api/premium/upgrade sigue
+  funcionando en modo demo (miguel@dev.com activado OK, isPremium:true).
+- Guard aún no probado con key real de Stripe configurada (pendiente
+  probar con key dummy si se quiere validar el 403 explícitamente).
+tsc --noEmit limpio en todas las verificaciones.
+
+Sprint UpgradePanel/gating: CERRADO.

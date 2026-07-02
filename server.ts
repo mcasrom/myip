@@ -619,6 +619,12 @@ app.post('/api/auth/guest', async (req, res) => {
 
 // Premium upgrade (fallback when Stripe not configured)
 app.post('/api/premium/upgrade', (req, res) => {
+  // Guard: este endpoint es SOLO fallback de demo cuando Stripe no esta
+  // configurado. Si Stripe esta activo, bloquear para evitar bypass del
+  // pago real (activacion premium sin tarjeta ni Stripe de por medio).
+  if (getStripe()) {
+    return res.status(403).json({ error: 'Pago debe procesarse via Stripe Checkout.' });
+  }
   const { email } = req.body;
   if (!email) return res.status(400).json({ error: 'Se requiere email.' });
   const user = usersDb[email.toLowerCase().trim()];
