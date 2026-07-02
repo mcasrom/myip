@@ -403,3 +403,78 @@ premium real para probar sendEmail()/Resend/alertas.
 
 Pendientes: gating UI en UpgradePanel.tsx, geo-lookup server-side
 (ipapi.co client-side en src/App.tsx, bloqueado por CORS/ETP).
+
+## Sesión 2026-07-02 — Cron producción, fixes auth dev, dominio Resend verificado
+
+### Fixes de código (validados con tsc --noEmit + tests curl)
+- Cron de alertas cambiado de `'*/2 * * * *'` (test) a `'0 8 * * *'` (diario 08:00),
+  vía patch_cron_production.py sobre alerts.ts.
+- Mensaje engañoso "Reporte generado. Configura SMTP." corregido en server.ts
+  (endpoint /api/premium/send-report): ahora indica fallo real de envío del
+  mismo sendEmail()/Resend, no un sistema SMTP separado inexistente.
+- Bug 400 en dev auto-login (src/App.tsx): el fetch a /api/auth/register no
+  enviaba password (obligatorio, min 8 chars). Cambiado a patrón login-first
+  con fallback a register, password fija DEV_PASSWORD='DevPass2026!'.
+- Bug raíz relacionado: las cuentas dev (miguel@dev.com, test_dev@example.com)
+  solo se creaban en usersDb (diccionario legacy en memoria), nunca en authDb
+  (SQLite+bcrypt real) — por eso login/register daban 400/401. Fix en
+  startServer() (server.ts): ahora crea/actualiza estas cuentas directamente
+  en authDb vía createUserWithPassword + updateUserFields({isPremium:true}),
+  gateado a NODE_ENV !== 'production', idempotente. Verificado: login exitoso,
+  isPremium:true confirmado para ambas cuentas dev y para la cuenta premium
+  real threatradar-osint@viajeinteligencia.com.
+- Copy corregido en UpgradePanel.tsx (Tier 2 "SysAdmin Pro"): el feature
+  listado decía "Alertas SSL/TLS inmediatas" pero el producto real implementado
+  es detección de puerto recién abierto o IP añadida a blacklist. Cambiado a
+  "Alertas por email: nuevo puerto expuesto o IP en blacklist". Mismo fix en
+  el botón de simulación ("Simular Alerta de Puerto Abierto / Blacklist") y
+  en el mensaje del toast simulado (handleSimulateAlert, App.tsx) — ya no
+  menciona certificados SSL/MITM ficticios.
+
+### Regresión validada end-to-end (sin roturas)
+- Login dev (miguel@dev.com / DevPass2026!) -> isPremium:true OK
+- Login premium real (threatradar-osint@viajeinteligencia.com) -> OK
+- Register de usuario nuevo (cuenta gratis) -> sigue funcionando igual
+- Scan real con sesión premium (nmap, 12 puertos) -> OK
+- Reporte por email con mensaje corregido -> OK (falla el envío en sandbox
+  Resend viejo, pero el mensaje de error ya es honesto, no dice "SMTP")
+
+### Dominio Resend verificado (bloqueador de producción resuelto)
+- Creado dominio viajeinteligencia.com en Resend vía API (POST /domains),
+  usando una API key nueva Full Access (la key original en .env solo tenía
+  permiso "sending", insuficiente para gestionar dominios — se rotó).
+- Encontrados registros DNS duplicados/conflictivos preexistentes en
+  Cloudflare de un intento anterior (21 abril), con contenido TXT malformado
+  (comillas literales dentro del valor). Identificados y borrados vía API:
+  - DKIM viejo (id 1b3bf74619485f21399ad0ee4c7a55b7)
+  - MX eu-west-1 viejo (id 613ec81aefea22911f058fe420e21379)
+  - SPF TXT viejo malformado (id c8b69a309006651b6ddb53639c03d21d)
+- Registros nuevos correctos creados vía API Cloudflare (zone
+  a56f7c002b1db64082f0813b839db412): DKIM TXT, MX priority 10
+  (feedback-smtp.us-east-1.amazonses.com), SPF TXT.
+- Verificado con dig @1.1.1.1 (autoritativo) tras la limpieza: todo correcto.
+- POST /domains/{id}/verify + polling: status pasó a "verified" en los 3
+  records (DKIM, SPF MX, SPF TXT) tras ~15-20 min de propagación.
+- Domain ID Resend: a664a61a-3554-4ef6-b3b6-09a93231cb06
+
+### RESEND_FROM configurado y envío real validado
+- server.ts:322 y alerts.ts:39 ya usaban `process.env.RESEND_FROM || 'MyIP
+  <onboarding@resend.dev>'`, pero RESEND_FROM no estaba definida en .env, así
+  que seguía cayendo al sandbox de Resend pese al dominio ya verificado.
+- Añadido a .env: `RESEND_FROM=MyIP <alertas@viajeinteligencia.com>`
+- Validado con envío real (no a mcasrom@gmail.com): POST /api/premium/send-report
+  con sesión de threatradar-osint@viajeinteligencia.com -> `[RESEND] Email
+  enviado a threatradar-osint@viajeinteligencia.com (ID:
+  dc66f2a4-1096-4e9e-8ef8-ad92f112cbe9)`, sin error 403 de sandbox. Bloqueador
+  de producción de alertas queda RESUELTO end-to-end.
+
+### PRÓXIMO PASO (antes de cerrar sesión)
+- [ ] Rotar la API key de Resend vieja (solo sending) si sigue en .env sin
+      uso, para no dejar credenciales huérfanas
+- [ ] Revisar linea ~1520 de App.tsx: tabla comparativa menciona "alertas
+      SSL en background" en contexto de competidores — verificar si necesita
+      el mismo ajuste de copy que UpgradePanel.tsx
+- [ ] Pendientes de sesiones previas siguen abiertos: geo-lookup server-side
+      (ipapi.co en App.tsx, bloqueado por CORS/ETP), revisar si el 400 de
+      /api/auth/register queda totalmente resuelto en otros flujos aparte
+      del dev auto-login

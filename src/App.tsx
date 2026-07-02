@@ -324,7 +324,7 @@ export default function App() {
       id: `alert-${Date.now()}`,
       type: 'SECURITY_ALERT',
       title: '¡Alerta de Seguridad Crítica!',
-      message: `Se detectó un cambio sospechoso en la firma del certificado SSL para el host principal de la IP ${detectedIp}. Posible interceptación de tráfico (Man-in-the-middle).`,
+      message: `Se detectó un nuevo puerto expuesto en la IP ${detectedIp} que antes estaba cerrado, o la IP fue añadida a una lista negra reciente. Revisa el detalle del análisis.`,
       severity: 'critical',
       time: 'Hace un momento'
     };

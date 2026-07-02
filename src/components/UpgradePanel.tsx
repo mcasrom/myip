@@ -307,7 +307,7 @@ export default function UpgradePanel({
             </li>
             <li className="flex items-center gap-2">
               <Check className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
-              <span>Alertas SSL/TLS inmediatas</span>
+              <span>Alertas por email: nuevo puerto expuesto o IP en blacklist</span>
             </li>
             <li className="flex items-center gap-2">
               <Check className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
@@ -400,7 +400,7 @@ export default function UpgradePanel({
                       className="bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all shadow-sm"
                     >
                       <BellRing className="w-4 h-4 text-amber-600 animate-pulse" />
-                      Simular Alerta de Caída/Certificado SSL
+                      Simular Alerta de Puerto Abierto / Blacklist
                     </button>
                   </div>
                 </div>
