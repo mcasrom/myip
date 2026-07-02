@@ -545,3 +545,15 @@ Pendientes de sesiones anteriores (sin tocar hoy):
 - gating UI en UpgradePanel.tsx
 - geo-lookup server-side (ipapi.co client-side en src/App.tsx, bloqueado por CORS/ETP)
 - cron ya en producción (0 8 * * *), no confundir con este pendiente
+
+## Verificación runtime 2026-07-02 (tarde) — badge "Sin verificar" confirmado
+
+Servidor reiniciado (mataba proceso tsx huérfano en :3000 que impedía
+recargar el patch + la ABUSEIPDB_API_KEY nueva del .env).
+curl -X POST /api/scan con targetIp=8.8.8.8 confirma:
+- Spamhaus/Barracuda: check real, sin unverified.
+- AbuseIPDB: key real activa, score 0, clean:true, sin unverified
+  (antes decía "Limpio" con "API key no configurada" — bug resuelto).
+- VirusTotal no aparece para usuario no-premium (comportamiento esperado,
+  no relacionado con el fix).
+Fix cerrado y validado end-to-end.
