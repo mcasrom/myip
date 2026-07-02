@@ -1180,10 +1180,25 @@ async function startServer() {
         verified: true, isGuest: false, premiumCode: 'DEV-OWNER'
       };
     }
+
+    // Aviso defensivo: si esto arranca en un servidor real (no localhost)
+    // con NODE_ENV mal configurado, este bloque grita en los logs antes de
+    // que sea un incidente. El guard real sigue siendo el `if` de arriba;
+    // esto es solo visibilidad, no reemplaza el guard.
+    console.warn('');
+    console.warn('============================================================');
+    console.warn('  ATENCION: SERVIDOR EN MODO DESARROLLO (NODE_ENV != production)');
+    console.warn('============================================================');
+    console.warn(`  NODE_ENV actual: "${process.env.NODE_ENV || '(vacio)'}"`);
+    console.warn(`  Cuentas dev activas y premium: ${devAccounts.join(', ')}`);
+    console.warn('  Password dev hardcodeada en el codigo fuente: DevPass2026!');
+    console.warn('  Rate limiting: DESACTIVADO POR COMPLETO (sin limite de escaneos)');
+    console.warn('  Si esta maquina tiene IP publica o esta detras de PM2 en');
+    console.warn('  produccion, corrige NODE_ENV=production INMEDIATAMENTE.');
+    console.warn('============================================================');
+    console.warn('');
   }
 // [Extraido a alerts.ts: compareScans() + cron de alertas recurrentes -> startAlertsCron()]
-
-  console.log(`[DEV] Accounts created: ${devAccounts.join(', ')} — all premium, no rate limits.`);
 
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`MyIP server running on http://0.0.0.0:${PORT}`);
