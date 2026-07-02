@@ -478,3 +478,41 @@ Pendientes: gating UI en UpgradePanel.tsx, geo-lookup server-side
       (ipapi.co en App.tsx, bloqueado por CORS/ETP), revisar si el 400 de
       /api/auth/register queda totalmente resuelto en otros flujos aparte
       del dev auto-login
+
+## Idea de producto 2026-07-02 — Roadmap "Valor Añadido" (org-mode de Miguel)
+
+Documento recibido: análisis de valor comercial para myip (competencia real no
+es Nmap, es "tranquilidad + monitorización continua"). Mapeo contra lo ya
+construido:
+
+### Ya implementado (el doc lo pide, myip ya lo tiene)
+- Alertas automáticas (puerto nuevo + blacklist) — sprint de hoy
+- Histórico (scan_history SQLite)
+- Blacklists/reputación (AbuseIPDB, OTX, ThreatFox vía stack compartido ThreatRadar)
+- Informe por email (HTML, no PDF, cumple la función)
+- Escaneo real de puertos (nmap)
+
+### Encaja, esfuerzo bajo-medio (reusar de otros proyectos SIEG)
+- [ ] Security Score visual (barra 0-100) — ya se calcula green/yellow/red,
+      falta solo el número + barra visual
+- [ ] "No se detectan cambios desde hace X días" — subproducto directo de
+      compareScans(), ya existe la lógica base
+- [ ] Comparativa nacional/premium (dato agregado propio, no requiere API nueva)
+- [ ] Inventario de dispositivos (router/NAS/cámaras) — reusar fingerprint_engine.py
+      de ThreatRadar (ya en la lista de módulos sanos) + nmap -O
+
+### Encaja, esfuerzo real (features nuevas completas)
+- [ ] CVEs de router/firmware (API NVD/vulners, módulo nuevo)
+- [ ] DNS Leak / WebRTC Leak / IPv6 (requiere lógica client-side)
+- [ ] Benchmark DNS con recomendaciones
+
+### Descartado / no prioritario
+- speedtest-cli: decisión ya tomada (sesión previa), sigue vigente, el doc
+  lo reproponía pero el motivo de descarte no cambia (sin valor diferencial,
+  añade latencia)
+- PDF: WeasyPrint ya funciona en ThreatRadar, portable si hace falta, pero
+  el email HTML actual ya cumple la función — no es prioritario
+
+Nota: NO se ha tocado código para nada de esto. Es roadmap de referencia para
+cuando se decida arrancar un sprint de "Security Score visual" u otro de esta
+lista, empezar por los de esfuerzo bajo-medio.
