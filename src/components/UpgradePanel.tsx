@@ -316,17 +316,13 @@ export default function UpgradePanel({
           </ul>
         </div>
 
-        {/* Tier 3: Whitelabel */}
+        {/* Tier 3: Whitelabel — DESACTIVADO hasta implementar PDF/logo/export JSON reales (ver WAYAHEAD.md) */}
         <div 
-          onClick={() => !isPremium && setSelectedTier('whitelabel')}
-          className={`bg-white border rounded-2xl p-5 shadow-sm space-y-4 cursor-pointer transition-all ${
-            isPremium ? 'opacity-70 pointer-events-none' : ''
-          } ${
-            selectedTier === 'whitelabel' && !isPremium
-              ? 'ring-2 ring-indigo-500 border-transparent bg-indigo-50/10 scale-[1.02]' 
-              : 'border-slate-200 hover:border-slate-300'
-          }`}
+          className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4 opacity-60 grayscale cursor-not-allowed relative"
         >
+          <div className="absolute -top-2 -right-2 bg-slate-700 text-white text-[9px] font-bold px-2 py-1 rounded-full uppercase tracking-wider shadow-sm">
+            Próximamente
+          </div>
           <div className="flex items-center justify-between">
             <span className="bg-emerald-50 text-emerald-700 text-[10px] font-mono px-2 py-0.5 rounded-full font-bold uppercase">
               Consultores

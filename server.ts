@@ -665,11 +665,16 @@ app.post('/api/premium/create-checkout-session', async (req, res) => {
   const stripe = getStripe();
   if (!stripe) return res.json({ isDemo: true });
 
+  // Tier whitelabel desactivado: sus features (PDF sin marca, logo, export
+  // JSON) no existen todavia. Ver auditoria en WAYAHEAD.md.
+  if (tier === 'whitelabel') {
+    return res.status(501).json({ error: 'Plan Consultores no disponible todavia. Proximamente.' });
+  }
+
   let productName = 'MyIP Premium - Acceso de por Vida';
   let amount = 999;
   let mode: 'payment' | 'subscription' = 'payment';
   if (tier === 'monthly') { productName = 'MyIP Pro SysAdmin - Mensual'; amount = 499; mode = 'subscription'; }
-  else if (tier === 'whitelabel') { productName = 'MyIP Corporativo & Whitelabel'; amount = 2499; }
 
   try {
     const appUrl = process.env.APP_URL || 'http://localhost:3000';
