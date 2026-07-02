@@ -970,6 +970,14 @@ app.post('/api/scan', optionalAuth, async (req: any, res) => {
     scoreReason = 'Todos los puertos verificados están protegidos. No se detectaron problemas de exposición.';
   }
 
+  // --- SCORE NUMERICO 0-100 (mismas señales que el score categorico) ---
+  let scoreNumeric = 100;
+  scoreNumeric -= openHighRisk * 40;
+  scoreNumeric -= openMedRisk * 15;
+  scoreNumeric -= blacklisted * 20;
+  scoreNumeric -= unknownPorts * 5;
+  scoreNumeric = Math.max(0, Math.min(100, scoreNumeric));
+
   // --- GEO ---
   const geo = await getGeoForIp(ip);
 
@@ -1020,7 +1028,7 @@ ${score === 'green' ? '- **Mantenimiento**: Realiza escaneos periódicos para ve
   }
 
   res.json({
-    ip, timestamp: now, score, scoreReason, ports: enrichedPorts, reputation, sslInfo,
+    ip, timestamp: now, score, scoreReason, scoreNumeric, ports: enrichedPorts, reputation, sslInfo,
     analysisText, grokReport: grokReport || undefined, scanSource: portScanSource, geo,
   });
 });

@@ -3,9 +3,11 @@ import { ShieldCheck, ShieldAlert, ShieldX } from 'lucide-react';
 
 interface TrafficLightProps {
   score: 'green' | 'yellow' | 'red';
+  scoreNumeric?: number;
 }
 
-export default function TrafficLight({ score }: TrafficLightProps) {
+export default function TrafficLight({ score, scoreNumeric }: TrafficLightProps) {
+  const barColor = score === 'red' ? 'bg-red-500' : score === 'yellow' ? 'bg-amber-500' : 'bg-emerald-500';
   return (
     <div className="flex flex-col items-center justify-center bg-white border border-slate-200 p-6 rounded-2xl shadow-sm">
       <h3 className="text-xs font-bold tracking-widest text-slate-400 uppercase mb-4 font-mono">
@@ -62,6 +64,21 @@ export default function TrafficLight({ score }: TrafficLightProps) {
           </span>
         </div>
       </div>
+
+      {typeof scoreNumeric === 'number' && (
+        <div className="mt-4 w-full">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Puntuación</span>
+            <span className="text-xs font-bold text-slate-600">{scoreNumeric}/100</span>
+          </div>
+          <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+            <div
+              className={`h-full ${barColor} transition-all duration-500 rounded-full`}
+              style={{ width: `${scoreNumeric}%` }}
+            />
+          </div>
+        </div>
+      )}
 
       <div className="mt-5 text-center w-full">
         {score === 'red' && (
