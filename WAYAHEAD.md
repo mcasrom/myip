@@ -382,3 +382,24 @@ premium real para probar sendEmail()/Resend/alertas.
 
 Pendientes: gating UI en UpgradePanel.tsx, geo-lookup server-side
 (ipapi.co client-side en src/App.tsx, bloqueado por CORS/ETP).
+
+## Sesión 2026-07-02 — Cron producción + fixes de auth dev
+- Cron cambiado de '*/2 * * * *' a '0 8 * * *' (diario 08:00).
+- Mensaje engañoso "Reporte generado. Configura SMTP." corregido para
+  reflejar fallo real de envío (mismo sendEmail()/Resend).
+- Bug 400 en dev auto-login (src/App.tsx): login-first + fallback a
+  register, con DEV_PASSWORD fija para miguel@dev.com.
+- Bug raíz encontrado: las cuentas dev (miguel@dev.com, test_dev@example.com)
+  solo se creaban en usersDb (diccionario legacy en memoria), nunca en
+  authDb (SQLite+bcrypt real), por eso login/register fallaban con 400/401.
+  Fix: startServer() ahora crea/actualiza estas cuentas directamente en
+  authDb vía createUserWithPassword + updateUserFields({isPremium:true}),
+  gateado a NODE_ENV !== 'production', idempotente (getUserByEmail antes
+  de insertar). Verificado: login exitoso, isPremium:true confirmado.
+
+Nota: miguel@dev.com es solo para auth local (login/register), no envía
+emails. threatradar-osint@viajeinteligencia.com sigue siendo el usuario
+premium real para probar sendEmail()/Resend/alertas.
+
+Pendientes: gating UI en UpgradePanel.tsx, geo-lookup server-side
+(ipapi.co client-side en src/App.tsx, bloqueado por CORS/ETP).
