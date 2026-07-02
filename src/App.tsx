@@ -66,19 +66,32 @@ export default function App() {
     }
     // Dev mode auto-login — removed in production
     if (import.meta.env.DEV) {
-      fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: 'miguel@dev.com' })
-      })
-      .then(r => r.json())
-      .then(data => {
+      const DEV_EMAIL = 'miguel@dev.com';
+      const DEV_PASSWORD = 'DevPass2026!';
+      const applyUser = (data: any) => {
         if (data.user?.isPremium) {
           setUser(data.user);
           localStorage.setItem('myip_user', JSON.stringify(data.user));
         }
+      };
+      fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: DEV_EMAIL, password: DEV_PASSWORD })
       })
-      .catch(() => {});
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(applyUser)
+      .catch(() => {
+        // Usuario dev aun no existe: lo creamos una vez
+        fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: DEV_EMAIL, password: DEV_PASSWORD })
+        })
+        .then(r => r.json())
+        .then(applyUser)
+        .catch(() => {});
+      });
     }
   }, []);
 
