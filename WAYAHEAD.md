@@ -667,3 +667,45 @@ cron es local. Cuando se despliegue al server:
 Pendientes de cola sin tocar hoy: capa analitica sobre scan_history,
 roadmap Security Score visual / "sin cambios hace X dias" / etc.,
 auditoria narrativa ThreatRadar/GEORISK.
+
+## Checklist de despliegue a Hetzner (myip) — pendiente, sin implementar
+
+Hoy myip vive solo en el laptop Lubuntu (dev/tsx). Cuando se despliegue al
+Hetzner (deploy user, 178.105.80.193), hay que resolver:
+
+1. **NODE_ENV=production** obligatorio en el ecosystem de PM2 — sin esto
+   revive el modo dev completo (cuentas premium sin login, sin rate limit).
+   Ver aviso defensivo ya implementado en server.ts (console.warn al arrancar).
+
+2. **APP_URL** — hoy default `http://localhost:3000` (.env.example). En
+   Hetzner debe apuntar al dominio real (ej. myip.viajeinteligencia.com o
+   el que se decida), si no el boton "Iniciar sesion" del email de reporte
+   (ya implementado) y los redirects de Stripe (success_url/cancel_url)
+   quedan rotos.
+
+3. **Cron de backup** — hoy corre local en el laptop:
+   `0 3 * * * /home/miguelc/myip/backup_myip_db.sh`
+   Al desplegar, replicar entrada analoga bajo usuario deploy, ruta
+   `/home/deploy/apps/myip/` (verificar path exacto cuando se defina la
+   estructura de deploy). Decidir si el backup del laptop se mantiene
+   tambien (dev/testing) o se retira al pasar la DB real al server.
+
+4. **Dependencia de sistema: nmap** — `port_audit.py` (via spawn) es el
+   metodo primario de escaneo de puertos. Verificar que nmap esta
+   instalado en el Hetzner antes del primer deploy:
+   `ssh deploy@178.105.80.193 "which nmap || apt list --installed | grep nmap"`
+
+5. **PYTHON_PATH** — server.ts usa `process.env.PYTHON_PATH || 'python3'`
+   para lanzar port_audit.py y wifi_audit.py. Confirmar que python3 y las
+   dependencias de esos scripts existen en el entorno del Hetzner (venv
+   compartido o instalacion propia).
+
+6. **wifi_audit.py** ya esta bloqueado en production (`403` explicito si
+   NODE_ENV === production) — correcto por diseno, no requiere accion.
+
+7. **Recursos estimados** (sin verificar contra el Hetzner real todavia):
+   RAM ~60-120MB en reposo (mismo patron que ThreatRadar: Express +
+   better-sqlite3 embebido, sin DB server aparte), picos cortos de CPU
+   durante nmap (acotado por timeout), disco ligero (DB SQLite pequeña +
+   dist/ de pocos MB). Verificar margen real con:
+   `ssh deploy@178.105.80.193 "free -h && df -h && nproc"`
