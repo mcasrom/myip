@@ -831,3 +831,18 @@ node scripts/build-bloom-filter.cjs
 - Test de despliegue Hetzner (recursos liberados y verificados 2026-07-02, nmap confirmado, estructura `/home/deploy/apps/myip/` por definir exacta) — ahora con el añadido del punto crítico del Bloom filter arriba.
 - UI gating en `UpgradePanel.tsx` — bloqueado hace sesiones, revisar estado real antes de retomar.
 - geo-lookup server-side, fix 400 en `/api/auth/register` (el general, no el del Bloom filter), corregir texto "Configura SMTP" engañoso.
+
+### Cierre de sesión 2026-07-03 — dos dudas abiertas SIN resolver, retomar aquí
+
+1. **Modelo Hogar ($9.99 pago único, escaneos ilimitados "de por vida")**: preocupación de negocio planteada por Miguel — cada escaneo consume APIs de pago (AbuseIPDB, Shodan, Gemini/Grok) + ancho de banda, un pago único con uso ilimitado no escala si el servicio crece. Pendiente decisión de producto: ¿mantener tal cual, poner límite mensual de escaneos al plan Hogar, o subir precio? NO se ha tocado código ni precios todavía.
+
+2. **Duda sobre moneda/importe real cobrado por Stripe**: Miguel sostiene que el precio correcto es "19,99 Anual" y no en dólares — contradice lo que se verificó esta sesión contra Stripe directamente (ver más arriba: `stripe products/prices list` mostró que el Anual 19,99€ pertenece a viajeinteligencia.com, no a myip; y `server.ts` usa `price_data` dinámico en USD). Antes de cambiar nada, PENDIENTE verificar la fuente de verdad real ejecutando:
+   ```
+   grep -n -B3 -A3 "currency" server.ts
+   grep -n -B2 -A5 "tier === 'lifetime'\|tier === 'hogar'\|tier === 'monthly'\|tier === 'whitelabel'" server.ts
+   ```
+   para confirmar moneda e importes exactos que el Checkout Session envía a Stripe HOY, antes de asumir que hay que cambiar algo. No tocar `legal.ts`/`UpgradePanel.tsx` hasta tener esa confirmación.
+
+3. **password_health / Bloom filter — aclarado**: no tiene UI, es un guardarraíl silencioso backend-only en `/api/auth/register` (rechaza registro si la contraseña está en rockyou.txt). No hay indicador de fortaleza visible en el formulario. Si se quiere visible (ej. semáforo en tiempo real al escribir), es trabajo de frontend nuevo, sin empezar.
+
+4. **Bullets del plan Hogar en UpgradePanel.tsx — verificados, NO son marketing falso**: "Envío de Reportes por Correo" (real, server.ts:1119-1161 vía Resend), "Escaneo TCP real de puertos" (real, vía nmap, server.ts:174), "Diagnósticos ilimitados" (plausible, sin verificar línea a línea). Marca Blanca correctamente gateada con 501 + "Próximamente", sin bullets falsos detectados ahí.
