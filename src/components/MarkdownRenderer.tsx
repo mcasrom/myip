@@ -38,7 +38,7 @@ export default function MarkdownRenderer({ content }: MarkdownRendererProps) {
         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
         .replace(/`(.*?)`/g, '<code class="bg-slate-100 px-1 py-0.5 rounded text-indigo-600 text-xs font-mono">$1</code>');
       elements.push(
-        <p key={`p-${elements.length}`} className="text-sm text-slate-700 my-1.5" dangerouslySetInnerHTML={{ __html: formatted }} />
+        <p key={`p-${elements.length}`} className="text-sm text-slate-700 my-3" dangerouslySetInnerHTML={{ __html: formatted }} />
       );
       paragraphLines = [];
     }
@@ -78,6 +78,17 @@ export default function MarkdownRenderer({ content }: MarkdownRendererProps) {
       );
       continue;
     }
+    if (trimmed.startsWith('#') && !trimmed.startsWith('##')) {
+      flushList();
+      flushParagraph();
+      const text = trimmed.replace(/^#\s*/, '');
+      elements.push(
+        <h2 key={`h-${elements.length}`} className="text-lg font-bold text-slate-900 mt-6 mb-3">
+          {text}
+        </h2>
+      );
+      continue;
+    }
 
     // Bullet points (* or -)
     if (/^[\*\-]\s+/.test(trimmed)) {
@@ -95,5 +106,5 @@ export default function MarkdownRenderer({ content }: MarkdownRendererProps) {
   flushList();
   flushParagraph();
 
-  return <div className="space-y-1 text-slate-800 leading-relaxed font-sans">{elements}</div>;
+  return <div className="space-y-2 text-slate-800 leading-relaxed font-sans">{elements}</div>;
 }

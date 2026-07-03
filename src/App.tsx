@@ -29,6 +29,7 @@ import HowToGuides from './components/HowToGuides';
 import AuthSection from './components/AuthSection';
 import UpgradePanel from './components/UpgradePanel';
 import MarkdownRenderer from './components/MarkdownRenderer';
+import { tosContent, faqContent } from './data/legal';
 import PWAInstallBanner from './components/PWAInstallBanner';
 import LocalNetworkDiagnostic from './components/LocalNetworkDiagnostic';
 import { ScanResult, UserSession } from './types';
@@ -37,7 +38,7 @@ import socialPreviewImg from './assets/images/myip_preview.jpg';
 import socialIconImg from './assets/images/myip_icon.jpg';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'home' | 'dashboard' | 'guides' | 'about' | 'profile' | 'legal' | 'methodology'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'dashboard' | 'guides' | 'about' | 'profile' | 'legal' | 'methodology' | 'tos' | 'faq'>('home');
   const [homeSubTab, setHomeSubTab] = useState<'public' | 'local'>('public');
   const [detectedIp, setDetectedIp] = useState<string>('');
   const [isSimulatedIp, setIsSimulatedIp] = useState<boolean>(false);
@@ -425,6 +426,22 @@ export default function App() {
               }`}
             >
               Garantía Legal & Cumplimiento
+            </button>
+            <button
+              onClick={() => setActiveTab('tos')}
+              className={`px-4 py-2 rounded-lg text-xs font-semibold tracking-wide transition-all ${
+                activeTab === 'tos' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-300 hover:text-white'
+              }`}
+            >
+              Términos de Servicio
+            </button>
+            <button
+              onClick={() => setActiveTab('faq')}
+              className={`px-4 py-2 rounded-lg text-xs font-semibold tracking-wide transition-all ${
+                activeTab === 'faq' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-300 hover:text-white'
+              }`}
+            >
+              FAQ
             </button>
             <button
               onClick={() => setActiveTab('about')}
@@ -1524,7 +1541,22 @@ export default function App() {
             </div>
           </div>
         )}
-
+        {/* TAB: TERMINOS DE SERVICIO */}
+        {activeTab === 'tos' && (
+          <div className="max-w-4xl mx-auto space-y-6">
+            <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+              <MarkdownRenderer content={tosContent} />
+            </div>
+          </div>
+        )}
+        {/* TAB: FAQ */}
+        {activeTab === 'faq' && (
+          <div className="max-w-4xl mx-auto space-y-6">
+            <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+              <MarkdownRenderer content={faqContent} />
+            </div>
+          </div>
+        )}
         {/* TAB 5: PROFILE / UPGRADE */}
         {activeTab === 'profile' && (
           <div className="space-y-10">
@@ -1579,6 +1611,8 @@ export default function App() {
             <a href="#manifesto-section" onClick={() => setActiveTab('about')} className="hover:text-slate-600 font-semibold text-slate-500">Sobre Misión</a>
             <a href="#how-to" onClick={() => setActiveTab('guides')} className="hover:text-slate-600 font-semibold text-slate-500">Biblioteca How-To</a>
             <a href="#legal-compliance" onClick={() => setActiveTab('legal')} className="hover:text-indigo-600 font-semibold text-indigo-600">Marco Legal & Cumplimiento</a>
+            <a href="#tos" onClick={() => setActiveTab('tos')} className="hover:text-slate-600 font-semibold text-slate-500">Términos de Servicio</a>
+            <a href="#faq" onClick={() => setActiveTab('faq')} className="hover:text-slate-600 font-semibold text-slate-500">FAQ</a>
             <a href={`mailto:${castilloManifesto.contact}`} className="hover:text-slate-600 font-mono font-bold text-indigo-600">{castilloManifesto.contact}</a>
           </div>
         </div>
