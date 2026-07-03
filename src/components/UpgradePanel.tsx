@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { CreditCard, ShieldCheck, Mail, RefreshCw, Radio, BellRing, Sparkles, Check, Server, Building, Award } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { CreditCard, ShieldCheck, Mail, RefreshCw, Radio, BellRing, Sparkles, Check, Server, Building, Award, Clock, ChevronDown } from 'lucide-react';
+import MarkdownRenderer from './MarkdownRenderer';
 
 interface UpgradePanelProps {
   email: string;
@@ -31,6 +32,50 @@ export default function UpgradePanel({
   const [devEmail, setDevEmail] = useState('');
   const [devMsg, setDevMsg] = useState<string | null>(null);
   const [devMsgType, setDevMsgType] = useState<'success' | 'error'>('error');
+
+  // --- Historial de escaneos (Premium) ---
+  const [scanHistory, setScanHistory] = useState<any[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+  const [expandedScan, setExpandedScan] = useState<any | null>(null);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+
+  useEffect(() => {
+    if (!isPremium || !email) return;
+    setHistoryLoading(true);
+    setHistoryError(null);
+    fetch(`/api/scan/history?email=${encodeURIComponent(email)}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.history) setScanHistory(data.history);
+        else setHistoryError(data.error || 'No se pudo cargar el historial.');
+      })
+      .catch(() => setHistoryError('Error de conexión al cargar el historial.'))
+      .finally(() => setHistoryLoading(false));
+  }, [isPremium, email]);
+
+  const loadScanDetail = async (id: number) => {
+    try {
+      const res = await fetch(`/api/scan/history/${id}?email=${encodeURIComponent(email)}`);
+      const data = await res.json();
+      if (res.ok) setExpandedScan(data);
+    } catch {
+      setHistoryError('Error al cargar el detalle del escaneo.');
+    }
+  };
+
+  const formatScanDate = (ts: number) => {
+    const ms = ts < 10000000000 ? ts * 1000 : ts;
+    return new Date(ms).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' });
+  };
+
+  const scoreChipClass = (score: string) => {
+    const s = (score || '').toLowerCase();
+    if (s === 'green') return 'bg-emerald-50 text-emerald-700 border border-emerald-200';
+    if (s === 'yellow') return 'bg-amber-50 text-amber-700 border border-amber-200';
+    if (s === 'red') return 'bg-red-50 text-red-700 border border-red-200';
+    return 'bg-slate-100 text-slate-700 border border-slate-200';
+  };
 
   const handleDevCode = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -600,6 +645,76 @@ export default function UpgradePanel({
                   <span>Soporte Técnico:</span>
                   <span className="text-indigo-600 font-bold">Prioritario de por vida</span>
                 </div>
+              </div>
+
+              {/* Historial de Escaneos (Premium) */}
+              <div className="bg-white border border-slate-200 rounded-2xl p-5 text-left space-y-3">
+                <button
+                  type="button"
+                  onClick={() => setIsHistoryOpen((v) => !v)}
+                  className="w-full flex items-center justify-between gap-2"
+                >
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-indigo-600" />
+                    <h4 className="text-sm font-bold text-slate-800">Historial de Escaneos</h4>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {!historyLoading && !historyError && (
+                      <span className="text-[10px] text-slate-400 font-mono">
+                        {scanHistory.length === 0
+                          ? 'Sin registros'
+                          : `${scanHistory.length} · último ${formatScanDate(scanHistory[0].createdAt)}`}
+                      </span>
+                    )}
+                    <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${isHistoryOpen ? 'rotate-180' : ''}`} />
+                  </div>
+                </button>
+                {historyLoading && (
+                  <p className="text-xs text-slate-400">Cargando historial...</p>
+                )}
+                {historyError && (
+                  <p className="text-xs text-red-500">{historyError}</p>
+                )}
+                {isHistoryOpen && !historyLoading && !historyError && scanHistory.length === 0 && (
+                  <p className="text-xs text-slate-400">Aún no hay escaneos registrados.</p>
+                )}
+                {isHistoryOpen && (
+                <div className="divide-y divide-slate-100 max-h-80 overflow-y-auto">
+                  {scanHistory.map((h) => (
+                    <button
+                      key={h.id}
+                      onClick={() => loadScanDetail(h.id)}
+                      className="w-full flex items-center justify-between py-2.5 text-left hover:bg-slate-50 rounded-lg px-2 transition-colors"
+                    >
+                      <div className="space-y-0.5">
+                        <span className="text-xs font-mono font-bold text-slate-700 block">{h.targetIp}</span>
+                        <span className="text-[10px] text-slate-400">
+                          {formatScanDate(h.createdAt)} · {h.portCount} puertos · {h.scanSource || 'auto'}
+                        </span>
+                      </div>
+                      <span className={`text-xs font-bold px-2 py-1 rounded-md ${scoreChipClass(h.score)}`}>
+                        {h.score}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+                )}
+                {isHistoryOpen && expandedScan && (
+                  <div className="mt-3 bg-slate-50 border border-slate-100 rounded-xl p-4 space-y-2 text-xs text-slate-600">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-slate-700">Detalle: {expandedScan.targetIp}</span>
+                      <button
+                        onClick={() => setExpandedScan(null)}
+                        className="text-slate-400 hover:text-slate-600 text-[10px] font-bold"
+                      >
+                        Cerrar ✕
+                      </button>
+                    </div>
+                    <p><span className="font-semibold">Score:</span> {expandedScan.score} — {expandedScan.scoreReason}</p>
+                    <p><span className="font-semibold">Puertos:</span> {(expandedScan.ports || []).join(', ') || 'ninguno'}</p>
+                    {expandedScan.analysisText && <MarkdownRenderer content={expandedScan.analysisText} />}
+                  </div>
+                )}
               </div>
             </div>
           )}
