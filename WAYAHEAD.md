@@ -746,3 +746,26 @@ Hetzner (deploy user, 178.105.80.193), hay que resolver:
    revisar estado real antes de retomar)
 ⏳ Pendiente: geo-lookup server-side, fix 400 en /api/auth/register,
    corregir texto "Configura SMTP" enganoso
+
+## Sesión 2026-07-03
+
+### password_health.py — CERRADO
+- Fix aplicado y verificado (patch_password_health_v2.py): argv→stdin/getpass (evita exposición en `ps aux`/history), except desnudo→warning explícito + campo `dictionary_loaded`, cache pickle del diccionario (evita reparsear rockyou.txt en cada run).
+- Breaking change de uso: ya no acepta password como argumento. Ahora: `python3 password_health.py` (oculto) o `--stdin` o `--dict <ruta>`.
+- Pendiente si se quiere exponer como feature web: no wire-ar vía `execAsync` por request (coste de arrancar intérprete Python c/u) — evaluar microservicio persistente o Bloom filter client-side.
+
+### Scripts en ~/myip/scripts — auditoría de viabilidad
+- **botnet_checker.py** → DESCARTADO. Redundante: myip y ThreatRadar ya cubren IP+AbuseIPDB con más fuentes. VT_API_KEY cargada pero nunca usada (código muerto).
+- **dns_risk_check.py** → DESCARTADO. Bug real (unpacking revienta si no hay DNS configurado). Lógica de riesgo genera falsos positivos graves (marca como "riesgo" el DNS del router/ISP, que es la config normal de la mayoría). No es fuga DNS real pese al nombre.
+- **port_scan.py** → APARCADO, no integrar as-is. Vulnerable a inyección de argumentos nmap si `target_ip` no se valida antes de `subprocess`. Sin `blockPrivateTarget` (sí existe en ThreatRadar, replicar). Parseo XML por regex frágil → migrar a `ElementTree`. Peso legal: scan activo real, no pasivo — atarlo al Sprint legal (A) de ThreatRadar (consent_log) si algún día se integra.
+- **ssl_cert_audit.py** → APARCADO. Bug de fondo: usa `create_default_context()` que valida cadena y fechas en el handshake, así que un cert YA expirado nunca llega a `getpeercert()` — la rama EXPIRED/CRITICAL es código muerto. Fix: contexto sin verificar solo para leer metadata + parsear con `cryptography`. Separar excepciones (DNS/timeout/cert inválido) en vez de un `except Exception` genérico.
+- **wifi_audit_pro_tot.py** → APARCADO (decisión de Miguel: ya existe mejor herramienta en producción — WiFi Hotspot Analyzer basado en iwconfig). Bug de parseo si SSID contiene ":" (nmcli terse mode, escape no respetado por `split(":")`- usar `-m multiline` si se retoma algún día).
+- **router_risk.py, test_scan.py, myip_network_core_v3.py, myip_network_health.py** → PENDIENTES de revisar, sin empezar.
+- **.bak sueltos** (`port_audit.py.bak_report_path`, `wifi_audit.py.bak_parser_fix`, `wifi_audit.py.bak_gateway_fix`) → decidir si se borran (gitignored igualmente, no afecta git).
+
+### Legal/Pricing — investigación en curso, SIN resolver
+Estado real confirmado por grep + git log:
+- UI (`UpgradePanel.tsx`): 3 tiers reales — Hogar $9.99 lifetime, SysAdmin Pro $4.99/mes, Consultor Marca Blanca $24.99 (correctamente gateado: badge "Próximamente" + grayscale + backend 501, SIN bug de cobro).
+- ToS (`legal.ts`): describe SOLO 2 planes — Mensual 4,99€ y Anual 19,99€. No menciona Hogar ni Consultor. El plan Anual NO EXISTE en ningún commit del historial git (confirmado, `git log -p` desde `4a6cb00` initial commit) — probablemente texto de plantilla SaaS genérica sin cotejar contra los tiers reales.
+- Moneda: Stripe cobra en `usd` de forma consistente (`server.ts:683`) — USD es la fuente de verdad, el ToS en EUR está mal.
+- PENDIENTE ANTES DE TOCAR EL ToS: confirmar contra Stripe directamente (no solo git) que el plan Anual nunca se vendió manualmente fuera del flujo normal de `server.ts` (Payment Link a mano, etc). Comando pendiente de ejecutar:
