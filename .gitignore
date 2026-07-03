@@ -66,3 +66,6 @@ patch_*.py
 
 # backups locales de sqlite (no versionar)
 backups/
+scripts/rockyou.txt
+scripts/rockyou.txt.pkl
+*.pkl
