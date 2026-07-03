@@ -717,3 +717,32 @@ Hetzner (deploy user, 178.105.80.193), hay que resolver:
    bloqueante para desplegar, pero primera sospechosa si aparece latencia
    rara en otra app coincidiendo con un escaneo de myip.
    `nmap`: confirmado en /usr/bin/nmap, dependencia ya resuelta.
+
+## Sesión 2026-07-03
+
+✅ ToS y FAQ integrados como tabs (MarkdownRenderer, headers ###, email
+   corregido a threatradar-myip@viajeinteligencia.com)
+✅ Soporte H1 y espaciado mejorado en MarkdownRenderer.tsx
+✅ Historial de escaneos Premium: endpoint /api/scan/history ya existía en
+   backend, ahora consumido en UpgradePanel.tsx como acordeon colapsable
+   (resumen "N · último dd/mm hh:mm" cuando cerrado) con color-coding real
+   por score (green/yellow/red confirmado via curl) y detalle expandible
+   via MarkdownRenderer
+✅ OG image confirmada ya correcta (1200x630, jpeg, todos los meta tags) —
+   no era pendiente real, false positive de sesión anterior
+
+⏳ Pendiente: prominencia visual del acordeon de historial (sprint de detalles)
+⏳ Pendiente: share buttons RRSS (X/Twitter + LinkedIn + WhatsApp) tras
+   completar un escaneo — punto de insercion localizado: bloque "Header
+   Result summary bar" dentro de activeTab==='dashboard', linea ~795 de
+   App.tsx, junto al boton "Actualizar Diagnóstico". Reutilizar imagen OG
+   ya existente para preview en LinkedIn/WhatsApp. Falta escribir el patch.
+⏳ Pendiente: endpoint de borrado de cuenta (RGPD, derecho al olvido) —
+   mencionado en ToS/FAQ como solicitud manual por email mientras tanto
+⏳ Pendiente: test despliegue Hetzner (recursos ya liberados y verificados
+   2026-07-02, nmap confirmado, estructura /home/deploy/apps/myip/ por
+   definir exacta)
+⏳ Pendiente: UI gating en UpgradePanel.tsx (bloqueado hace sesiones,
+   revisar estado real antes de retomar)
+⏳ Pendiente: geo-lookup server-side, fix 400 en /api/auth/register,
+   corregir texto "Configura SMTP" enganoso
