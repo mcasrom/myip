@@ -779,3 +779,55 @@ Si NO aparece nada de 19,99€/anual → confirmado que nunca existió, eliminar
 
 ### Nota técnica — stripe CLI
 `stripe login` falla porque exige auth interactiva vía navegador (no viable en esta sesión). Solución: usar `--api-key` con la STRIPE_SECRET_KEY del `.env` directamente en cada comando, sin login. Confirmado como método a usar mañana.
+
+## Sesión 2026-07-03 (continuación)
+
+### Incidente: WAYAHEAD.md corrupto por heredoc partido — RESUELTO
+- El `cat >> WAYAHEAD.md << 'EOF'` de la sesión anterior se pegó en dos bloques separados en terminal; el shell interpretó los comandos de `stripe products/prices list` como contenido del heredoc en vez de ejecutarlos. Archivo quedó cortado en "Comando pendiente de ejecutar:" (línea 771).
+- Fix: contenido faltante generado aparte y añadido vía `cat archivo.md >> WAYAHEAD.md` (sin heredoc, sin riesgo de partirse). Commit `89ef516`.
+- Lección para el futuro: pegar bloques largos con heredoc SIEMPRE en una sola pieza, nunca partidos en varios paste.
+
+### Incidente: rockyou.txt + rockyou.txt.pkl en el repo — RESUELTO
+- El `git add -A` del commit anterior se llevó por delante `scripts/rockyou.txt` (133MB) y `scripts/rockyou.txt.pkl` (155MB), generados por el fix de `password_health.py`. Push rechazado por GitHub (límite 100MB/archivo).
+- Como el push nunca llegó a completarse, el remoto quedó limpio — solo hubo que arreglar el historial local:
+  1. `git-filter-repo --path scripts/rockyou.txt --path scripts/rockyou.txt.pkl --invert-paths --force` (purga ambos blobs de todo el historial local).
+  2. `rockyou.txt` recuperado de SecLists (mismo diccionario, ~133MB confirmados).
+  3. Ambos archivos + `*.pkl` añadidos a `.gitignore`.
+  4. Push limpio tras la purga: 11.94 KiB (vs 140MB+ antes). Commit `b54d91c`.
+
+### legal.ts — pricing corregido, CERRADO
+- Investigación confirmó que el "Plan Anual 19,99€/año" del ToS nunca existió en el código de myip (verificado con `git log -p` desde el commit inicial) — era texto copiado del ToS de viajeinteligencia.com, que sí tiene ese precio real en Stripe (`Premium Anual`, `price_1TQ0Ng...`, 1999 = 19.99€/año) y coincide exactamente.
+- Confirmado también contra Stripe (`stripe products/prices list --api-key`) que myip no crea Product/Price fijos — usa `price_data` al vuelo en Checkout (`mode = 'payment'` en `server.ts:1517`), por eso nunca aparecerá como producto propio en Stripe. Esperado, no es bug.
+- Patch aplicado (`patch_legal_pricing.py`): eliminado plan Anual, añadidos Hogar ($9.99 pago único) y Consultores (Marca Blanca, próximamente), moneda EUR→USD, ajustadas secciones 4 (Facturación) y 5 (Cancelación) para reflejar que Hogar es pago único sin renovación. Commit `d2780f9`.
+
+### guides.ts — auditado, SIN cambios necesarios
+- Grep de afirmaciones tipo marketing (gratis/ilimitado/100%/garantiza/nunca/siempre): las 4 coincidencias son correctas y no comprometen a myip — DDoS ilimitado gratis es una característica real de Cloudflare free tier (no promesa de myip), SSL gratuito de por vida es cómo funciona Let's Encrypt realmente, el resto es lenguaje descriptivo normal. Cerrado sin patch.
+
+### Auditoría de API keys en .env
+- `VIRUSTOTAL_API_KEY` en `.env` de myip es solo un comentario recordatorio (no variable activa) — la key real y en uso está en producción en ThreatRadar (`VT_API_KEY`, mismo valor). No hay duplicidad ni key huérfana que gestionar.
+- `ABUSEIPDB_API_KEY` ya está cargada y en uso server-side en myip — correcto tal cual.
+
+### Bloom filter contra rockyou.txt en /api/auth/register — CERRADO
+- Decisión de diseño: NO wire-ar `password_health.py` (Python, set de 14M strings en memoria = 400-600MB RAM) directo a un endpoint vía `execAsync` — inviable en servidor compartido con 9 apps PM2. En su lugar, Bloom filter nativo en Node/TS dentro del propio proceso `myip`.
+- `scripts/build-bloom-filter.cjs`: build offline (una sola vez, ~106s), lee `rockyou.txt` en streaming, genera `scripts/rockyou-bloom.json` (32.9MB, 14,344,379 entradas, error rate 0.1%). Gitignored — se regenera con el script, no viaja por git.
+  - Nota: tuvo que renombrarse de `.js` a `.cjs` porque `package.json` tiene `"type": "module"` (ESM no soporta `require()`).
+- `src/utils/passwordBloom.ts`: carga el `.json` UNA VEZ al arrancar el proceso (~33MB RAM fijos, nada por request), expone `isCommonPassword(password): boolean`. Fail-open si el filtro no carga (no bloquea registros por fallo de infra, pero loguea el error).
+  - Nota: tuvo que fixearse `__dirname` (no existe en ESM nativo) reconstruyéndolo vía `fileURLToPath(import.meta.url)`.
+- `server.ts` (`/api/auth/register`): añadido chequeo tras la validación de longitud (≥8 caracteres) — si `isCommonPassword()` devuelve true, rechaza con 400 y mensaje claro ("aparece en filtraciones de datos públicas conocidas"). Antes de tocar la BD, así que no crea usuario a medias.
+- Probado en local: `password123` → rechazada (400). `Xk9$mQ2vN8pL!zR4` → aceptada, cuenta creada. `npm audit` de `bloom-filters`: 0 vulnerabilities.
+- Comparativa de recursos vs alternativa Python: 133MB (txt) + 155MB (pkl) + spawn de proceso Python por request → 32.9MB (json) + ~33MB RAM fija, en el propio proceso Node, cero spawn.
+- Commit `3a0ab6e`. Usuarios de test (`test_bloom@`, `test_bloom2@`) limpiados de la SQLite local antes del push.
+
+### ⚠️ PENDIENTE CRÍTICO para el deploy a Hetzner
+`scripts/rockyou-bloom.json` está gitignored — **no viaja con git pull/push**. Antes de que el registro funcione en producción hay que, en el servidor:
+```bash
+cd /home/deploy/apps/myip
+node scripts/build-bloom-filter.cjs
+```
+(requiere que `scripts/rockyou.txt` también esté presente ahí — rsync manual o descarga de SecLists igual que en local). Si no se hace, `isCommonPassword()` cae en fail-open (log de warning, pero no bloqueará registros) — no es un crash, pero la protección quedaría inactiva silenciosamente hasta que se genere el archivo.
+
+### Sin empezar / aparcado (sin cambios respecto a antes)
+- `router_risk.py`, `test_scan.py`, `myip_network_core_v3.py`, `myip_network_health.py` — pendientes de revisar.
+- Test de despliegue Hetzner (recursos liberados y verificados 2026-07-02, nmap confirmado, estructura `/home/deploy/apps/myip/` por definir exacta) — ahora con el añadido del punto crítico del Bloom filter arriba.
+- UI gating en `UpgradePanel.tsx` — bloqueado hace sesiones, revisar estado real antes de retomar.
+- geo-lookup server-side, fix 400 en `/api/auth/register` (el general, no el del Bloom filter), corregir texto "Configura SMTP" engañoso.
