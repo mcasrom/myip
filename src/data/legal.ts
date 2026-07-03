@@ -14,20 +14,21 @@ myip ofrece diagnóstico de red y monitorización de seguridad sobre la IP públ
 ## 3. Planes y precios
 
 - **Plan Gratuito**: funcionalidades básicas de diagnóstico, sin coste.
-- **Plan SysAdmin Pro Mensual**: 4,99 €/mes, renovación automática.
-- **Plan SysAdmin Pro Anual**: 19,99 €/año, renovación automática.
+- **Plan SysAdmin Pro**: $4.99/mes, renovación automática.
+- **Plan Hogar**: $9.99, pago único (acceso de por vida, sin renovación).
+- **Plan Consultores (Marca Blanca)**: próximamente disponible.
 
-Los precios se muestran en euros, impuestos incluidos cuando aplique. Nos reservamos el derecho de modificar precios para nuevos periodos de facturación; los cambios se notificarán con al menos 15 días de antelación a suscriptores activos y nunca afectarán a un periodo ya cobrado.
+Los precios se muestran en dólares estadounidenses (USD), impuestos incluidos cuando aplique. Nos reservamos el derecho de modificar precios para nuevos periodos de facturación; los cambios se notificarán con al menos 15 días de antelación a suscriptores activos y nunca afectarán a un periodo ya cobrado.
 
 ## 4. Facturación y renovación
 
-Las suscripciones se cobran de forma recurrente a través de Stripe. La renovación es automática al final de cada periodo (mensual o anual) salvo cancelación previa por parte del usuario.
+Las suscripciones del Plan SysAdmin Pro se cobran de forma recurrente mensual a través de Stripe, con renovación automática al final de cada periodo salvo cancelación previa por parte del usuario. El Plan Hogar es un pago único sin renovación ni cobros recurrentes.
 
 ## 5. Cancelación y reembolsos
 
-El usuario puede cancelar su suscripción en cualquier momento desde su panel de cuenta. La cancelación surte efecto **al final del periodo de facturación en curso**: el usuario conserva el acceso Pro hasta esa fecha y no se realizan cargos posteriores.
+El usuario puede cancelar su suscripción del Plan SysAdmin Pro en cualquier momento desde su panel de cuenta. La cancelación surte efecto **al final del periodo de facturación en curso**: el usuario conserva el acceso Pro hasta esa fecha y no se realizan cargos posteriores.
 
-**No se realizan reembolsos** de periodos ya iniciados o cobrados, incluidos casos de cancelación anticipada dentro de un periodo mensual o anual ya pagado. Recomendamos probar el plan gratuito antes de suscribirse.
+**No se realizan reembolsos** de periodos ya iniciados o cobrados, incluidos casos de cancelación anticipada dentro de un periodo mensual ya pagado. El Plan Hogar, al ser un pago único, no es reembolsable una vez completada la compra. Recomendamos probar el plan gratuito antes de suscribirse.
 
 ## 6. Uso aceptable
 
