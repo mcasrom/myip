@@ -75,7 +75,7 @@ No. El sistema detecta automáticamente tu IP pública a partir de la petición 
 Sí. Solo audita tu propia IP pública mediante comprobaciones pasivas y activas de bajo impacto (equivalentes a un diagnóstico de salud de red), no accede a sistemas ajenos ni realiza explotación de vulnerabilidades. Más detalle en la pestaña "Marco Legal y Cumplimiento".
 
 ### ¿Qué diferencia hay entre el plan Gratuito y SysAdmin Pro?
-El plan gratuito incluye diagnóstico básico bajo demanda. SysAdmin Pro (4,99 €/mes o 19,99 €/año) añade monitorización recurrente, alertas por email cuando se detectan cambios o exposiciones nuevas, e historial de escaneos.
+El plan gratuito incluye diagnóstico básico bajo demanda. SysAdmin Pro ($4.99/mes) añade monitorización recurrente, alertas por email cuando se detectan cambios o exposiciones nuevas, e historial de escaneos. También está disponible el plan Hogar ($9.99, pago único de por vida).
 
 ### ¿Cómo cancelo mi suscripción?
 Desde tu panel de cuenta, en cualquier momento. El acceso Pro se mantiene hasta el final del periodo ya pagado; no se realizan cargos adicionales tras la cancelación.
