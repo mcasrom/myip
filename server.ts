@@ -13,6 +13,7 @@ import { createHash } from 'crypto';
 import cookieParser from 'cookie-parser';
 import * as authDb from './db';
 import { startAlertsCron } from './alerts';
+import { isCommonPassword } from './src/utils/passwordBloom.js';
 dotenv.config();
 
 // ============================================================================
@@ -554,6 +555,11 @@ app.post('/api/auth/register', async (req, res) => {
   }
   if (!password || typeof password !== 'string' || password.length < 8) {
     return res.status(400).json({ error: 'La contraseña debe tener al menos 8 caracteres.' });
+  }
+  if (isCommonPassword(password)) {
+    return res.status(400).json({
+      error: 'Esa contraseña aparece en filtraciones de datos públicas conocidas. Por seguridad, elige una diferente.'
+    });
   }
   const normalizedEmail = email.toLowerCase().trim();
   if (authDb.getUserByEmail(normalizedEmail)) {

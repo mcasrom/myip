@@ -16,6 +16,7 @@
     "@vitejs/plugin-react": "^5.0.4",
     "bcrypt": "^6.0.0",
     "better-sqlite3": "^12.11.1",
+    "bloom-filters": "^3.0.4",
     "cookie-parser": "^1.4.7",
     "dotenv": "^17.2.3",
     "express": "^4.21.2",

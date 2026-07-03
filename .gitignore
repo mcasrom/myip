@@ -69,3 +69,4 @@ backups/
 scripts/rockyou.txt
 scripts/rockyou.txt.pkl
 *.pkl
+scripts/rockyou-bloom.json
