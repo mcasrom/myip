@@ -769,3 +769,13 @@ Estado real confirmado por grep + git log:
 - ToS (`legal.ts`): describe SOLO 2 planes — Mensual 4,99€ y Anual 19,99€. No menciona Hogar ni Consultor. El plan Anual NO EXISTE en ningún commit del historial git (confirmado, `git log -p` desde `4a6cb00` initial commit) — probablemente texto de plantilla SaaS genérica sin cotejar contra los tiers reales.
 - Moneda: Stripe cobra en `usd` de forma consistente (`server.ts:683`) — USD es la fuente de verdad, el ToS en EUR está mal.
 - PENDIENTE ANTES DE TOCAR EL ToS: confirmar contra Stripe directamente (no solo git) que el plan Anual nunca se vendió manualmente fuera del flujo normal de `server.ts` (Payment Link a mano, etc). Comando pendiente de ejecutar:
+
+stripe products list --limit 20 --api-key "$(grep STRIPE_SECRET_KEY .env | cut -d= -f2)"
+stripe prices list --limit 30 --api-key "$(grep STRIPE_SECRET_KEY .env | cut -d= -f2)"
+
+Si NO aparece nada de 19,99€/anual → confirmado que nunca existió, eliminar del ToS (decisión ya tomada por Miguel, pendiente solo de verificar antes de ejecutar).
+- Además revisar: `guides.ts` línea 26 menciona "mitigación DDoS ilimitada" en el plan gratuito — no es un servicio real de myip, huele a boilerplate sin editar.
+- Próximo paso una vez confirmado Stripe: patch anchor-based para `legal.ts` (3 planes reales en USD, sin Anual) + reconfirmar si `guides.ts` necesita limpieza.
+
+### Nota técnica — stripe CLI
+`stripe login` falla porque exige auth interactiva vía navegador (no viable en esta sesión). Solución: usar `--api-key` con la STRIPE_SECRET_KEY del `.env` directamente en cada comando, sin login. Confirmado como método a usar mañana.
