@@ -5,7 +5,9 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Install build dependencies
+# Install build dependencies for better-sqlite3
+RUN apk add --no-cache python3 make g++
+
 COPY package.json package-lock.json ./
 RUN npm ci --production=false
 
@@ -23,18 +25,15 @@ WORKDIR /app
 # Install nmap, openssl, python3 for advanced scanning (optional)
 RUN apk add --no-cache nmap openssl python3
 
-# Copy built files
+# Copy built files and pre-built node_modules
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/package-lock.json ./package-lock.json
 COPY --from=builder /app/scripts ./scripts
 COPY --from=builder /app/.env.example ./.env.example
 
-# Install production dependencies only
-RUN npm ci --production
-
-# Security: Run as non-root user
-RUN addgroup -g 1001 -S myip && adduser -S myip -u 1001 -G myip
+# Create data directory for SQLite and set permissions
+RUN mkdir -p /app/data && addgroup -g 1001 -S myip && adduser -S myip -u 1001 -G myip && chown -R myip:myip /app/data
 USER myip
 
 # Expose port

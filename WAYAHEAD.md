@@ -870,3 +870,77 @@ node scripts/build-bloom-filter.cjs
 9. Para producción (cuando se despliegue `myip.viajeinteligencia.com`): crear un segundo webhook endpoint específico de producción vía `stripe webhook_endpoints create --url https://myip.viajeinteligencia.com/api/webhooks/stripe --enabled-events checkout.session.completed --api-key <LIVE key>` — genera su PROPIO `whsec_...` distinto al de desarrollo local. No reusar el secreto de test en producción.
 
 **Nota de seguridad**: durante esta sesión se pegaron en el chat, en texto plano, tanto la clave `rk_test_...` completa como (en sesión anterior) `ABUSEIPDB_API_KEY` y `VIRUSTOTAL_API_KEY`. No hay evidencia de exposición real (conversación privada), pero evitar repetirlo — usar siempre `$(grep ... | cut -d= -f2)` para pasarlas como variable sin mostrarlas en pantalla.
+
+## Estado 2026-07-04 — Deploy en Hetzner + mejoras
+
+### Deploy en Hetzner VPS (178.105.80.193)
+- Repo clonado en /home/deploy/myip
+- Docker Compose: puerto 3004 -> 3000 (3000 ocupado por viajeinteligencia.com)
+- Nginx: proxy_pass a 127.0.0.1:3004 con SSL (Certbot)
+- Cloudflare DNS: myip.viajeinteligencia.com -> A record (DNS only, gris)
+- SQLite persistente en /home/deploy/myip/data/
+- Backup automático: cron diario 03:00 (backup_myip_db.sh)
+- Bloom filter: rockyou-bloom.json (33MB, 14M contraseñas) cargado correctamente
+
+### Fixes aplicados
+1. **IP Detection**: Añadido X-Real-IP como fallback (sin Cloudflare proxy)
+2. **GeoIP**: Corregido ipinfo.io para usar IP del cliente, no del servidor
+3. **Healthcheck**: Cambiado localhost -> 127.0.0.1 (evita IPv6)
+4. **Rate Limit**: Premium users saltan rate limit correctamente
+5. **Usuario Dev**: dev@viajeinteligencia.com (SysAdmin Pro, escaneos ilimitados)
+6. **WiFi Audit -> Network Quality**: Reemplazado por auditoría cliente-side (latencia, jitter, velocidad, DNS, contexto de red)
+
+### Mejora: Cache de GeoIP en SQLite
+- Nueva tabla  con TTL 24h
+- Funciones: , 
+- Aplicado en  y endpoint 
+- Reduce llamadas a APIs externas (ipapi.co/ipinfo.io) para IPs repetidas
+- Primera consulta: API. Segunda+: cache local (campo )
+
+### Recursos del servidor
+- RAM: 3.7GB total, ~2.4GB libre
+- Disco: 38GB, ~11GB libre (71% usado)
+- CPU: 91% idle
+- Docker: myip-server (27MB RAM), uptime-kuma (91MB RAM)
+
+
+## Estado 2026-07-04 -- Deploy en Hetzner + mejoras
+
+### Deploy en Hetzner VPS (178.105.80.193)
+- Repo clonado en /home/deploy/myip
+- Docker Compose: puerto 3004 -> 3000 (3000 ocupado por viajeinteligencia.com)
+- Nginx: proxy_pass a 127.0.0.1:3004 con SSL (Certbot)
+- Cloudflare DNS: myip.viajeinteligencia.com -> A record (DNS only, gris)
+- SQLite persistente en /home/deploy/myip/data/
+- Backup automatico: cron diario 03:00 (backup_myip_db.sh)
+- Bloom filter: rockyou-bloom.json (33MB, 14M contraseñas) cargado correctamente
+
+### Fixes aplicados
+1. **IP Detection**: Anadido X-Real-IP como fallback (sin Cloudflare proxy)
+2. **GeoIP**: Corregido ipinfo.io para usar IP del cliente, no del servidor
+3. **Healthcheck**: Cambiado localhost -> 127.0.0.1 (evita IPv6)
+4. **Rate Limit**: Premium users saltan rate limit correctamente
+5. **Usuario Dev**: dev@viajeinteligencia.com (SysAdmin Pro, escaneos ilimitados)
+6. **WiFi Audit -> Network Quality**: Reemplazado por auditoria cliente-side (latencia, jitter, velocidad, DNS, contexto de red)
+
+### Mejora: Cache de GeoIP en SQLite
+- Nueva tabla geo_cache con TTL 24h
+- Funciones: getGeoFromCache, saveGeoToCache
+- Aplicado en getGeoForIp y endpoint /api/geo/lookup
+- Reduce llamadas a APIs externas (ipapi.co/ipinfo.io) para IPs repetidas
+- Primera consulta: API. Segunda+: cache local (campo cached: true/false)
+
+### Recursos del servidor
+- RAM: 3.7GB total, ~2.4GB libre
+- Disco: 38GB, ~11GB libre (71% usado)
+- CPU: 91% idle
+- Docker: myip-server (27MB RAM), uptime-kuma (91MB RAM)
+
+
+## Mejora: Responsive para smartphones y tablets
+- LocalNetworkDiagnostic.tsx adaptado con clases Tailwind sm:
+- Padding, tamanos de fuente, iconos y gaps reducidos en movil
+- Boton de auditoria ancho completo en pantallas pequenas
+- Score circle escalado (w-28 sm:w-36)
+- Grid de metricas con 2 columnas, espaciado compacto
+- Hallazgos con iconos y texto proporcionales
