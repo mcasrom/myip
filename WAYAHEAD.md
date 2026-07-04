@@ -944,3 +944,65 @@ node scripts/build-bloom-filter.cjs
 - Score circle escalado (w-28 sm:w-36)
 - Grid de metricas con 2 columnas, espaciado compacto
 - Hallazgos con iconos y texto proporcionales
+
+## Sesión 2026-07-04 (tarde/noche) — Sincronización server ↔ GitHub ↔ local
+
+### Contexto de partida
+Más evolución había ocurrido en el server (Hetzner) que en local/GitHub —
+deploy Docker + Cloudflare completo hecho directamente ahí, sin pasar por
+el flujo habitual de commit local -> push -> pull en server. Se decidió
+invertir la dirección esta vez: server -> GitHub -> local, y retomar
+desde ahí el flujo normal (local como referencia).
+
+### Diagnóstico realizado (sin tocar nada hasta confirmar)
+- Comparados por hash los 5 archivos modificados sin commitear en local
+  contra el server: Dockerfile y LocalNetworkDiagnostic.tsx ya eran
+  idénticos; db.ts, docker-compose.yml y passwordBloom.ts divergían.
+- git status del server reveló además server.ts, backup_myip_db.sh,
+  WAYAHEAD.md modificados, y un archivo intruso: src/utils/docker-compose.yml
+  (copia vieja abandonada de un cp mal apuntado) -> borrado.
+- Verificados en runtime real vía docker logs: IP detection ya funciona
+  con IPs de cliente reales (no la del datacenter Hetzner), GeoIP cache
+  operativo, Bloom filter cargando, scans nmap sin errores.
+- Confirmado: Stripe en producción corre con sk_live_ (correcto), webhook
+  (STRIPE_WEBHOOK_SECRET) sigue sin configurar. Resend responde 200,
+  sin errores en logs. Cron 08:00 no verificable hoy (contenedor con
+  pocas horas de uptime, se comprueba mañana tras las 08:00).
+
+### Bug encontrado y corregido ANTES de comprometerlo (no llegó a producción)
+`passwordBloom.ts`: el server tenía la ruta del Bloom filter cambiada de
+`fileURLToPath(import.meta.url)` a `__dirname` sin comprobar que el
+proyecto es ESM puro (`"type": "module"` en package.json) pero el build
+de producción usa esbuild --format=cjs (bundle único dist/server.cjs).
+Probado en aislado (`node dist/server.cjs` en el server, sin tocar el
+contenedor Docker real): CRASH total, ERR_INVALID_ARG_TYPE, import.meta.url
+vacío en el bundle cjs. Fix aplicado: `typeof __dirname !== 'undefined'
+? __dirname : path.dirname(fileURLToPath(import.meta.url))` — esbuild
+inyecta __dirname real en cjs (apunta a dist/), ESM nativo en dev usa el
+fallback. Verificado con build real + arranque real tras el fix: Bloom
+filter carga correctamente en los dos entornos. tsc --noEmit limpio.
+
+### Commits aplicados en el server, pusheados y traídos a local (fast-forward,
+### sin conflictos reales tras `git restore` de los archivos ya idénticos)
+- 63b46b4 — cache GeoIP SQLite + fix ipinfo.io sin IP + x-real-ip fallback + fix isGuest
+- b9dc763 — docs: wayahead deploy Hetzner + Docker
+- 39a7583 — fix: passwordBloom ruta dual dev/prod + backup_myip_db.sh rutas relativas
+- 786dad9 — feat: LocalNetworkDiagnostic responsive
+
+### Estado final: server = GitHub = local, todos en 786dad9
+
+### PENDIENTE PARA MAÑANA
+- [ ] Instalar Stripe CLI en el server (no estaba instalada, confirmado
+      `command not found`) y retomar el webhook bloqueado desde la sesión
+      2026-07-03 (falta sk_test_... estándar del dashboard, no restricted key)
+- [ ] Verificar cron de alertas 08:00 corrió hoy sin errores:
+      `ssh deploy@178.105.80.193 'docker logs myip-server --since 24h | grep -i CRON'`
+- [ ] Investigar por qué `threatradar` (PM2 id 8) aparece `stopped, pid 0`
+      en el server — detectado de pasada en el diagnóstico, sin tocar,
+      confirmar si fue intencional o es una caída real
+- [ ] Decidir si `diag_local.sh` / `diag_local_OUTPUT.txt` se quedan como
+      herramienta (añadir a .gitignore) o se borran
+- [ ] Localizar el vhost real de nginx para myip (el grep inicial en
+      /etc/nginx/sites-enabled/ no lo encontró pese a que el sitio
+      responde bien — probablemente vive en conf.d/ o un server_block
+      wildcard *.viajeinteligencia.com, sin confirmar aún)
