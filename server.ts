@@ -361,6 +361,7 @@ interface DbUser {
   email: string; isPremium: boolean; ipAddress: string;
   lastScanTime?: number; scanCount: number;
   verified: boolean; isGuest?: boolean; premiumCode?: string;
+  tier?: string; monthlyScanCount?: number; monthlyScanReset?: string;
 }
 const usersDb: Record<string, DbUser> = {};
 // Hidratar cache en memoria desde SQLite al arrancar (sobrevive a reinicios)
@@ -368,7 +369,8 @@ for (const u of authDb.getAllUsers()) {
   usersDb[u.email] = {
     email: u.email, isPremium: u.isPremium, ipAddress: u.ipAddress,
     lastScanTime: u.lastScanTime, scanCount: u.scanCount,
-    verified: u.verified, isGuest: u.isGuest, premiumCode: u.premiumCode
+    verified: u.verified, isGuest: u.isGuest, premiumCode: u.premiumCode,
+    tier: u.tier, monthlyScanCount: u.monthlyScanCount, monthlyScanReset: u.monthlyScanReset
   };
 }
 console.log(`[DB] ${authDb.getAllUsers().length} usuario(s) cargado(s) desde SQLite.`);
@@ -708,11 +710,18 @@ app.post('/api/premium/verify-session', async (req, res) => {
     const session = await stripe.checkout.sessions.retrieve(sessionId);
     if (session.payment_status === 'paid' && session.metadata?.email) {
       const normalizedEmail = session.metadata.email.toLowerCase().trim();
+      const resolvedTier = session.metadata.tier === 'monthly' ? 'monthly' : 'lifetime';
       if (!usersDb[normalizedEmail]) {
-        usersDb[normalizedEmail] = { email: normalizedEmail, isPremium: true, ipAddress: '0.0.0.0', scanCount: 0, verified: true };
+        usersDb[normalizedEmail] = { email: normalizedEmail, isPremium: true, ipAddress: '0.0.0.0', scanCount: 0, verified: true, tier: resolvedTier, monthlyScanCount: 0 };
       } else {
         usersDb[normalizedEmail].isPremium = true;
         usersDb[normalizedEmail].verified = true;
+        usersDb[normalizedEmail].tier = resolvedTier;
+      }
+      try {
+        authDb.updateUserFields(normalizedEmail, { isPremium: true, tier: resolvedTier });
+      } catch (e) {
+        console.error('[VERIFY-SESSION] No se pudo persistir tier en SQLite:', e);
       }
       return res.json({ success: true, message: '¡Premium activado!', user: { email: usersDb[normalizedEmail].email, isPremium: true, ipAddress: usersDb[normalizedEmail].ipAddress, scanCount: usersDb[normalizedEmail].scanCount } });
     }
@@ -760,6 +769,22 @@ app.post('/api/scan', optionalAuth, async (req: any, res) => {
 
   if (isGuest && user && user.scanCount >= 3) {
     return res.status(429).json({ error: 'Límite de invitado alcanzado (3/3). Crea una cuenta con email.', rateLimited: true, isGuestLimit: true });
+  }
+  // Limite fair-use del plan Hogar (pago unico "de por vida", no ilimitado real): 50 escaneos/mes.
+  // SysAdmin Pro ('monthly', suscripcion recurrente) NO tiene este limite.
+  if (user && user.tier === 'lifetime') {
+    const currentMonth = new Date().toISOString().slice(0, 7); // 'YYYY-MM'
+    if (user.monthlyScanReset !== currentMonth) {
+      user.monthlyScanCount = 0;
+      user.monthlyScanReset = currentMonth;
+    }
+    const HOGAR_MONTHLY_LIMIT = 50;
+    if ((user.monthlyScanCount ?? 0) >= HOGAR_MONTHLY_LIMIT) {
+      return res.status(429).json({
+        error: `Límite de fair-use del plan Hogar alcanzado (${HOGAR_MONTHLY_LIMIT}/mes). Se restablece el día 1 de cada mes. Si necesitas más, el plan SysAdmin Pro no tiene límite mensual.`,
+        rateLimited: true, isHogarLimit: true
+      });
+    }
   }
 
   // Development mode: NO rate limits at all
@@ -1025,7 +1050,17 @@ ${score === 'green' ? '- **Mantenimiento**: Realiza escaneos periódicos para ve
 `;
 
   const now = Date.now();
-  if (user) { user.lastScanTime = now; user.scanCount += 1; }
+  if (user) {
+    user.lastScanTime = now; user.scanCount += 1;
+    if (user.tier === 'lifetime') {
+      user.monthlyScanCount = (user.monthlyScanCount ?? 0) + 1;
+      try {
+        authDb.updateUserFields(user.email, { monthlyScanCount: user.monthlyScanCount, monthlyScanReset: user.monthlyScanReset });
+      } catch (e) {
+        console.error('[SCAN] No se pudo persistir monthlyScanCount:', e);
+      }
+    }
+  }
 
   // Save to scan history for logged-in users
   if (user) {

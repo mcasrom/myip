@@ -22,8 +22,12 @@ CREATE TABLE IF NOT EXISTS users (
   verified INTEGER NOT NULL DEFAULT 1,
   is_guest INTEGER NOT NULL DEFAULT 0,
   premium_code TEXT,
+  tier TEXT,
+  monthly_scan_count INTEGER NOT NULL DEFAULT 0,
+  monthly_scan_reset TEXT,
   created_at INTEGER NOT NULL
 );
+
 CREATE TABLE IF NOT EXISTS sessions (
   token TEXT PRIMARY KEY,
   email TEXT NOT NULL,
@@ -46,6 +50,13 @@ CREATE TABLE IF NOT EXISTS scan_history (
 );
 `);
 
+// Migracion para bases de datos YA EXISTENTES (SQLite no soporta
+// "ADD COLUMN IF NOT EXISTS"; se intenta añadir y se ignora el error
+// si la columna ya existe, p.ej. en un CREATE TABLE nuevo).
+try { db.exec('ALTER TABLE users ADD COLUMN tier TEXT'); } catch (e) { /* columna ya existe */ }
+try { db.exec('ALTER TABLE users ADD COLUMN monthly_scan_count INTEGER NOT NULL DEFAULT 0'); } catch (e) { /* columna ya existe */ }
+try { db.exec('ALTER TABLE users ADD COLUMN monthly_scan_reset TEXT'); } catch (e) { /* columna ya existe */ }
+
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 dias
 
 export interface StoredUser {
@@ -58,6 +69,9 @@ export interface StoredUser {
   verified: boolean;
   isGuest: boolean;
   premiumCode?: string;
+  tier?: string;
+  monthlyScanCount: number;
+  monthlyScanReset?: string;
 }
 
 function rowToUser(row: any): StoredUser {
@@ -71,6 +85,9 @@ function rowToUser(row: any): StoredUser {
     verified: !!row.verified,
     isGuest: !!row.is_guest,
     premiumCode: row.premium_code ?? undefined,
+    tier: row.tier ?? undefined,
+    monthlyScanCount: row.monthly_scan_count ?? 0,
+    monthlyScanReset: row.monthly_scan_reset ?? undefined,
   };
 }
 
@@ -98,14 +115,14 @@ export async function verifyPassword(email: string, plainPassword: string): Prom
   return bcrypt.compare(plainPassword, user.passwordHash);
 }
 
-export function updateUserFields(email: string, fields: Partial<{ isPremium: boolean; ipAddress: string; lastScanTime: number; scanCount: number; premiumCode: string }>): void {
+export function updateUserFields(email: string, fields: Partial<{ isPremium: boolean; ipAddress: string; lastScanTime: number; scanCount: number; premiumCode: string; tier: string; monthlyScanCount: number; monthlyScanReset: string }>): void {
   const current = getUserByEmail(email);
   if (!current) return;
   const merged = { ...current, ...fields };
   db.prepare(`
-    UPDATE users SET is_premium = ?, ip_address = ?, last_scan_time = ?, scan_count = ?, premium_code = ?
+    UPDATE users SET is_premium = ?, ip_address = ?, last_scan_time = ?, scan_count = ?, premium_code = ?, tier = ?, monthly_scan_count = ?, monthly_scan_reset = ?
     WHERE email = ?
-  `).run(merged.isPremium ? 1 : 0, merged.ipAddress, merged.lastScanTime ?? null, merged.scanCount, merged.premiumCode ?? null, email);
+  `).run(merged.isPremium ? 1 : 0, merged.ipAddress, merged.lastScanTime ?? null, merged.scanCount, merged.premiumCode ?? null, merged.tier ?? null, merged.monthlyScanCount ?? 0, merged.monthlyScanReset ?? null, email);
 }
 
 export function createSession(email: string): string {
