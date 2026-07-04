@@ -1006,3 +1006,34 @@ filter carga correctamente en los dos entornos. tsc --noEmit limpio.
       /etc/nginx/sites-enabled/ no lo encontró pese a que el sitio
       responde bien — probablemente vive en conf.d/ o un server_block
       wildcard *.viajeinteligencia.com, sin confirmar aún)
+
+## Sesión 2026-07-05 — Health password / indicador de fortaleza (trabajo en server)
+
+### Contexto
+Trabajo hecho de nuevo solo en el server (limitación de sesión en laptop).
+Mismo protocolo que ayer: diagnóstico por hash + diff antes de commitear,
+nunca asumir que "compila = funciona bien".
+
+### Cambios
+- server.ts: límite superior de 128 caracteres en /api/auth/register
+  (ya existía el mínimo de 8, faltaba el máximo — mitiga DoS por hashing
+  de passwords absurdamente largas antes de que bcrypt las trunque).
+- AuthSection.tsx: indicador visual de fortaleza de contraseña en el
+  registro (barra de 4 segmentos + label + feedback), cálculo local sin
+  dependencias externas (getPasswordStrength).
+
+### Bug encontrado y corregido ANTES de comprometer
+El score de fortaleza podía llegar a 5 (3 puntos por longitud + 2 por
+variedad de caracteres) pero los arrays `labels`/`colors` solo tenían
+índices 0-4. Con la mejor contraseña posible (16+ chars, los 4 tipos de
+carácter), `labels[5]`/`colors[5]` devolvían `undefined` -> la barra de
+fortaleza se quedaba SIN COLOR justo para las contraseñas más fuertes,
+al revés de la intención. Bug silencioso: tsc --noEmit no lo detecta
+(no es error de tipos, es índice fuera de rango en runtime). Fix:
+`cappedScore = Math.min(score, 4)` antes de indexar los arrays.
+
+### Commit
+dca033f — feat: limite 128 chars en registro + indicador visual de
+fortaleza de password (fix indice fuera de rango en score maximo)
+
+### Estado: server = GitHub = local en dca033f
