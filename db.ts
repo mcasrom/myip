@@ -4,7 +4,8 @@ import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 import path from 'path';
 
-const db = new Database(path.join(process.cwd(), 'myip.sqlite3'));
+const dbPath = process.env.DB_PATH || path.join(process.cwd(), 'myip.sqlite3');
+const db = new Database(dbPath);
 db.pragma('journal_mode = WAL');
 // Checkpoint automatico mas frecuente (cada 100 paginas ~400KB en vez de
 // las 1000 paginas ~4MB por defecto) para evitar que el .wal crezca sin
@@ -34,6 +35,16 @@ CREATE TABLE IF NOT EXISTS sessions (
   created_at INTEGER NOT NULL,
   expires_at INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS geo_cache (
+  ip TEXT PRIMARY KEY,
+  country TEXT,
+  countryCode TEXT,
+  region TEXT,
+  city TEXT,
+  isp TEXT,
+  updated_at INTEGER NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS scan_history (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   email TEXT NOT NULL,
@@ -186,3 +197,25 @@ export function getScanRecord(id: number, email: string): ScanRecord | undefined
 }
 
 export default db;
+
+// Geo Cache
+export interface GeoData {
+  ip: string;
+  country: string;
+  countryCode: string;
+  region: string;
+  city: string;
+  isp: string;
+  updated_at: number;
+}
+
+export function getGeoFromCache(ip: string): GeoData | undefined {
+  const row = db.prepare('SELECT * FROM geo_cache WHERE ip = ? AND updated_at > ?').get(ip, Date.now() - (24 * 60 * 60 * 1000));
+  return row as GeoData | undefined;
+}
+
+export function saveGeoToCache(ip: string, data: { country: string; countryCode: string; region: string; city: string; isp: string }): void {
+  db.prepare(
+    'INSERT OR REPLACE INTO geo_cache (ip, country, countryCode, region, city, isp, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
+  ).run(ip, data.country, data.countryCode, data.region, data.city, data.isp, Date.now());
+}

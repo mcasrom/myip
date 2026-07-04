@@ -279,18 +279,28 @@ async function generateGroqReport(scanData: any): Promise<string> {
 // Geo lookup (server-side, for a specific IP provided by client)
 // ============================================================================
 async function getGeoForIp(ip: string): Promise<any> {
+  const cached = authDb.getGeoFromCache(ip);
+  if (cached) {
+    console.log('[GEO] Cache hit for', ip);
+    return { country: cached.country, countryCode: cached.countryCode, region: cached.region, city: cached.city, isp: cached.isp, cached: true };
+  }
   try {
     const data = await fetchJson(`https://ipapi.co/${ip}/json/`);
     if (data && !data.error) {
-      return {
-        country: data.country_name || 'N/A',
-        countryCode: data.country_code || 'XX',
-        region: data.region || 'N/A',
-        city: data.city || 'N/A',
-        isp: data.org || 'N/A',
-      };
+      const geo = { country: data.country_name || 'N/A', countryCode: data.country_code || 'XX', region: data.region || 'N/A', city: data.city || 'N/A', isp: data.org || 'N/A' };
+      authDb.saveGeoToCache(ip, geo);
+      return geo;
     }
   } catch (err) { console.log('[GEO] Error:', err); }
+  try {
+    const r = await fetch(`https://ipinfo.io/${ip}/json`);
+    if (r.ok) {
+      const d = await r.json() as any;
+      const geo = { country: d.country || 'N/A', countryCode: d.country || 'XX', region: d.region || 'N/A', city: d.city || 'N/A', isp: d.org || 'N/A' };
+      authDb.saveGeoToCache(ip, geo);
+      return geo;
+    }
+  } catch (err) { console.log('[GEO] ipinfo fallback error:', err); }
   return { country: 'N/A', countryCode: 'XX', region: 'N/A', city: 'N/A', isp: 'N/A' };
 }
 
@@ -488,6 +498,7 @@ app.set('trust proxy', true);
 app.get('/api/ip/detect', async (req, res) => {
   try {
     const forwardedIp = (req.headers['cf-connecting-ip'] as string)
+      || (req.headers['x-real-ip'] as string)
       || (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim();
 
     if (forwardedIp && !['127.0.0.1', '::1', '0.0.0.0'].includes(forwardedIp)) {
@@ -512,38 +523,35 @@ app.get('/api/geo/lookup', async (req, res) => {
   const ip = (req.query.ip as string || '').trim();
   if (!ip) return res.status(400).json({ error: 'Se requiere parametro ip.' });
 
+  const cached = authDb.getGeoFromCache(ip);
+  if (cached) {
+    return res.json({ country: cached.country, countryCode: cached.countryCode, region: cached.region, city: cached.city, isp: cached.isp, cached: true });
+  }
+
+  let geoData: any = null;
   try {
     const r = await fetch(`https://ipapi.co/${ip}/json/`);
     if (r.ok) {
       const data = await r.json() as any;
       if (!data.error) {
-        return res.json({
-          country: data.country_name || 'Desconocido',
-          countryCode: data.country_code || 'XX',
-          region: data.region || 'Region desconocida',
-          city: data.city || 'Ciudad desconocida',
-          isp: data.org || 'ISP desconocido',
-        });
+        geoData = { country: data.country_name || 'Desconocido', countryCode: data.country_code || 'XX', region: data.region || 'Region desconocida', city: data.city || 'Ciudad desconocida', isp: data.org || 'ISP desconocido' };
       }
     }
-  } catch (e) {
-    console.warn('[GEO LOOKUP] ipapi.co fallo:', e);
+  } catch (e) { console.warn('[GEO LOOKUP] ipapi.co fallo:', e); }
+
+  if (!geoData) {
+    try {
+      const r2 = await fetch(`https://ipinfo.io/${ip}/json`);
+      if (r2.ok) {
+        const data2 = await r2.json() as any;
+        geoData = { country: data2.country || 'Desconocido', countryCode: data2.country || 'XX', region: data2.region || 'Region desconocida', city: data2.city || 'Ciudad desconocida', isp: data2.org || 'ISP desconocido' };
+      }
+    } catch (e) { console.warn('[GEO LOOKUP] ipinfo.io fallo:', e); }
   }
 
-  try {
-    const r2 = await fetch('https://ipinfo.io/json');
-    if (r2.ok) {
-      const data2 = await r2.json() as any;
-      return res.json({
-        country: data2.country || 'Desconocido',
-        countryCode: data2.country || 'XX',
-        region: data2.region || 'Region desconocida',
-        city: data2.city || 'Ciudad desconocida',
-        isp: data2.org || 'ISP desconocido',
-      });
-    }
-  } catch (e) {
-    console.warn('[GEO LOOKUP] ipinfo.io fallo:', e);
+  if (geoData) {
+    authDb.saveGeoToCache(ip, geoData);
+    return res.json({ ...geoData, cached: false });
   }
 
   res.status(502).json({ country: 'N/A', countryCode: 'XX', region: 'N/A', city: 'N/A', isp: 'N/A' });
@@ -751,7 +759,7 @@ app.post('/api/scan', optionalAuth, async (req: any, res) => {
     if (u) user = u;
   }
   const isPremium = user?.isPremium ?? false;
-  const isGuest = user?.isGuest ?? false;
+  const isGuest = user?.isGuest ?? (user ? false : true);
 
   // [PATCH ip_address sync] Actualiza la IP conocida del usuario en cada scan
   // exitoso, para que el cron de alertas recurrentes deje de excluirlo por
