@@ -1,6 +1,50 @@
 import React, { useState } from 'react';
 import { Mail, CheckCircle2, RefreshCw, ShieldCheck, AlertCircle, Info, Fingerprint } from 'lucide-react';
 
+// Simple password strength checker (no external dependencies)
+function getPasswordStrength(pw: string): { score: number; label: string; color: string; feedback: string } {
+  if (pw.length === 0) return { score: 0, label: '', color: 'bg-slate-200', feedback: '' };
+  
+  let score = 0;
+  const hasLower = /[a-z]/.test(pw);
+  const hasUpper = /[A-Z]/.test(pw);
+  const hasDigit = /\d/.test(pw);
+  const hasSymbol = /[^a-zA-Z0-9]/.test(pw);
+  const isLong = pw.length >= 12;
+  const isVeryLong = pw.length >= 16;
+  
+  // Length is the most important factor
+  if (pw.length >= 8) score++;
+  if (isLong) score++;
+  if (isVeryLong) score++;
+  
+  // Character variety
+  if ((hasLower && hasUpper) || (hasLower && hasDigit) || (hasLower && hasSymbol)) score++;
+  if (hasLower && hasUpper && hasDigit && hasSymbol) score++;
+  
+  // Penalize common patterns
+  const commonPatterns = ['password', '123456', 'qwerty', 'admin', 'letmein', 'welcome'];
+  const isCommon = commonPatterns.some(p => pw.toLowerCase().includes(p));
+  if (isCommon) score = Math.min(score, 1);
+  
+  // Repeated characters
+  if (/(.)\1{2,}/.test(pw)) score = Math.max(0, score - 1);
+  
+  // Maximo score real es 5 (3 por longitud + 2 por variedad), pero labels/
+  // colors solo tienen indices 0-4 -> acotar para evitar undefined en la
+  // contrasenya mas fuerte posible (bug detectado antes de comprometer).
+  const cappedScore = Math.min(score, 4);
+  const labels = ['Muy débil', 'Débil', 'Aceptable', 'Fuerte', 'Muy fuerte'];
+  const colors = ['bg-red-500', 'bg-orange-500', 'bg-yellow-500', 'bg-emerald-500', 'bg-emerald-600'];
+  
+  let feedback = '';
+  if (cappedScore <= 1) feedback = 'Usa al menos 8 caracteres con variedad';
+  else if (cappedScore === 2) feedback = 'Añade mayúsculas, números o símbolos';
+  else if (cappedScore === 3) feedback = 'Buena contraseña';
+  
+  return { score: cappedScore, label: labels[cappedScore], color: colors[cappedScore], feedback };
+}
+
 interface AuthSectionProps {
   user: any | null;
   onLoginSuccess: (user: any) => void;
@@ -15,6 +59,13 @@ export default function AuthSection({ user, onLoginSuccess, onLogout }: AuthSect
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
+  // Password strength calculation
+  const pwStrength = getPasswordStrength(password);
+  const strengthScore = pwStrength.score;
+  const strengthLabel = pwStrength.label;
+  const strengthColor = pwStrength.color;
+  const strengthFeedback = pwStrength.feedback;
+
   // Registro real con contraseña (minimo 8 caracteres)
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,6 +75,10 @@ export default function AuthSection({ user, onLoginSuccess, onLogout }: AuthSect
     }
     if (!password || password.length < 8) {
       setError('La contraseña debe tener al menos 8 caracteres.');
+      return;
+    }
+    if (password.length > 128) {
+      setError('La contraseña no puede tener más de 128 caracteres.');
       return;
     }
 
@@ -234,11 +289,27 @@ export default function AuthSection({ user, onLoginSuccess, onLogout }: AuthSect
                     type="password"
                     required
                     minLength={8}
+                    maxLength={128}
                     placeholder="Contraseña (mínimo 8 caracteres)"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
                   />
+                  {mode === 'register' && password.length > 0 && (
+                    <div className="space-y-1.5">
+                      <div className="flex gap-1 h-1.5">
+                        {[0, 1, 2, 3].map((i) => (
+                          <div key={i} className={`flex-1 rounded-full transition-colors ${i <= strengthScore ? strengthColor : 'bg-slate-100'}`} />
+                        ))}
+                      </div>
+                      <div className="flex justify-between items-center text-[10px]">
+                        <span className={`font-bold ${strengthScore >= 3 ? 'text-emerald-600' : strengthScore >= 1 ? 'text-amber-600' : 'text-red-600'}`}>
+                          {strengthLabel}
+                        </span>
+                        {strengthFeedback && <span className="text-slate-400 italic">{strengthFeedback}</span>}
+                      </div>
+                    </div>
+                  )}
                   <p className="text-[10px] text-slate-450 italic">
                     {mode === 'register'
                       ? '* Tu contraseña se guarda cifrada. Nunca la compartimos.'

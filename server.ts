@@ -563,7 +563,7 @@ app.post('/api/auth/register', async (req, res) => {
   if (!email || !email.includes('@')) {
     return res.status(400).json({ error: 'Por favor, proporciona un correo electrónico válido.' });
   }
-  if (!password || typeof password !== 'string' || password.length < 8) {
+  if (!password || typeof password !== 'string' || password.length < 8 || password.length > 128) {
     return res.status(400).json({ error: 'La contraseña debe tener al menos 8 caracteres.' });
   }
   if (isCommonPassword(password)) {
