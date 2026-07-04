@@ -846,3 +846,27 @@ node scripts/build-bloom-filter.cjs
 3. **password_health / Bloom filter — aclarado**: no tiene UI, es un guardarraíl silencioso backend-only en `/api/auth/register` (rechaza registro si la contraseña está en rockyou.txt). No hay indicador de fortaleza visible en el formulario. Si se quiere visible (ej. semáforo en tiempo real al escribir), es trabajo de frontend nuevo, sin empezar.
 
 4. **Bullets del plan Hogar en UpgradePanel.tsx — verificados, NO son marketing falso**: "Envío de Reportes por Correo" (real, server.ts:1119-1161 vía Resend), "Escaneo TCP real de puertos" (real, vía nmap, server.ts:174), "Diagnósticos ilimitados" (plausible, sin verificar línea a línea). Marca Blanca correctamente gateada con 501 + "Próximamente", sin bullets falsos detectados ahí.
+
+### Webhook de Stripe — INTENTO, bloqueado por gestión de keys, retomar aquí
+
+**Contexto de la tarea**: diseñar `/api/webhooks/stripe` (verificación de firma con `STRIPE_WEBHOOK_SECRET`, manejo de `checkout.session.completed`) como confirmación server-to-server de pagos, en vez de depender solo de `/api/premium/verify-session` (que se dispara desde el frontend tras la redirección — funcional pero más frágil).
+
+**Bloqueo encontrado — gestión de Stripe keys, NO es un bug de código**:
+1. `.env` tenía originalmente solo `STRIPE_SECRET_KEY` = clave **LIVE** (`sk_live_...`). Todas las Checkout Sessions de prueba de esta sesión y la anterior (moneda, tiers, límite Hogar) se crearon contra Stripe REAL — sin riesgo económico porque nunca se completó ningún pago con tarjeta, pero mala práctica tener solo live en dev.
+2. Se añadió `STRIPE_SECRET_KEY_TEST`, pero resultó ser una **restricted key** (`rk_test_...`), no una secret key estándar (`sk_test_...`) — le falta el permiso "Debugging Tools Write" que exige `stripe listen`. Error 403 al intentar `stripe listen --forward-to ...`.
+3. `stripe listen`/`stripe trigger` (necesarios para simular webhooks en local sin desplegar) requieren específicamente una `sk_test_...` estándar. Pendiente: reemplazar `STRIPE_SECRET_KEY_TEST` en `.env` por la secret key de test real desde https://dashboard.stripe.com/test/apikeys (sección "Secret key", NO "Restricted keys").
+
+**Estado del código**: CERO cambios de código hechos en este intento — no se tocó `server.ts` ni se creó el endpoint todavía. Solo se investigó infraestructura de keys. Nada que revertir.
+
+**Próximos pasos exactos para retomar**:
+1. Sacar la secret key de test estándar (`sk_test_...`) del dashboard de Stripe (única excepción justificada al evitar el dashboard — es configuración única, no operativa).
+2. Reemplazar el valor de `STRIPE_SECRET_KEY_TEST` en `.env` con esa clave.
+3. Verificar: `stripe listen --forward-to http://localhost:3000/api/webhooks/stripe --api-key "$(grep STRIPE_SECRET_KEY_TEST .env | cut -d= -f2)"` — debe imprimir `Ready! Your webhook signing secret is whsec_...` sin error 403.
+4. Copiar ese `whsec_...` a `.env` como `STRIPE_WEBHOOK_SECRET` (nueva variable).
+5. Pendiente de Claude: pedir contexto de `getStripe()` en `server.ts` (`grep -n -B2 -A10 "function getStripe" server.ts`) — necesario para reutilizar el mismo patrón de inicialización en el endpoint nuevo.
+6. Diseñar patch: endpoint `/api/webhooks/stripe` con `express.raw({type: 'application/json'})` montado ANTES de la línea `app.use(express.json())` (línea 351 actual) para que esa ruta específica no pase por el parser JSON global — los webhooks de Stripe necesitan el body raw para verificar la firma.
+7. Reutilizar la misma lógica de `tier` (`'lifetime'`/`'monthly'` desde `session.metadata.tier`) que ya existe en `/api/premium/verify-session`, para que ambos caminos queden sincronizados.
+8. Probar con `stripe trigger checkout.session.completed --api-key "$(grep STRIPE_SECRET_KEY_TEST .env | cut -d= -f2)"` (simula el evento sin tarjeta real).
+9. Para producción (cuando se despliegue `myip.viajeinteligencia.com`): crear un segundo webhook endpoint específico de producción vía `stripe webhook_endpoints create --url https://myip.viajeinteligencia.com/api/webhooks/stripe --enabled-events checkout.session.completed --api-key <LIVE key>` — genera su PROPIO `whsec_...` distinto al de desarrollo local. No reusar el secreto de test en producción.
+
+**Nota de seguridad**: durante esta sesión se pegaron en el chat, en texto plano, tanto la clave `rk_test_...` completa como (en sesión anterior) `ABUSEIPDB_API_KEY` y `VIRUSTOTAL_API_KEY`. No hay evidencia de exposición real (conversación privada), pero evitar repetirlo — usar siempre `$(grep ... | cut -d= -f2)` para pasarlas como variable sin mostrarlas en pantalla.
