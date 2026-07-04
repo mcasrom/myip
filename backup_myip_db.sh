@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# backup_myip_db.sh
-# Backup rotativo de myip.sqlite3 (safe con WAL activo, no requiere parar el server).
-# Uso: ./backup_myip_db.sh
-# Cron sugerido (diario 03:00): 0 3 * * * /home/miguel/myip/backup_myip_db.sh >> /home/miguel/myip/backup.log 2>&1
-
 set -euo pipefail
 
-DB_PATH="$(dirname "$0")/myip.sqlite3"
-BACKUP_DIR="$(dirname "$0")/backups"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+if [ -f "$SCRIPT_DIR/data/myip.sqlite3" ]; then
+  DB_PATH="$SCRIPT_DIR/data/myip.sqlite3"
+else
+  DB_PATH="$SCRIPT_DIR/myip.sqlite3"
+fi
+BACKUP_DIR="$SCRIPT_DIR/backups"
 KEEP_DAYS=14
 STAMP="$(date +%Y%m%d_%H%M%S)"
 DEST="$BACKUP_DIR/myip_${STAMP}.sqlite3"
@@ -19,13 +19,9 @@ fi
 
 mkdir -p "$BACKUP_DIR"
 
-# sqlite3 .backup es online y consistente aunque haya WAL activo o conexiones abiertas
 sqlite3 "$DB_PATH" ".backup '$DEST'"
-
-# comprimir para no acumular espacio
 gzip -f "$DEST"
 
-# rotacion: borrar backups mas viejos de KEEP_DAYS
 find "$BACKUP_DIR" -name "myip_*.sqlite3.gz" -mtime +"$KEEP_DAYS" -delete
 
 echo "[$(date)] Backup OK: ${DEST}.gz"

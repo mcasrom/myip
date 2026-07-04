@@ -6,13 +6,21 @@
 //
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import { BloomFilter } from 'bloom-filters';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const BLOOM_PATH = path.join(__dirname, '../../scripts/rockyou-bloom.json');
+import { fileURLToPath } from 'url';
+// esbuild (build de produccion, formato cjs) inyecta un __dirname real y
+// correcto apuntando a dist/. En dev (tsx, ESM nativo) __dirname no existe,
+// se usa import.meta.url en su lugar. typeof es seguro aqui: nunca lanza
+// ReferenceError aunque la variable no exista en el scope.
+const baseDir = typeof __dirname !== 'undefined'
+  ? __dirname
+  : path.dirname(fileURLToPath(import.meta.url));
+const BLOOM_CANDIDATES = [
+  path.join(baseDir, '../scripts/rockyou-bloom.json'),   // produccion (dist/)
+  path.join(baseDir, '../../scripts/rockyou-bloom.json') // dev (src/, tsx directo)
+];
+const BLOOM_PATH = BLOOM_CANDIDATES.find(p => fs.existsSync(p)) ?? BLOOM_CANDIDATES[0];
 
 let filter: BloomFilter | null = null;
 let loadError: string | null = null;
