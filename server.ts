@@ -686,7 +686,7 @@ app.post('/api/premium/create-checkout-session', async (req, res) => {
     const appUrl = process.env.APP_URL || 'http://localhost:3000';
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
-      line_items: [{ price_data: { currency: 'usd', product_data: { name: productName }, unit_amount: amount }, quantity: 1 } as any],
+      line_items: [{ price_data: { currency: 'eur', product_data: { name: productName }, unit_amount: amount }, quantity: 1 } as any],
       mode, metadata: { email: normalizedEmail, tier: tier || 'lifetime' },
       success_url: `${appUrl}/?payment_success=true&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${appUrl}/?payment_cancel=true`,

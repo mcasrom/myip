@@ -197,19 +197,19 @@ export default function UpgradePanel({
   const tiers = {
     lifetime: {
       name: 'Plan Hogar Permanente',
-      price: '$9.99',
+      price: '9,99€',
       billing: 'pago único',
       description: 'Protección para tu conexión personal y router doméstico.'
     },
     monthly: {
       name: 'Plan SysAdmin Pro',
-      price: '$4.99',
+      price: '4,99€',
       billing: 'mes (suscripción)',
       description: 'Monitoreo 24/7 y automatizaciones avanzadas de red.'
     },
     whitelabel: {
       name: 'Plan Consultor Marca Blanca',
-      price: '$24.99',
+      price: '24,99€',
       billing: 'pago único',
       description: 'Generación de informes ejecutivos con tu marca para clientes.'
     }
@@ -301,7 +301,7 @@ export default function UpgradePanel({
             <p className="text-xs text-slate-500 mt-1">Escaneos ilimitados sin restricciones.</p>
           </div>
           <div className="flex items-baseline gap-1 pt-2 border-t border-slate-100">
-            <span className="text-2xl font-extrabold text-slate-900">$9.99</span>
+            <span className="text-2xl font-extrabold text-slate-900">9,99€</span>
             <span className="text-[10px] text-slate-400 font-medium">/ pago único</span>
           </div>
           <ul className="space-y-2 text-xs text-slate-600 pt-1">
@@ -342,7 +342,7 @@ export default function UpgradePanel({
             <p className="text-xs text-slate-500 mt-1">Automatización continua de salud de red.</p>
           </div>
           <div className="flex items-baseline gap-1 pt-2 border-t border-slate-100">
-            <span className="text-2xl font-extrabold text-slate-900">$4.99</span>
+            <span className="text-2xl font-extrabold text-slate-900">4,99€</span>
             <span className="text-[10px] text-slate-400 font-medium">/ mes</span>
           </div>
           <ul className="space-y-2 text-xs text-slate-600 pt-1">
@@ -379,7 +379,7 @@ export default function UpgradePanel({
             <p className="text-xs text-slate-500 mt-1">Para profesionales de TI y soporte técnico.</p>
           </div>
           <div className="flex items-baseline gap-1 pt-2 border-t border-slate-100">
-            <span className="text-2xl font-extrabold text-slate-900">$24.99</span>
+            <span className="text-2xl font-extrabold text-slate-900">24,99€</span>
             <span className="text-[10px] text-slate-400 font-medium">/ pago único</span>
           </div>
           <ul className="space-y-2 text-xs text-slate-600 pt-1">

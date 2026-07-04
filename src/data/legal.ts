@@ -14,8 +14,8 @@ myip ofrece diagnóstico de red y monitorización de seguridad sobre la IP públ
 ## 3. Planes y precios
 
 - **Plan Gratuito**: funcionalidades básicas de diagnóstico, sin coste.
-- **Plan SysAdmin Pro**: $4.99/mes, renovación automática.
-- **Plan Hogar**: $9.99, pago único (acceso de por vida, sin renovación).
+- **Plan SysAdmin Pro**: 4,99€/mes, renovación automática.
+- **Plan Hogar**: 9,99€, pago único (acceso de por vida, sin renovación).
 - **Plan Consultores (Marca Blanca)**: próximamente disponible.
 
 Los precios se muestran en dólares estadounidenses (USD), impuestos incluidos cuando aplique. Nos reservamos el derecho de modificar precios para nuevos periodos de facturación; los cambios se notificarán con al menos 15 días de antelación a suscriptores activos y nunca afectarán a un periodo ya cobrado.
@@ -75,7 +75,7 @@ No. El sistema detecta automáticamente tu IP pública a partir de la petición 
 Sí. Solo audita tu propia IP pública mediante comprobaciones pasivas y activas de bajo impacto (equivalentes a un diagnóstico de salud de red), no accede a sistemas ajenos ni realiza explotación de vulnerabilidades. Más detalle en la pestaña "Marco Legal y Cumplimiento".
 
 ### ¿Qué diferencia hay entre el plan Gratuito y SysAdmin Pro?
-El plan gratuito incluye diagnóstico básico bajo demanda. SysAdmin Pro ($4.99/mes) añade monitorización recurrente, alertas por email cuando se detectan cambios o exposiciones nuevas, e historial de escaneos. También está disponible el plan Hogar ($9.99, pago único de por vida).
+El plan gratuito incluye diagnóstico básico bajo demanda. SysAdmin Pro (4,99€/mes) añade monitorización recurrente, alertas por email cuando se detectan cambios o exposiciones nuevas, e historial de escaneos. También está disponible el plan Hogar (9,99€, pago único de por vida).
 
 ### ¿Cómo cancelo mi suscripción?
 Desde tu panel de cuenta, en cualquier momento. El acceso Pro se mantiene hasta el final del periodo ya pagado; no se realizan cargos adicionales tras la cancelación.
