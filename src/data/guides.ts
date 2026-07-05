@@ -77,9 +77,9 @@ export const guides: SecurityGuide[] = [
   }
 ];
 
-export const castilloManifesto = {
-  author: 'M. Castillo',
-  role: 'Fundador de Privacy Tools & Educador de Seguridad',
+export const founderManifesto = {
+  author: 'El Fundador de SIEG',
+  role: 'Educador de Seguridad y Privacidad Digital',
   title: 'La Ciberseguridad es un Derecho, no un Privilegio',
   paragraphs: [
     'En la era de la hiperconectividad, cada usuario final es el guardián de su propia frontera digital. Sin embargo, la industria de la seguridad informática a menudo utiliza un lenguaje críptico, alarmista y plagado de tecnicismos para vender soluciones costosas, asustando al usuario común en lugar de empoderarlo.',

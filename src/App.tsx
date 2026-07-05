@@ -33,7 +33,7 @@ import { tosContent, faqContent } from './data/legal';
 import PWAInstallBanner from './components/PWAInstallBanner';
 import LocalNetworkDiagnostic from './components/LocalNetworkDiagnostic';
 import { ScanResult, UserSession } from './types';
-import { castilloManifesto } from './data/guides';
+import { founderManifesto } from './data/guides';
 import socialPreviewImg from './assets/images/myip_preview.jpg';
 import socialIconImg from './assets/images/myip_icon.jpg';
 
@@ -507,7 +507,7 @@ export default function App() {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
                 <div className="space-y-1">
                   <h3 className="text-xs font-bold font-mono uppercase tracking-wider text-indigo-650 flex items-center gap-1.5">
-                    <Sparkles className="w-4 h-4 text-indigo-500 animate-pulse" /> Embudo de Diagnóstico Activo
+                    <Sparkles className="w-4 h-4 text-indigo-500 animate-pulse" /> Ruta de Protección Activa
                   </h3>
                   <p className="text-[11px] text-slate-500">Completa la ruta de seguridad para blindar tu dirección de red.</p>
                 </div>
@@ -780,7 +780,7 @@ export default function App() {
                 onClick={() => setActiveTab('about')}
                 className="text-xs text-indigo-600 hover:underline font-bold"
               >
-                Conoce la filosofía de M. Castillo sobre educación en ciberseguridad accesible &rarr;
+                Conoce la filosofía del fundador sobre educación en ciberseguridad accesible &rarr;
               </button>
             </div>
 
@@ -1080,28 +1080,28 @@ export default function App() {
                     <Shield className="w-8 h-8" />
                   </div>
                   <div>
-                    <h2 className="text-2xl font-bold text-slate-800">{castilloManifesto.author}</h2>
-                    <p className="text-sm text-indigo-600 font-mono font-bold">{castilloManifesto.role}</p>
+                    <h2 className="text-2xl font-bold text-slate-800">{founderManifesto.author}</h2>
+                    <p className="text-sm text-indigo-600 font-mono font-bold">{founderManifesto.role}</p>
                   </div>
                 </div>
                 <div className="text-center sm:text-right">
-                  <span className="text-xs font-mono text-slate-400 font-bold uppercase">Copyright &copy; 2026 M. Castillo</span>
+                  <span className="text-xs font-mono text-slate-400 font-bold uppercase">Copyright &copy; 2026 SIEG</span>
                 </div>
               </div>
 
               {/* Manifesto paragraph blocks */}
               <div className="space-y-6 text-sm md:text-base text-slate-600 leading-relaxed font-sans max-w-3xl">
                 <h3 className="text-xl md:text-2xl font-bold text-indigo-600 tracking-tight italic">
-                  &ldquo;{castilloManifesto.title}&rdquo;
+                  &ldquo;{founderManifesto.title}&rdquo;
                 </h3>
-                {castilloManifesto.paragraphs.map((para, i) => (
+                {founderManifesto.paragraphs.map((para, i) => (
                   <p key={i}>{para}</p>
                 ))}
               </div>
 
               {/* Quote block */}
               <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 max-w-3xl italic text-slate-500 font-medium text-center leading-relaxed">
-                &ldquo;{castilloManifesto.quote}&rdquo;
+                &ldquo;{founderManifesto.quote}&rdquo;
               </div>
 
               {/* Contact box */}
@@ -1109,8 +1109,8 @@ export default function App() {
                 <p>Compartido bajo la iniciativa de Software Libre y Educación Abierta de Privacy Tools.</p>
                 <div className="flex items-center gap-2">
                   <span>Contacto Directo:</span>
-                  <a href={`mailto:${castilloManifesto.contact}`} className="text-indigo-600 hover:underline font-bold font-mono">
-                    {castilloManifesto.contact}
+                  <a href={`mailto:${founderManifesto.contact}`} className="text-indigo-600 hover:underline font-bold font-mono">
+                    {founderManifesto.contact}
                   </a>
                 </div>
               </div>
@@ -1533,7 +1533,7 @@ export default function App() {
             <div className="bg-indigo-50 border border-indigo-150 p-6 rounded-2xl flex items-start gap-4">
               <Shield className="w-6 h-6 text-indigo-600 flex-shrink-0 mt-0.5" />
               <div className="space-y-1.5">
-                <h4 className="text-sm font-bold text-indigo-900">🛡️ Garantía de Confianza de M. Castillo</h4>
+                <h4 className="text-sm font-bold text-indigo-900">🛡️ Garantía de Confianza de SIEG</h4>
                 <p className="text-xs text-indigo-800 leading-relaxed font-medium">
                   "Desarrollamos esta solución web con el objetivo de masificar la auditoría de seguridad sin cometer delitos informáticos. Al centralizar los escaneos únicamente en la IP de origen y requerir consentimiento, tus usuarios disfrutan de diagnósticos de red profesionales sin infringir normativas locales. Es el sustituto idóneo frente a la distribución insegura de scripts de terminal."
                 </p>
@@ -1604,7 +1604,7 @@ export default function App() {
       <footer className="border-t border-slate-200 bg-white py-8 pb-24 md:pb-8 mt-12 text-xs text-slate-400">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-4 text-center md:text-left">
           <div className="space-y-1">
-            <p className="font-bold text-slate-600">MyIP &copy; 2026 M. Castillo | Privacy Tools</p>
+            <p className="font-bold text-slate-600">MyIP &copy; 2026 SIEG | Privacy Tools</p>
             <p>Todos los derechos reservados. Diseñado para empoderar al usuario final en la protección de su red.</p>
           </div>
           <div className="flex flex-wrap justify-center gap-x-6 gap-y-2">
@@ -1613,7 +1613,7 @@ export default function App() {
             <a href="#legal-compliance" onClick={() => setActiveTab('legal')} className="hover:text-indigo-600 font-semibold text-indigo-600">Marco Legal & Cumplimiento</a>
             <a href="#tos" onClick={() => setActiveTab('tos')} className="hover:text-slate-600 font-semibold text-slate-500">Términos de Servicio</a>
             <a href="#faq" onClick={() => setActiveTab('faq')} className="hover:text-slate-600 font-semibold text-slate-500">FAQ</a>
-            <a href={`mailto:${castilloManifesto.contact}`} className="hover:text-slate-600 font-mono font-bold text-indigo-600">{castilloManifesto.contact}</a>
+            <a href={`mailto:${founderManifesto.contact}`} className="hover:text-slate-600 font-mono font-bold text-indigo-600">{founderManifesto.contact}</a>
           </div>
         </div>
       </footer>

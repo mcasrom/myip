@@ -5,7 +5,7 @@ export const tosContent = `# Términos de Servicio — myip
 
 ## 1. Identificación del titular
 
-myip es un servicio operado por M. Castillo (SIEG), con domicilio de contacto en Murcia, España. Para cualquier consulta legal, técnica o comercial: **threatradar-myip@viajeinteligencia.com**.
+myip es un servicio operado por SIEG, con domicilio de contacto en Murcia, España. Para cualquier consulta legal, técnica o comercial: **threatradar-myip@viajeinteligencia.com**.
 
 ## 2. Objeto del servicio
 

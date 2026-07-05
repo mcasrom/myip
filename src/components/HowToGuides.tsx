@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { guides, castilloManifesto } from '../data/guides';
+import { guides, founderManifesto } from '../data/guides';
 import { BookOpen, Search, ShieldAlert, CheckCircle2, ChevronRight, ChevronDown, User, ShieldCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -188,7 +188,7 @@ export default function HowToGuides() {
         )}
       </div>
 
-      {/* M. Castillo About & Filosofía section */}
+      {/* Fundador About & Filosofía section */}
       <div id="manifesto-section" className="bg-white border border-slate-200 rounded-2xl p-6 md:p-8 space-y-6 shadow-sm">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-100 pb-5">
           <div className="flex items-center gap-3">
@@ -196,8 +196,8 @@ export default function HowToGuides() {
               <User className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-slate-800">La Filosofía / About de {castilloManifesto.author}</h3>
-              <p className="text-xs text-slate-500">{castilloManifesto.role}</p>
+              <h3 className="text-base font-bold text-slate-800">La Filosofía del Fundador de SIEG</h3>
+              <p className="text-xs text-slate-500">{founderManifesto.role}</p>
             </div>
           </div>
           <span className="text-[10px] font-mono text-slate-400 font-bold tracking-wider uppercase">Privacy Tools Project</span>
@@ -205,21 +205,21 @@ export default function HowToGuides() {
 
         <div className="space-y-4 text-sm text-slate-600 leading-relaxed font-sans max-w-3xl">
           <h4 className="text-lg font-bold text-indigo-600 italic">
-            &ldquo;{castilloManifesto.title}&rdquo;
+            &ldquo;{founderManifesto.title}&rdquo;
           </h4>
-          {castilloManifesto.paragraphs.map((p, idx) => (
+          {founderManifesto.paragraphs.map((p, idx) => (
             <p key={idx}>{p}</p>
           ))}
         </div>
 
         <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 max-w-2xl italic text-slate-500 font-medium text-xs leading-relaxed">
-          &ldquo;{castilloManifesto.quote}&rdquo;
+          &ldquo;{founderManifesto.quote}&rdquo;
         </div>
 
         <div className="flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-400 border-t border-slate-100 pt-4">
-          <p>M. Castillo - Privacy Tools &copy; 2026</p>
-          <a href={`mailto:${castilloManifesto.contact}`} className="text-indigo-600 hover:underline font-bold font-mono">
-            Contacto: {castilloManifesto.contact}
+          <p>SIEG - Privacy Tools &copy; 2026</p>
+          <a href={`mailto:${founderManifesto.contact}`} className="text-indigo-600 hover:underline font-bold font-mono">
+            Contacto: {founderManifesto.contact}
           </a>
         </div>
       </div>

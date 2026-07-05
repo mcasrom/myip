@@ -1190,7 +1190,7 @@ app.post('/api/premium/send-report', async (req, res) => {
         </div>
       </div>
       <div style="background: #f1f5f9; padding: 16px; border-radius: 0 0 12px 12px; text-align: center; font-size: 11px; color: #94a3b8;">
-        MyIP &copy; 2026 M. Castillo — Herramienta de auditoría de seguridad
+        MyIP &copy; 2026 SIEG — Herramienta de auditoría de seguridad
       </div>
     </div>
   `;

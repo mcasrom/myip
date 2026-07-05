@@ -537,7 +537,7 @@ export default function UpgradePanel({
                   </label>
                   <input
                     type="text"
-                    placeholder="ej. M. Castillo"
+                    placeholder="ej. Juan Pérez"
                     required
                     disabled={!email}
                     value={cardName}
