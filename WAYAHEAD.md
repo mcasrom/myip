@@ -1037,3 +1037,52 @@ dca033f — feat: limite 128 chars en registro + indicador visual de
 fortaleza de password (fix indice fuera de rango en score maximo)
 
 ### Estado: server = GitHub = local en dca033f
+
+## Sesión 2026-07-05 (noche) — Cierre: Stripe rotado, checkout test OK, email routing
+
+### Stripe: incidente CERRADO
+- Clave live rotada con éxito tras 4h de bloqueo por incompatibilidad de
+  verificación en Firefox/Chromium en Linux (resuelto usando Chrome).
+- Propagada a myip (.env) y viajeinteligencia (.env.local) - MISMA CLAVE
+  COMPARTIDA entre los dos proyectos, confirmado por sha256 en 3 puntos
+  antes de reiniciar nada (leccion: el primer intento via sed remoto con
+  comillas anidadas en SSH escribio una clave distinta a la esperada sin
+  dar error - metodo cambiado a scp + python con verificacion de hash
+  post-escritura, mucho mas fiable para este tipo de operacion sensible).
+- docker compose restart (myip) + pm2 restart --update-env (viajeinteligencia)
+  ambos healthcheck 200 confirmados.
+- Clave vieja: NO revocada aun, dejada expirar por el plazo de gracia de
+  7 dias (decision consciente, sin riesgo real: ya no esta referenciada
+  en ningun .env).
+- Checkout de TEST probado con exito via API (rk_test_ SI tiene permisos
+  para Checkout Sessions, aunque no para stripe listen/webhooks - son
+  scopes distintos). Sesion cs_test_ generada y pendiente de completar
+  con tarjeta 4242 4242 4242 4242 (activar manana antes de que expire
+  a las 24h).
+
+### PENDIENTE INMEDIATO (retomar aqui)
+- [ ] Completar el checkout de test generado hoy (URL en el chat de esta
+      fecha, expira ~24h desde generacion) - verificar que redirige bien
+      a /success y que el flujo se ve correcto
+- [ ] Revocar manualmente la clave Stripe vieja en el Dashboard cuando
+      convenga (no urgente, expira sola en el plazo de gracia)
+- [ ] Limpiar ~/myip/.env local: borrar linea `#otro_stripe=...` una vez
+      confirmado que todo funciona (sed -i '/^#otro_stripe=/d' .env)
+- [ ] Email routing: Miguel confirma que YA configuro una regla en
+      Cloudflare Email Routing para threatradar-myip@viajeinteligencia.com
+      (dominio ya tenia MX de Cloudflare Email Routing activo, confirmado
+      via dig). Pendiente: verificar a que bandeja reenvia y probar con
+      un envio real
+- [ ] Usuario premium de test con email real (info@viajeinteligencia.com)
+      para validar cron de alertas en produccion - AUN NO CREADO, pendiente
+      confirmar primero si ese buzon es revisado de verdad, y localizar
+      create_premium_test_user.ts en el server para reutilizar el patron
+      ya probado con threatradar-osint@viajeinteligencia.com
+
+### Sesion completa de hoy (resumen)
+1. Narrativa: Embudo->Ruta de Proteccion, M.Castillo->SIEG/fundador,
+   deployado con exito (commit c1a270d)
+2. Bug de indice fuera de rango en password strength (sesion anterior,
+   dca033f) - ya cerrado
+3. Stripe: incidente completo de arriba
+4. deploy_myip.sh creado, probado end-to-end con exito, ya en el repo
