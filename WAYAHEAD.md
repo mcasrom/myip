@@ -1037,3 +1037,20 @@ dca033f — feat: limite 128 chars en registro + indicador visual de
 fortaleza de password (fix indice fuera de rango en score maximo)
 
 ### Estado: server = GitHub = local en dca033f
+
+## Sesión 2026-07-06 — Email routing OK, cron premium a medio confirmar
+
+### Confirmado
+- Cloudflare Email Routing -> mybloggingnotes@gmail.com: verificado, funciona.
+- Usuario premium test creado en DB real (/home/deploy/myip/data/myip.sqlite3):
+  mybloggingnotes@gmail.com, is_premium=1.
+- Cron de alertas SÍ se dispara a su hora (confirmado en logs, 21:56 UTC).
+- HALLAZGO: email HTML de alerta es solo <h2>+<ul>, sin link ni branding.
+- alerts.ts revertido a su estado original en el server, diff limpio confirmado,
+  rebuild + restart completado, logs limpios (sin residuos de test).
+
+### Pendiente próxima sesión
+- [ ] Probar disparo real del email de alerta con cambio (margen de tiempo mayor,
+      lección: dejar 4+ min de margen, el build tarda 30-60s)
+- [ ] Mejorar plantilla HTML del email (link app + branding SIEG)
+- [ ] Limpiar scan_history sintético (ids 9,10,12 de mybloggingnotes@gmail.com)
