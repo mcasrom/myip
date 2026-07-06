@@ -109,7 +109,34 @@ export function startAlertsCron(port: number): void {
               to: u.email,
               subject: 'MyIP: Cambios detectados en tu red',
               text: changes.join('\n'),
-              html: `<h2>Cambios detectados en tu IP ${curr.targetIp}</h2><ul>${changes.map(c => `<li>${c}</li>`).join('')}</ul>`,
+              html: `
+                <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
+                  <div style="background: #111827; padding: 20px 24px;">
+                    <span style="color: #ffffff; font-size: 18px; font-weight: bold;">SIEG &middot; myip</span>
+                  </div>
+                  <div style="padding: 24px; color: #1f2937;">
+                    <h2 style="font-size: 18px; margin: 0 0 12px 0; color: #dc2626;">Cambios detectados en tu red</h2>
+                    <p style="font-size: 14px; line-height: 1.5; margin: 0 0 16px 0;">
+                      Se detectaron los siguientes cambios en <strong>${curr.targetIp}</strong>:
+                    </p>
+                    <ul style="font-size: 14px; line-height: 1.6; padding-left: 20px; margin: 0 0 24px 0;">
+                      ${changes.map(c => `<li>${c}</li>`).join('')}
+                    </ul>
+                    <div style="text-align: center;">
+                      <a href="${process.env.APP_URL || 'https://myip.viajeinteligencia.com'}"
+                         style="display: inline-block; background: #2563eb; color: #ffffff; text-decoration: none;
+                                padding: 12px 28px; border-radius: 6px; font-size: 14px; font-weight: 600;">
+                        Ver detalles en mi panel
+                      </a>
+                    </div>
+                  </div>
+                  <div style="background: #f3f4f6; padding: 16px 24px; text-align: center;">
+                    <p style="font-size: 11px; color: #9ca3af; margin: 0;">
+                      SIEG &middot; myip.viajeinteligencia.com
+                    </p>
+                  </div>
+                </div>
+              `,
             });
             if (emailSent) {
               console.log(`[CRON] Alerta enviada a ${u.email}: ${changes.length} cambio(s)`);
