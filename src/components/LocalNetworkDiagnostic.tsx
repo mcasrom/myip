@@ -38,15 +38,15 @@ interface NetworkAuditResult {
   raw: any;
 }
 
-// Medición de latencia real via nuestro servidor
+// Medición de latencia real via Cloudflare (edge server más cercano al usuario)
 async function measureLatency(samples = 10): Promise<{ avg: number; jitter: number }> {
-  const url = '/api/speedtest/ping';
+  const url = 'https://www.cloudflare.com/cdn-cgi/trace';
   const times: number[] = [];
   
   for (let i = 0; i < samples; i++) {
     const start = performance.now();
     try {
-      await fetch(url, { cache: 'no-store' });
+      await fetch(url, { mode: 'no-cors', cache: 'no-store' });
       const elapsed = performance.now() - start;
       times.push(elapsed);
     } catch {
@@ -68,9 +68,9 @@ async function measureLatency(samples = 10): Promise<{ avg: number; jitter: numb
   return { avg: Math.round(avg), jitter: Math.round(jitter) };
 }
 
-// Velocidad de descarga via nuestro servidor (10MB)
+// Velocidad de descarga via Cloudflare (edge server más cercano)
 async function measureSpeed(): Promise<number> {
-  const url = '/api/speedtest/download';
+  const url = 'https://speed.cloudflare.com/__down?bytes=5000000';
   const start = performance.now();
   try {
     const response = await fetch(url, { cache: 'no-store' });
@@ -84,12 +84,12 @@ async function measureSpeed(): Promise<number> {
   }
 }
 
-// Latencia via nuestro servidor
+// Latencia DNS via Google (CDN global)
 async function measureDNSLatency(): Promise<number> {
-  const url = '/api/speedtest/dns';
+  const url = 'https://www.google.com/favicon.ico';
   const start = performance.now();
   try {
-    await fetch(url, { cache: 'no-store' });
+    await fetch(url, { mode: 'no-cors', cache: 'no-store' });
     return Math.round(performance.now() - start);
   } catch {
     return 0;
