@@ -12,7 +12,7 @@ import { spawn } from 'child_process';
 import { createHash } from 'crypto';
 import cookieParser from 'cookie-parser';
 import * as authDb from './db';
-import { startAlertsCron } from './alerts';
+import { startAlertsCron, compareScans } from './alerts';
 import { isCommonPassword } from './src/utils/passwordBloom.js';
 dotenv.config();
 
@@ -1172,8 +1172,20 @@ ${score === 'green' ? '- **Mantenimiento**: Realiza escaneos periódicos para ve
   }
 
   // Save to scan history for logged-in users
+  let noChanges = false;
+  let daysSinceLastScan: number | null = null;
   if (user) {
     try {
+      const prevHistory = authDb.getScanHistory(user.email, 1);
+      if (prevHistory.length > 0) {
+        const prev = prevHistory[0] as any;
+        const cmp = compareScans(prev, {
+          ports_json: JSON.stringify(enrichedPorts),
+          reputation_json: JSON.stringify(reputation),
+        });
+        noChanges = !cmp.hasChanges;
+        daysSinceLastScan = Math.floor((now - prev.created_at) / (1000 * 60 * 60 * 24));
+      }
       authDb.saveScanRecord(user.email, {
         targetIp: ip, score, scoreReason,
         ports: enrichedPorts, reputation, analysisText,
@@ -1185,6 +1197,7 @@ ${score === 'green' ? '- **Mantenimiento**: Realiza escaneos periódicos para ve
   res.json({
     ip, timestamp: now, score, scoreReason, scoreNumeric, ports: enrichedPorts, reputation, sslInfo,
     analysisText, grokReport: grokReport || undefined, scanSource: portScanSource, geo,
+    noChanges, daysSinceLastScan,
   });
 });
 

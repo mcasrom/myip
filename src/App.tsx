@@ -899,6 +899,11 @@ export default function App() {
               {/* Traffic Light widget Left Column */}
               <div className="md:col-span-5 lg:col-span-4 space-y-6">
                 <TrafficLight score={scanResult.score} scoreNumeric={scanResult.scoreNumeric} />
+                {scanResult.noChanges && typeof scanResult.daysSinceLastScan === 'number' && (
+                  <p className="text-xs text-slate-500 text-center mt-2">
+                    Sin cambios detectados desde hace {scanResult.daysSinceLastScan} dia(s).
+                  </p>
+                )}
 
                 {/* Blacklists Check Summary widget */}
                 <div className="bg-white border border-slate-200 p-5 rounded-2xl space-y-4 shadow-sm">

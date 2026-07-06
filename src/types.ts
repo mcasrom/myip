@@ -28,6 +28,8 @@ export interface ScanResult {
   ip: string;
   timestamp: number;
   score: ScanScore;
+  noChanges?: boolean;
+  daysSinceLastScan?: number | null;
   ports: PortScanItem[];
   reputation: ReputationItem[];
   sslInfo: SslInfo | null;
