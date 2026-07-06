@@ -1189,3 +1189,49 @@ fortaleza de password (fix indice fuera de rango en score maximo)
       por tipo de clave (falta sk_test_... estándar, no rk_test_... restringida)
 - [ ] sendEmail duplicado en alerts.ts y server.ts (deuda técnica menor)
 - [ ] CSP quitado temporalmente por Qwen - reconfigurar sin bloquear la app
+
+## Roadmap 2026-07-06 — Analítica, ML y engagement (sin empezar, ideas para priorizar)
+
+### Gráficas / historiales / estadísticas
+- [ ] Panel visual (no solo JSON de /api/admin/audit): gráficas de escaneos
+      por día/semana, evolución de score por usuario, tendencia de alertas.
+      Python + matplotlib/plotly server-side (generar PNG/SVG bajo demanda)
+      o Chart.js/Recharts client-side consumiendo el JSON ya existente.
+- [ ] Módulo `statistics` de Python (stdlib, sin dependencias nuevas) para
+      medias/medianas/desviación de scores históricos por usuario, útil
+      antes de meter ML pesado — nivel intermedio entre "nada" y "sklearn".
+- [ ] Historial visual por usuario: línea temporal de sus propios escaneos
+      (ya hay datos en scan_history, falta solo la vista).
+
+### Recolección de datos para ML / clustering de incidentes
+- [ ] Requiere consentimiento explícito ANTES de recolectar (RGPD real, no
+      opcional) — reusar patrón consent_log de ThreatRadar (tabla SQLite
+      con timestamp + versión de ToS aceptada + IP).
+- [ ] Sin consentimiento, cero recolección adicional a lo que ya se guarda
+      para el servicio en sí (scan_history ya existe para dar el servicio,
+      eso no es "ML data", es el propio producto).
+- [ ] Con consentimiento: clustering de patrones de incidentes (ej. HDBSCAN
+      sobre combinaciones puerto+reputación+geo) para detectar campañas de
+      ataque comunes entre usuarios, no solo alertas individuales. Roadmap
+      de 3-6 meses ya mencionado en conversaciones anteriores (trip-osint/
+      GEORISK usan patrón similar) — necesita volumen de datos real primero.
+
+### Engagement / conversión
+- [ ] Popup de bienvenida llamativo (primera visita, no cada vez — usar
+      localStorage o cookie de "ya visto") explicando en 2-3 puntos el
+      valor del producto antes del primer escaneo. Cuidado: no debe tapar
+      el CTA principal ni sentirse invasivo (eso ahuyenta, no atrae).
+      Alternativa más suave: banner superior dismissible en vez de modal.
+
+### Otras ideas (respuesta a "¿más?")
+- [ ] Security Score visual tipo barra 0-100 (ya se calcula green/yellow/red
+      internamente, falta solo el número + barra — esfuerzo bajo, ya
+      identificado en sesiones anteriores)
+- [ ] "Sin cambios detectados desde hace X días" — subproducto directo de
+      compareScans(), refuerza sensación de vigilancia activa sin acción
+- [ ] Exportar historial de escaneos a PDF (WeasyPrint, ya usado en
+      ThreatRadar, portable a myip si se quiere)
+- [ ] Comparativa anónima "tu score vs la media de otros usuarios" (dato
+      agregado propio, no requiere API externa ni tabla nueva)
+- [ ] Inventario de dispositivos en red (reusar fingerprint_engine.py de
+      ThreatRadar + nmap -O) — esfuerzo medio, ya evaluado antes como viable
