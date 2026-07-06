@@ -1102,3 +1102,59 @@ fortaleza de password (fix indice fuera de rango en score maximo)
    dca033f) - ya cerrado
 3. Stripe: incidente completo de arriba
 4. deploy_myip.sh creado, probado end-to-end con exito, ya en el repo
+
+## Sesión 2026-07-06 (tarde) — Cierre: Password breach vía servidor, seguridad reforzada, sincronizado
+
+### Cambios aplicados
+- **Contraseñas filtradas (fix crítico):** Se movió la verificación de HIBP a un
+  endpoint del servidor (`/api/security/check-password`) que actúa como proxy.
+  El navegador bloqueaba la petición directa a `api.pwnedpasswords.com` (CORS/AdBlock),
+  lo que causaba falsos "✅ Seguro" para contraseñas como `12345`.
+  Commits: `9ecb24f`, `4b9d1d9`, `f958263`, `723fe50`
+- **Test de calidad de red:** Reemplazado Cloudflare por endpoints internos
+  (`/api/speedtest/ping`, `/download`, `/dns`) para evitar latencia/CORS.
+- **Auditoría de navegador:** Nueva sección en `TerminalSecurityCheck.tsx` que detecta
+  WebRTC leaks, DNT, cookies, password manager.
+- **ToS/FAQ actualizados:** Precios en EUR, links `mailto:` clicables, RGPD/LOPDGDD
+  expandidos, `MarkdownRenderer.tsx` soporta markdown links.
+- **Compartir en RRSS:** Botones X, LinkedIn, WhatsApp, Telegram, Copiar enlace.
+- **Emails automáticos:** Bienvenida al registro + email post-primer-scan.
+- **VirusTotal:** API key activada (`VIRUSTOTAL_API_KEY`) en server y local.
+- **Seguridad nginx:** Bloqueo público de `*.sqlite3`, `.env`, `data/`, `backups/`,
+  `scripts/`. Permisos `600` en archivos sensibles.
+- **Limpieza servidor:** Docker build cache + logs viejos eliminados (~8.8GB liberados).
+- **RGPD Art. 17:** `deleteUserAccount()` en `db.ts` para borrado completo de cuenta.
+
+### Estado final
+- Commit: `723fe50` (fix: variable duplicada en TerminalSecurityCheck)
+- Local ↔ GitHub ↔ Server: **sincronizado**
+- Server healthy (HTTP 200, sin errores)
+- CSP desactivado temporalmente (bloqueaba la app, se reconfigurará después)
+
+### PENDIENTE próxima sesión
+- [ ] Webhook Stripe: no existe en myip, se necesita `sk_test_...` estándar
+  (la `rk_test_...` actual no sirve para webhooks)
+- [ ] CSP correcto: reconfigurar sin bloquear la app
+- [ ] Auditoría Dashboard: panel visual de estadísticas (usuarios, escaneos, emails)
+- [ ] `sendEmail` duplicado en `alerts.ts` y `server.ts` (deuda técnica menor)
+- [ ] Limpiar scans sintéticos de test en `scan_history`
+- [ ] Borrar línea `#otro_stripe=...` del `.env` local
+- [ ] Completar checkout de test generado el 05/07 (expira ~24h)
+- [ ] Revocar clave Stripe vieja (plazo de gracia, no urgente)
+- [ ] Email routing Cloudflare: verificar buzón destino para threatradar-myip@
+- [ ] Usuario premium test con `info@viajeinteligencia.com` para validar cron alertas
+
+### Recursos servidor (actual)
+- RAM: 1.4/3.7 GB | Disco: 22/38 GB (60%) | CPU: 0.34
+- myip-server: 68 MB / 512 MB límite
+
+## Pendiente 2026-07-06 (noche) — Verificar preview OG en RRSS
+
+- [ ] Confirmar que el preview (imagen 1200x630 + título + descripción) se ve
+      correctamente al compartir el link de myip.viajeinteligencia.com en:
+      - Telegram
+      - Facebook
+      - WhatsApp
+  Contexto: og:image ya está en index.html (/og-preview.jpg, 1200x630),
+  share buttons ya implementados (App.tsx). Falta solo la verificación visual
+  real en cada plataforma, no se ha probado todavía.
