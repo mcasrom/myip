@@ -30,6 +30,7 @@ export interface ScanResult {
   score: ScanScore;
   noChanges?: boolean;
   daysSinceLastScan?: number | null;
+  changes?: string[];
   ports: PortScanItem[];
   reputation: ReputationItem[];
   sslInfo: SslInfo | null;

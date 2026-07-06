@@ -1174,6 +1174,7 @@ ${score === 'green' ? '- **Mantenimiento**: Realiza escaneos periódicos para ve
   // Save to scan history for logged-in users
   let noChanges = false;
   let daysSinceLastScan: number | null = null;
+  let detectedChanges: string[] = [];
   if (user) {
     try {
       const prevHistory = authDb.getScanHistory(user.email, 1);
@@ -1185,6 +1186,7 @@ ${score === 'green' ? '- **Mantenimiento**: Realiza escaneos periódicos para ve
         });
         noChanges = !cmp.hasChanges;
         daysSinceLastScan = Math.floor((now - prev.created_at) / (1000 * 60 * 60 * 24));
+        detectedChanges = cmp.changes;
       }
       authDb.saveScanRecord(user.email, {
         targetIp: ip, score, scoreReason,
@@ -1197,7 +1199,7 @@ ${score === 'green' ? '- **Mantenimiento**: Realiza escaneos periódicos para ve
   res.json({
     ip, timestamp: now, score, scoreReason, scoreNumeric, ports: enrichedPorts, reputation, sslInfo,
     analysisText, grokReport: grokReport || undefined, scanSource: portScanSource, geo,
-    noChanges, daysSinceLastScan,
+    noChanges, daysSinceLastScan, changes: detectedChanges,
   });
 });
 
