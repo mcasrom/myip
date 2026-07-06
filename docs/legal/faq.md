@@ -19,7 +19,7 @@ No ofrecemos reembolsos de periodos ya cobrados. Puedes probar el plan gratuito 
 Email, contraseña (cifrada), historial de escaneos (incluye tu IP y resultados de las auditorías) y, para usuarios anónimos, un identificador técnico de sesión. Todo el detalle está en la Política de Privacidad.
 
 ### ¿Puedo pedir que borréis mis datos?
-Sí, es tu derecho bajo RGPD. Mientras habilitamos el borrado automático desde el panel, puedes solicitarlo escribiendo a **threatradar-myip@viajeinteligencia.com** y lo gestionamos manualmente en un plazo razonable.
+Sí, es tu derecho bajo RGPD. Mientras habilitamos el borrado automático desde el panel, puedes solicitarlo escribiendo a [threatradar-myip@viajeinteligencia.com](mailto:threatradar-myip@viajeinteligencia.com) y lo gestionamos manualmente en un plazo razonable.
 
 ### ¿Los escaneos afectan al rendimiento de mi red?
 No de forma perceptible. Son comprobaciones puntuales y cortas, no monitorización continua invasiva.

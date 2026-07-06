@@ -13,18 +13,19 @@ export default function MarkdownRenderer({ content }: MarkdownRendererProps) {
   let listItems: string[] = [];
   let paragraphLines: string[] = [];
 
+  const formatInline = (text: string) =>
+    text
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-indigo-600 underline hover:text-indigo-800">$1</a>')
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/`(.*?)`/g, '<code class="bg-slate-100 px-1 py-0.5 rounded text-indigo-600 text-xs font-mono">$1</code>');
+
   const flushList = () => {
     if (listItems.length > 0) {
       elements.push(
         <ul key={`ul-${elements.length}`} className="list-disc list-outside pl-5 space-y-1.5 my-2">
-          {listItems.map((item, i) => {
-            const formatted = item
-              .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-              .replace(/`(.*?)`/g, '<code class="bg-slate-100 px-1 py-0.5 rounded text-indigo-600 text-xs font-mono">$1</code>');
-            return (
-              <li key={i} className="text-slate-700 text-sm" dangerouslySetInnerHTML={{ __html: formatted }} />
-            );
-          })}
+          {listItems.map((item, i) => (
+            <li key={i} className="text-slate-700 text-sm" dangerouslySetInnerHTML={{ __html: formatInline(item) }} />
+          ))}
         </ul>
       );
       listItems = [];
@@ -34,11 +35,8 @@ export default function MarkdownRenderer({ content }: MarkdownRendererProps) {
   const flushParagraph = () => {
     if (paragraphLines.length > 0) {
       const text = paragraphLines.join(' ');
-      const formatted = text
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        .replace(/`(.*?)`/g, '<code class="bg-slate-100 px-1 py-0.5 rounded text-indigo-600 text-xs font-mono">$1</code>');
       elements.push(
-        <p key={`p-${elements.length}`} className="text-sm text-slate-700 my-3" dangerouslySetInnerHTML={{ __html: formatted }} />
+        <p key={`p-${elements.length}`} className="text-sm text-slate-700 my-3" dangerouslySetInnerHTML={{ __html: formatInline(text) }} />
       );
       paragraphLines = [];
     }
