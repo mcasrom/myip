@@ -1359,3 +1359,48 @@ Cero roturas en las 3 features con código nuevo.
       tomada el 2026-07-06, no mezclar con pendientes sueltos
 - [ ] CSP sigue desactivado temporalmente (Qwen lo quitó, reconfigurar
       pendiente de sesión anterior)
+
+## Duda aclarada 2026-07-07 — Test de Calidad de Red vs Test de Seguridad (dos sistemas distintos)
+
+Pregunta de Miguel: el chequeo da casi 100/100 siempre, ¿no detecta fallos?
+
+Aclarado por inspección de codigo (no habia confusion de bug, son DOS
+sistemas distintos con proposito distinto):
+- `LocalNetworkDiagnostic.tsx` ("Network Quality"): mide latencia/jitter/
+  velocidad/DNS via fetch() del navegador contra /api/speedtest/*. Empieza
+  en 100, resta solo por lentitud de conexion. NO escanea puertos, NO
+  consulta listas negras, NO detecta vulnerabilidades — es normal que de
+  casi 100/100 con buena conexion, no es un bug ni una falta de deteccion.
+- El escaneo principal (TrafficLight/scoreNumeric): este SI es seguridad
+  real. Target = IP publica del usuario (x-real-ip/x-forwarded-for),
+  nmap real + listas negras (AbuseIPDB/Spamhaus/etc). Este es el que
+  puede bajar de 100 y detecta exposicion real del router/NAT.
+Sin ambiguedad de codigo, cerrado sin patch (era pregunta, no bug).
+
+## Roadmap — Inventario de dispositivos locales (topologia de red), analisis de arquitectura
+
+Idea: esquema grafico de la LAN del usuario (IPs, gateway, dispositivos)
+via python-nmap/scapy + networkx + matplotlib/graphviz. Encaja con
+"Inventario de dispositivos" ya evaluado en 2026-07-02 (reusar
+fingerprint_engine.py de ThreatRadar).
+
+Complejidad desglosada:
+- Descubrimiento (nmap -sn, python-nmap): FACIL, mismo patron que
+  port_audit.py ya existente.
+- Identificar gateway real (no asumir .1, leer tabla de rutas): MEDIO.
+- Fingerprint de tipo de dispositivo (MAC OUI vendor lookup): MEDIO,
+  heuristico no exacto, reusar fingerprint_engine.py.
+- Dibujar grafo (networkx + matplotlib/graphviz): FACIL una vez el dato
+  esta limpio.
+
+BLOQUEADOR DE ARQUITECTURA (no es problema de codigo, es de diseño):
+myip es SaaS en Hetzner (Alemania) — el servidor NO tiene ruta de red
+a la LAN domestica del usuario. Un escaneo de dispositivos locales debe
+ejecutarse DENTRO de la LAN del usuario, nunca desde el backend.
+Dos caminos reales:
+  1. Script Python descargable (mismo patron que password_health.py) que
+     el usuario corre en su maquina, con opcion de subir resultado a myip
+     para visualizarlo — unico camino realista para un solo-dev.
+  2. Agente/app nativa instalable — fuera de alcance de una sesion.
+Decision: si se retoma, empezar por opcion 1, sesion dedicada aparte,
+no mezclar con pendientes sueltos del dia a dia.
