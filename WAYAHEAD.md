@@ -1442,3 +1442,43 @@ puede marcar 100/100 con ese fallo presente sin que el test lo pregunte.
       nmap (timeout actual 120s en scan_with_nmap) - verificar que anadir
       ~7-8 puertos mas no empuja el escaneo fuera de rangos razonables
       para el usuario (medir antes/despues del cambio)
+
+## Roadmap — Esquema gráfico de dispositivos: opciones de UX evaluadas 2026-07-07
+
+Pregunta de Miguel tras confirmar viabilidad tecnica (ver entrada anterior
+sobre bloqueador de arquitectura LAN): ¿el grafico es estetico, da valor
+real al usuario?
+
+### Valor: SI, confirmado
+Usuario domestico normal no sabe que dispositivos tiene conectados a su
+router. Mapa visual convierte "12 puertos abiertos" (abstracto) en "esta
+camara que no reconoces esta aqui" (concreto, accionable). El valor real
+es detectar el dispositivo intruso/olvidado, no solo estetica.
+
+### 3 opciones evaluadas, de menos a mas esfuerzo
+
+**Opcion A — Lista jerarquica simple (recomendada para empezar)**
+Router como raiz, dispositivos como hijos, iconos lucide-react ya
+disponibles, color por riesgo. Cero librerias nuevas, cero diseño de
+grafico real. Poco "wow" visual pero 100% del valor funcional. Permite
+validar si a los usuarios les importa esto antes de invertir mas.
+
+**Opcion B — Grafo interactivo real (D3.js o vis.js, client-side)**
+Nodo central + lineas a cada dispositivo, iconos por tipo, color por
+riesgo. Vendible en capturas de marketing, pero es una app React/D3
+nueva de esfuerzo real, no un simple render.
+
+**Opcion C — Imagen estatica Python (networkx + matplotlib)**
+La idea original planteada. Se ve mas "informe tecnico" que "app
+pulida" — coherente con publico sysadmin/developer, menos atractivo
+para usuario domestico medio (target principal actual segun ToS).
+
+### Decision recomendada
+Empezar por Opcion A (barata, reusa componentes ya existentes tipo
+TrafficLight/ChangesPopup). Si engancha con usuarios reales, subir a
+Opcion B con calma, sesion dedicada aparte.
+
+Nota: esto depende del pendiente de arquitectura ya documentado arriba
+(script Python descargable, el escaneo NO puede hacerse desde el backend
+Hetzner por estar en red distinta a la LAN del usuario) — sin resolver
+eso primero, no hay datos que graficar.
