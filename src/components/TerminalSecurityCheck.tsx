@@ -56,12 +56,12 @@ async function checkPasswordBreach(password: string): Promise<number | null> {
     
     if (!res.ok) return null;
     
-    const data = await res.json();
-    if (data.error) {
-      console.error('[BreachCheck] Server error:', data.error);
+    const result = await res.json();
+    if (result.error) {
+      console.error('[BreachCheck] Server error:', result.error);
       return null;
     }
-    return data.count;
+    return result.count;
   } catch (e) {
     console.error('[BreachCheck] Network error:', e);
     return null;
