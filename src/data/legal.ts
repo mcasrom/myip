@@ -5,7 +5,7 @@ export const tosContent = `# Términos de Servicio — myip
 
 ## 1. Identificación del titular
 
-myip es un servicio operado por SIEG, con domicilio de contacto en Murcia, España. Para cualquier consulta legal, técnica o comercial: **threatradar-myip@viajeinteligencia.com**.
+myip es un servicio operado por SIEG, con domicilio de contacto en Murcia, España. Para cualquier consulta legal, técnica o comercial: [threatradar-myip@viajeinteligencia.com](mailto:threatradar-myip@viajeinteligencia.com).
 
 ## 2. Objeto del servicio
 
@@ -18,7 +18,7 @@ myip ofrece diagnóstico de red y monitorización de seguridad sobre la IP públ
 - **Plan Hogar**: 9,99€, pago único (acceso de por vida, sin renovación).
 - **Plan Consultores (Marca Blanca)**: próximamente disponible.
 
-Los precios se muestran en dólares estadounidenses (USD), impuestos incluidos cuando aplique. Nos reservamos el derecho de modificar precios para nuevos periodos de facturación; los cambios se notificarán con al menos 15 días de antelación a suscriptores activos y nunca afectarán a un periodo ya cobrado.
+Los precios se muestran en euros (EUR), impuestos incluidos cuando aplique. Nos reservamos el derecho de modificar precios para nuevos periodos de facturación; los cambios se notificarán con al menos 15 días de antelación a suscriptores activos y nunca afectarán a un periodo ya cobrado.
 
 ## 4. Facturación y renovación
 
@@ -51,7 +51,7 @@ En la medida permitida por la ley, la responsabilidad total de myip ante el usua
 
 ## 9. Datos personales
 
-El tratamiento de datos personales se rige por nuestra [Política de Privacidad], conforme al RGPD y la LOPDGDD.
+El tratamiento de datos personales se rige por nuestra [Política de Privacidad], conforme al RGPD (Reglamento General de Protección de Datos de la UE) y la LOPDGDD (Ley Orgánica de Protección de Datos Personales y garantía de los Derechos Digitales de España).
 
 ## 10. Modificación de estos términos
 
@@ -63,7 +63,7 @@ Estos términos se rigen por la legislación española. Para cualquier controver
 
 ## 12. Contacto
 
-Para dudas sobre estos términos: **threatradar-myip@viajeinteligencia.com**
+Para dudas sobre estos términos: [threatradar-myip@viajeinteligencia.com](mailto:threatradar-myip@viajeinteligencia.com)
 `;
 
 export const faqContent = `# Preguntas Frecuentes — myip

@@ -4,7 +4,7 @@
 
 ## 1. Identificación del titular
 
-myip es un servicio operado por M. Castillo (SIEG), con domicilio de contacto en Murcia, España. Para cualquier consulta legal, técnica o comercial: **threatradar-myip@viajeinteligencia.com**.
+myip es un servicio operado por M. Castillo (SIEG), con domicilio de contacto en Murcia, España. Para cualquier consulta legal, técnica o comercial: [threatradar-myip@viajeinteligencia.com](mailto:threatradar-myip@viajeinteligencia.com).
 
 ## 2. Objeto del servicio
 
@@ -49,7 +49,7 @@ En la medida permitida por la ley, la responsabilidad total de myip ante el usua
 
 ## 9. Datos personales
 
-El tratamiento de datos personales se rige por nuestra [Política de Privacidad], conforme al RGPD y la LOPDGDD.
+El tratamiento de datos personales se rige por nuestra [Política de Privacidad], conforme al RGPD (Reglamento General de Protección de Datos de la UE) y la LOPDGDD (Ley Orgánica de Protección de Datos Personales y garantía de los Derechos Digitales de España).
 
 ## 10. Modificación de estos términos
 
@@ -61,4 +61,4 @@ Estos términos se rigen por la legislación española. Para cualquier controver
 
 ## 12. Contacto
 
-Para dudas sobre estos términos: **threatradar-myip@viajeinteligencia.com**
+Para dudas sobre estos términos: [threatradar-myip@viajeinteligencia.com](mailto:threatradar-myip@viajeinteligencia.com)
