@@ -583,6 +583,27 @@ app.post('/api/auth/register', async (req, res) => {
   const token = authDb.createSession(normalizedEmail);
   res.cookie('myip_session', token, { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', maxAge: 30 * 24 * 60 * 60 * 1000 });
   console.log(`[AUTH] Nueva cuenta: ${normalizedEmail}`);
+
+  // Email de bienvenida
+  sendEmail({
+    to: normalizedEmail,
+    subject: 'Bienvenido a MyIP — Tu diagnóstico de red te espera',
+    text: `Bienvenido a MyIP. Tu cuenta ha sido creada con éxito. Haz tu primer escaneo de seguridad ahora y descubre el estado de tu conexión.`,
+    html: `<div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
+      <h2 style="color: #4338ca;">Bienvenido a MyIP</h2>
+      <p>Tu cuenta ha sido creada con éxito. Ahora puedes:</p>
+      <ul>
+        <li>Escanear tu IP pública en busca de puertos expuestos</li>
+        <li>Verificar la reputación de tu IP en listas negras</li>
+        <li>Obtener un diagnóstico completo de la seguridad de tu red</li>
+      </ul>
+      <p style="text-align: center; margin-top: 24px;">
+        <a href="${process.env.APP_URL || 'https://myip.viajeinteligencia.com'}" style="display: inline-block; background: #4338ca; color: white; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: 600;">Hacer mi primer escaneo</a>
+      </p>
+      <p style="color: #94a3b8; font-size: 12px; margin-top: 24px;">MyIP &copy; 2026 SIEG — Herramienta de auditoría de seguridad</p>
+    </div>`,
+  });
+
   res.json({
     message: 'Cuenta creada. Tus escaneos se guardarán en esta cuenta.',
     user: { email: stored.email, isPremium: stored.isPremium, ipAddress: stored.ipAddress, scanCount: stored.scanCount, isGuest: stored.isGuest }
@@ -1067,6 +1088,25 @@ ${score === 'green' ? '- **Mantenimiento**: Realiza escaneos periódicos para ve
       } catch (e) {
         console.error('[SCAN] No se pudo persistir monthlyScanCount:', e);
       }
+    }
+
+    // Email del primer scan
+    if (user.scanCount === 1) {
+      sendEmail({
+        to: user.email,
+        subject: `MyIP — Tu primer análisis de ${ip} está listo`,
+        text: `Tu primer análisis de la IP ${ip} ha completado. Estado: ${score.toUpperCase()}. Inicia sesión en MyIP para ver los detalles completos.`,
+        html: `<div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
+          <h2 style="color: #4338ca;">Tu primer análisis está listo</h2>
+          <p><strong>IP analizada:</strong> ${ip}</p>
+          <p><strong>Estado:</strong> ${score.toUpperCase()} — ${scoreReason}</p>
+          ${analysisText ? `<div style="background: #f8fafc; padding: 16px; border-radius: 8px; font-size: 13px; line-height: 1.6; margin-top: 12px;">${analysisText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/### (.*)/g, '<h4 style="margin: 12px 0 4px; color: #4338ca;">$1</h4>').replace(/\n/g, '<br>')}</div>` : ''}
+          <p style="text-align: center; margin-top: 24px;">
+            <a href="${process.env.APP_URL || 'https://myip.viajeinteligencia.com'}" style="display: inline-block; background: #4338ca; color: white; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: 600;">Ver análisis completo</a>
+          </p>
+          <p style="color: #94a3b8; font-size: 12px; margin-top: 24px;">MyIP &copy; 2026 SIEG — Herramienta de auditoría de seguridad</p>
+        </div>`,
+      });
     }
   }
 
