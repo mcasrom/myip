@@ -912,6 +912,11 @@ export default function App() {
                     Sin cambios detectados desde hace {scanResult.daysSinceLastScan} dia(s).
                   </p>
                 )}
+                {typeof scanResult.communityAverage === 'number' && (
+                  <p className="text-xs text-slate-500 text-center mt-2">
+                    Tu puntuacion: <span className="font-bold text-indigo-600">{scanResult.scoreNumeric}</span> — Media de la comunidad: <span className="font-bold">{scanResult.communityAverage}</span>
+                  </p>
+                )}
 
                 {/* Blacklists Check Summary widget */}
                 <div className="bg-white border border-slate-200 p-5 rounded-2xl space-y-4 shadow-sm">

@@ -1191,7 +1191,7 @@ ${score === 'green' ? '- **Mantenimiento**: Realiza escaneos periódicos para ve
       authDb.saveScanRecord(user.email, {
         targetIp: ip, score, scoreReason,
         ports: enrichedPorts, reputation, analysisText,
-        scanSource: portScanSource, geo,
+        scanSource: portScanSource, geo, scoreNumeric,
       });
     } catch (err) { console.log('[HISTORY] Save error:', err); }
   }
@@ -1200,6 +1200,7 @@ ${score === 'green' ? '- **Mantenimiento**: Realiza escaneos periódicos para ve
     ip, timestamp: now, score, scoreReason, scoreNumeric, ports: enrichedPorts, reputation, sslInfo,
     analysisText, grokReport: grokReport || undefined, scanSource: portScanSource, geo,
     noChanges, daysSinceLastScan, changes: detectedChanges,
+    communityAverage: authDb.getCommunityStats().avgScore,
   });
 });
 

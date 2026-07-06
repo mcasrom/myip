@@ -31,6 +31,7 @@ export interface ScanResult {
   noChanges?: boolean;
   daysSinceLastScan?: number | null;
   changes?: string[];
+  communityAverage?: number | null;
   ports: PortScanItem[];
   reputation: ReputationItem[];
   sslInfo: SslInfo | null;
