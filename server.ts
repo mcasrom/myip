@@ -1201,6 +1201,40 @@ app.get('/api/scan/history/:id', optionalAuth, async (req: any, res) => {
   });
 });
 
+// Security: Check password breach via HaveIBeenPwned (Server-side proxy to avoid CORS)
+app.post('/api/security/check-password', async (req, res) => {
+  const { hash } = req.body;
+  if (!hash || typeof hash !== 'string' || hash.length !== 40) {
+    return res.status(400).json({ error: 'Hash SHA-1 inválido.' });
+  }
+  
+  const prefix = hash.substring(0, 5);
+  const suffix = hash.substring(5).toUpperCase();
+  
+  try {
+    const response = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`);
+    if (!response.ok) {
+      return res.json({ count: null, error: 'API externa no disponible.' });
+    }
+    
+    const text = await response.text();
+    // Validar formato
+    if (!text.includes(':')) {
+      return res.json({ count: null, error: 'Respuesta de API inválida.' });
+    }
+
+    const line = text.split('\n').find(l => l.startsWith(suffix));
+    if (line) {
+      const count = parseInt(line.split(':')[1], 10);
+      res.json({ count: isNaN(count) ? 0 : count });
+    } else {
+      res.json({ count: 0 });
+    }
+  } catch (e) {
+    res.json({ count: null, error: 'Error de red al consultar la API.' });
+  }
+});
+
 // WiFi Audit — real detection via nmcli/iwconfig/ping
 app.post('/api/wifi/audit', async (req, res) => {
   // Este audit ejecuta nmcli/iwconfig/ping contra la interfaz de red del

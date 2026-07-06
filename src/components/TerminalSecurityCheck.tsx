@@ -37,7 +37,7 @@ async function checkWebRTCIp(): Promise<string | null> {
   }
 }
 
-// Check if password has been breached using HaveIBeenPwned k-anonymity (free, no API key)
+// Check if password has been breached using our server as proxy (avoids CORS/Network blocks)
 async function checkPasswordBreach(password: string): Promise<number | null> {
   if (!password || password.length < 4) return 0;
   try {
@@ -46,29 +46,24 @@ async function checkPasswordBreach(password: string): Promise<number | null> {
     const hashBuffer = await crypto.subtle.digest('SHA-1', data);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     const hash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
-    const prefix = hash.substring(0, 5);
-    const suffix = hash.substring(5);
     
-    const res = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`);
+    // Call our own server endpoint
+    const res = await fetch('/api/security/check-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ hash }),
+    });
+    
     if (!res.ok) return null;
     
-    const text = await res.text();
-    
-    // Validar formato de respuesta: debe contener líneas tipo 'HASH:COUNT'
-    // Si es una página de error, HTML o respuesta vacía de un proxy, esto fallará.
-    if (!text.includes(':')) {
-      console.error('[BreachCheck] Respuesta inválida de la API (posible bloqueo o proxy)');
+    const data = await res.json();
+    if (data.error) {
+      console.error('[BreachCheck] Server error:', data.error);
       return null;
     }
-
-    const line = text.split('\n').find(l => l.startsWith(suffix));
-    if (line) {
-      const count = parseInt(line.split(':')[1], 10);
-      return isNaN(count) ? 0 : count;
-    }
-    return 0;
+    return data.count;
   } catch (e) {
-    console.error('[BreachCheck] Error de red:', e);
+    console.error('[BreachCheck] Network error:', e);
     return null;
   }
 }
