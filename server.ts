@@ -696,6 +696,26 @@ app.post('/api/auth/guest', async (req, res) => {
 });
 
 // Premium upgrade (fallback when Stripe not configured)
+app.get('/api/admin/audit', (req, res) => {
+  const authHeader = req.headers.authorization || '';
+  const expected = `Bearer ${process.env.ADMIN_SECRET || ''}`;
+  if (!process.env.ADMIN_SECRET || authHeader !== expected) {
+    return res.status(403).json({ error: 'No autorizado' });
+  }
+  try {
+    const stats = authDb.getSystemStats();
+    const recentUsers = authDb.getAllUsers().slice(-10).map(u => ({
+      email: u.email,
+      isPremium: u.isPremium,
+      ipAddress: u.ipAddress,
+    }));
+    res.json({ stats, recentUsers, checkedAt: new Date().toISOString() });
+  } catch (e) {
+    console.error('[ADMIN AUDIT] Error:', e);
+    res.status(500).json({ error: 'Error interno' });
+  }
+});
+
 app.post('/api/premium/upgrade', (req, res) => {
   // Guard: este endpoint es SOLO fallback de demo cuando Stripe no esta
   // configurado. Si Stripe esta activo, bloquear para evitar bypass del
