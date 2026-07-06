@@ -104,32 +104,28 @@ function classifyContext(
   connType: string,
   effectiveType: string
 ): { context: string; icon: string } {
-  // Red móvil
   if (connType === 'cellular' || effectiveType === '3g') {
     return { context: 'Red Móvil (3G/4G/5G)', icon: '📱' };
   }
   
+  // Conexión de larga distancia (latencia alta pero jitter aceptable)
+  if (latency > 150 && jitter < 30) {
+    return { context: 'Conexión Internacional / Larga Distancia', icon: '🌍' };
+  }
+
   // Alta calidad: baja latencia, jitter bajo, alta velocidad
   if (latency < 30 && jitter < 10 && speed > 50) {
     return { context: 'Red Doméstica / Fibra Óptica', icon: '🏠' };
   }
   
-  // Calidad media: podría ser WiFi doméstico o cable
-  if (latency < 50 && jitter < 20) {
+  // Calidad media
+  if (latency < 100 && jitter < 20) {
     return { context: 'Red Fija (Cable/ADSL)', icon: '🖥️' };
   }
   
-  // Alta latencia + jitter alto = red pública congestionada
-  if (jitter > 30 || latency > 100) {
-    if (latency > 150) {
-      return { context: 'Red Pública Congestionada (Aeropuerto/Café)', icon: '✈️' };
-    }
-    return { context: 'Red Compartida (Hotel/Biblioteca)', icon: '🏢' };
-  }
-  
-  // Default
-  if (speed > 20) {
-    return { context: 'Red de Alta Velocidad', icon: '⚡' };
+  // Congestión real (jitter muy alto + latencia alta)
+  if (jitter > 40 && latency > 100) {
+    return { context: 'Red Congestionada / Inestable', icon: '⚠️' };
   }
   
   return { context: 'Red Estándar', icon: '🌐' };
