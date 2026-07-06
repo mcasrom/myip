@@ -21,7 +21,9 @@ import {
   Clock,
   LogOut,
   Info,
-  RefreshCw
+  RefreshCw,
+  Share2,
+  Copy
 } from 'lucide-react';
 import RadarScanner from './components/RadarScanner';
 import TrafficLight from './components/TrafficLight';
@@ -49,6 +51,7 @@ export default function App() {
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
   const [rateLimitError, setRateLimitError] = useState<string | null>(null);
   const [legalConsentAccepted, setLegalConsentAccepted] = useState<boolean>(true);
+  const [shareCopied, setShareCopied] = useState<boolean>(false);
   
   // Premium simulations
   const [premiumAlerts, setPremiumAlerts] = useState<any[]>([]);
@@ -820,6 +823,67 @@ export default function App() {
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${scanning ? 'animate-spin' : ''}`} />
                 Actualizar Diagnóstico
+              </button>
+            </div>
+
+            {/* Share buttons RRSS */}
+            <div className="flex flex-wrap items-center gap-3 bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+              <span className="text-xs font-bold text-slate-500 flex items-center gap-1.5 mr-1">
+                <Share2 className="w-3.5 h-3.5" /> Compartir resultado:
+              </span>
+              <button
+                onClick={() => {
+                  const text = `Mi conexión ha sido analizada con MyIP — Estado: ${scanResult.score.toUpperCase()}. Comprueba la tuya:`;
+                  window.open(`https://x.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(window.location.href)}`, '_blank');
+                }}
+                className="flex items-center gap-1.5 bg-slate-900 hover:bg-slate-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition"
+                title="Compartir en X (Twitter)"
+              >
+                <span>𝕏</span> Twitter
+              </button>
+              <button
+                onClick={() => {
+                  const url = window.location.href;
+                  const title = `Mi diagnóstico MyIP — ${scanResult.score.toUpperCase()}`;
+                  window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`, '_blank');
+                }}
+                className="flex items-center gap-1.5 bg-blue-700 hover:bg-blue-600 text-white text-xs font-bold px-3 py-2 rounded-lg transition"
+                title="Compartir en LinkedIn"
+              >
+                <span>in</span> LinkedIn
+              </button>
+              <button
+                onClick={() => {
+                  const text = `Mi conexión ha sido analizada con MyIP — Estado: ${scanResult.score.toUpperCase()}. Comprueba la tuya: ${window.location.href}`;
+                  window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+                }}
+                className="flex items-center gap-1.5 bg-green-600 hover:bg-green-500 text-white text-xs font-bold px-3 py-2 rounded-lg transition"
+                title="Compartir por WhatsApp"
+              >
+                <span>📱</span> WhatsApp
+              </button>
+              <button
+                onClick={() => {
+                  const text = `Mi conexión ha sido analizada con MyIP — Estado: ${scanResult.score.toUpperCase()}. Comprueba la tuya: ${window.location.href}`;
+                  window.open(`https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(text)}`, '_blank');
+                }}
+                className="flex items-center gap-1.5 bg-sky-500 hover:bg-sky-400 text-white text-xs font-bold px-3 py-2 rounded-lg transition"
+                title="Compartir por Telegram"
+              >
+                <span>✈️</span> Telegram
+              </button>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(window.location.href).then(() => {
+                    setShareCopied(true);
+                    setTimeout(() => setShareCopied(false), 2000);
+                  });
+                }}
+                className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold px-3 py-2 rounded-lg transition"
+                title="Copiar enlace"
+              >
+                <Copy className="w-3.5 h-3.5" />
+                {shareCopied ? '¡Copiado!' : 'Copiar enlace'}
               </button>
             </div>
 
