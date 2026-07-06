@@ -51,7 +51,16 @@ async function checkPasswordBreach(password: string): Promise<number | null> {
     
     const res = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`);
     if (!res.ok) return null;
+    
     const text = await res.text();
+    
+    // Validar formato de respuesta: debe contener líneas tipo 'HASH:COUNT'
+    // Si es una página de error, HTML o respuesta vacía de un proxy, esto fallará.
+    if (!text.includes(':')) {
+      console.error('[BreachCheck] Respuesta inválida de la API (posible bloqueo o proxy)');
+      return null;
+    }
+
     const line = text.split('\n').find(l => l.startsWith(suffix));
     if (line) {
       const count = parseInt(line.split(':')[1], 10);
@@ -59,7 +68,7 @@ async function checkPasswordBreach(password: string): Promise<number | null> {
     }
     return 0;
   } catch (e) {
-    console.error('[BreachCheck] Error:', e);
+    console.error('[BreachCheck] Error de red:', e);
     return null;
   }
 }
@@ -212,7 +221,7 @@ export default function TerminalSecurityCheck() {
             {checkingBreach ? 'Comprobando...' : 'Comprobar'}
           </button>
         </div>
-        {breachCount !== null && (
+        {breachCount !== null ? (
           <div className={`mt-4 p-4 rounded-xl border ${breachCount > 0 ? 'bg-red-50 border-red-200' : 'bg-emerald-50 border-emerald-200'}`}>
             <p className={`text-sm font-bold ${breachCount > 0 ? 'text-red-700' : 'text-emerald-700'}`}>
               {breachCount > 0
@@ -220,6 +229,14 @@ export default function TerminalSecurityCheck() {
                 : '✅ Esta contraseña no aparece en filtraciones conocidas.'}
             </p>
           </div>
+        ) : (
+          checkingBreach ? null : (
+            <div className="mt-4 p-4 rounded-xl border bg-amber-50 border-amber-200">
+              <p className="text-sm font-bold text-amber-700">
+                ⚠️ No se pudo verificar la contraseña. Comprueba tu conexión o desactiva bloqueadores.
+              </p>
+            </div>
+          )
         )}
       </div>
 
