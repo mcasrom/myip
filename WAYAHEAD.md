@@ -1158,3 +1158,34 @@ fortaleza de password (fix indice fuera de rango en score maximo)
   Contexto: og:image ya está en index.html (/og-preview.jpg, 1200x630),
   share buttons ya implementados (App.tsx). Falta solo la verificación visual
   real en cada plataforma, no se ha probado todavía.
+
+## Sesión 2026-07-06 (cierre) — Auditoría admin + compresión OG image
+
+### Hecho y verificado en producción
+- Plantilla HTML de email de alerta con branding SIEG (alerts.ts) — commit 899e70e
+- Endpoint /api/admin/audit protegido con ADMIN_SECRET (.env, no versionado) —
+  devuelve totalUsers/premiumUsers/totalScans reales desde SQLite. Verificado
+  con curl real: 6 usuarios, 2 premium, 35 escaneos. Commit 168027d.
+- og-preview.jpg comprimido con jpegoptim --max=75 --strip-all: 739KB -> 115KB
+  (-84%), verificado en producción real (Content-Length: 115152). Commit 28171d9.
+- Verificado independientemente trabajo de otra sesión (Qwen): DB/.env
+  bloqueados con 403, endpoint borrado RGPD (authDb.deleteUserAccount) existe
+  de verdad, share buttons en App.tsx confirmados.
+- Tres bloques (server/GitHub/laptop) sincronizados en 28171d9.
+
+### Pendiente próxima sesión
+- [ ] Fase 2 auditoría: lastCronRun y emailsSent devuelven null/0 porque
+      nada los alimenta todavía — conectar cron (alerts.ts) y sendEmail()
+      para que escriban esos contadores en SQLite
+- [ ] Verificar preview visual real en WhatsApp y Telegram (mandarse el
+      link a uno mismo, usar ?v=2 si hay cache vieja de la imagen pesada)
+- [ ] Facebook Debugger: re-scrapear tras compresión, confirmar que carga
+      la imagen de 115KB (aviso fb:app_id es opcional, no bloqueante)
+- [ ] Desajuste menor: meta tags declaran og:image 1200x630 pero la imagen
+      real es 1376x768 — no rompe el preview pero está desalineado
+- [ ] Confirmar HTML de alerta con un cambio real (solo se vio "sin cambios")
+- [ ] Decidir hora del cron: hoy 0 8 * * * UTC = 10:00 España verano
+- [ ] Webhook Stripe sigue sin existir (confirmado, cero código) - bloqueado
+      por tipo de clave (falta sk_test_... estándar, no rk_test_... restringida)
+- [ ] sendEmail duplicado en alerts.ts y server.ts (deuda técnica menor)
+- [ ] CSP quitado temporalmente por Qwen - reconfigurar sin bloquear la app
