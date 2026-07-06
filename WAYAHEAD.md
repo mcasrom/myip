@@ -1404,3 +1404,41 @@ Dos caminos reales:
   2. Agente/app nativa instalable — fuera de alcance de una sesion.
 Decision: si se retoma, empezar por opcion 1, sesion dedicada aparte,
 no mezclar con pendientes sueltos del dia a dia.
+
+## Hallazgo 2026-07-07 — Gap real de cobertura de puertos (Samba/impresoras NO detectados)
+
+Pregunta de Miguel: si tengo Samba o puerto de impresora abierto, ¿se
+detecta? Respuesta confirmada por codigo: NO, y no es un bug sutil —
+es que esos puertos no estan en la lista que se le pide a nmap escanear.
+
+`scripts/port_audit.py` -> `CRITICAL_PORTS` (lista fija pasada a
+`nmap -p <lista>`, NO es un top-N de nmap): solo cubre
+22,80,443,3306,8080,3389,5432,6379,27017,21,25,53. Ningun puerto de
+Samba/NetBIOS (139,445), impresoras (631 IPP, 9100 JetDirect, 515 LPD),
+VNC (5900), Telnet (23), UPnP (1900) esta en esa lista — nmap ni
+siquiera los consulta, no aparecen ni como "closed"/"filtered".
+
+Gap secundario (ya detectado antes, menor): de los 12 puertos que SI se
+escanean, solo 5 (22,80,443,3306,8080) tienen explicacion especifica en
+`portDefinitions` de server.ts — los otros 7 (3389,5432,6379,27017,21,
+25,53) se detectan pero caen en mensaje generico "puerto desconocido".
+
+Impacto: vector de riesgo domestico mas comun (Samba mal configurado
+exponiendo carpetas, impresora de red accesible) es invisible hoy. Score
+puede marcar 100/100 con ese fallo presente sin que el test lo pregunte.
+
+### Pendiente (patch concreto para retomar, NO empezar sin sesion dedicada)
+- [ ] Añadir a CRITICAL_PORTS (port_audit.py): 139, 445 (Samba/NetBIOS),
+      631 (IPP), 9100 (JetDirect), 515 (LPD), 5900 (VNC), 23 (Telnet),
+      1900 (UPnP, sobre UDP - nmap necesitaria -sU, coste extra de tiempo
+      de escaneo, decidir si vale la pena o se documenta como limitacion)
+- [ ] Añadir entradas correspondientes en portDefinitions (server.ts) con
+      openExplanation/openRecommendation especificas por servicio (ej.
+      Samba: "Tu compartición de archivos está expuesta a internet,
+      cualquiera podría listar o acceder a tus carpetas compartidas")
+- [ ] Completar tambien las 7 explicaciones genericas que faltan hoy
+      (3389,5432,6379,27017,21,25,53) mientras se toca este archivo
+- [ ] Nota de rendimiento: cada puerto nuevo añade tiempo de escaneo
+      nmap (timeout actual 120s en scan_with_nmap) - verificar que anadir
+      ~7-8 puertos mas no empuja el escaneo fuera de rangos razonables
+      para el usuario (medir antes/despues del cambio)
