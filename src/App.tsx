@@ -34,6 +34,7 @@ import MarkdownRenderer from './components/MarkdownRenderer';
 import { tosContent, faqContent } from './data/legal';
 import PWAInstallBanner from './components/PWAInstallBanner';
 import LocalNetworkDiagnostic from './components/LocalNetworkDiagnostic';
+import TerminalSecurityCheck from './components/TerminalSecurityCheck';
 import { ScanResult, UserSession } from './types';
 import { founderManifesto } from './data/guides';
 import socialPreviewImg from './assets/images/myip_preview.jpg';
@@ -773,6 +774,11 @@ export default function App() {
                 <LocalNetworkDiagnostic onToast={triggerToast} />
               </div>
             )}
+
+            {/* Terminal Security Check */}
+            <div className="mt-8">
+              <TerminalSecurityCheck />
+            </div>
 
             {/* Disclaimer & Privacy Manifesto link */}
             <div className="text-center pt-4 border-t border-slate-200 max-w-xl mx-auto space-y-2">

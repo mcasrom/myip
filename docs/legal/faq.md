@@ -29,3 +29,17 @@ No, myip funciona íntegramente desde el navegador.
 
 ### ¿Con qué frecuencia se ejecutan las alertas del plan Pro?
 Actualmente el sistema de alertas recurrentes se ejecuta según la configuración de producción (revisión diaria). El detalle exacto puede variar mientras seguimos afinando el servicio.
+
+### ¿Mi suscripción funciona en varios dispositivos?
+Sí. La suscripción a MyIP está vinculada a tu cuenta de usuario (email + contraseña), no a un dispositivo específico. Puedes acceder a todas las funciones Premium desde cualquier terminal: ordenador, tablet o smartphone, iniciando sesión con tus credenciales.
+
+### ¿Qué servicios de seguridad ofrece MyIP?
+MyIP ofrece las siguientes herramientas de diagnóstico, todas ejecutándose en tu navegador sin enviar datos a servidores externos:
+- **Escaneo de puertos** de tu IP pública (cerrados, abiertos, nivel de riesgo).
+- **Reputación en listas negras** (Spamhaus ZEN, Barracuda RBL, AbuseIPDB, VirusTotal).
+- **Test de calidad de conexión** (latencia, jitter, velocidad de descarga, resolución DNS).
+- **Auditoría de seguridad del navegador** (fuga de IP por WebRTC, Do Not Track, cookies de terceros, gestor de contraseñas).
+- **Comprobador de contraseñas filtradas** (vía Have I Been Pwned k-anonymity, sin enviar tu contraseña completa).
+- **Certificado SSL/TLS** (vigencia, emisor, días hasta expiración).
+- **Monitorización recurrente y alertas por email** (Plan SysAdmin Pro).
+- **Historial de escaneos** (Plan SysAdmin Pro).

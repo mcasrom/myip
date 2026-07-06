@@ -10,6 +10,18 @@ myip es un servicio operado por M. Castillo (SIEG), con domicilio de contacto en
 
 myip ofrece diagnóstico de red y monitorización de seguridad sobre la IP pública del propio usuario. El servicio detecta automáticamente la IP del visitante y restringe cualquier auditoría activa (escaneo de puertos, análisis WiFi) exclusivamente a esa IP. No se ofrece ni se permite el escaneo de terceros.
 
+**Servicios incluidos:**
+- Escaneo de puertos de la IP pública del usuario (estado, servicio, nivel de riesgo).
+- Consulta de reputación en listas negras (Spamhaus ZEN, Barracuda RBL, AbuseIPDB, VirusTotal).
+- Test de calidad de conexión (latencia, jitter, velocidad, resolución DNS).
+- Auditoría de seguridad del navegador (fuga WebRTC, Do Not Track, cookies, gestor de contraseñas).
+- Comprobador de contraseñas filtradas (vía Have I Been Pwned k-anonymity).
+- Análisis de certificado SSL/TLS asociado a la IP.
+- Monitorización recurrente y alertas por email (Plan SysAdmin Pro).
+- Historial de escaneos (Plan SysAdmin Pro).
+
+La suscripción a MyIP está vinculada a la cuenta de usuario (email + contraseña), no a un dispositivo específico. El usuario puede acceder a todas las funciones desde cualquier terminal: ordenador, tablet o smartphone.
+
 ## 3. Planes y precios
 
 - **Plan Gratuito**: funcionalidades básicas de diagnóstico, sin coste.
