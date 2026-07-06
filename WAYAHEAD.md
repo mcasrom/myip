@@ -1235,3 +1235,32 @@ fortaleza de password (fix indice fuera de rango en score maximo)
       agregado propio, no requiere API externa ni tabla nueva)
 - [ ] Inventario de dispositivos en red (reusar fingerprint_engine.py de
       ThreatRadar + nmap -O) — esfuerzo medio, ya evaluado antes como viable
+
+## Roadmap 2026-07-06 — i18n Español/Inglés (sin empezar, decisión: retomar en sesión dedicada)
+
+### Estado actual confirmado
+- Cero i18n implementado. Cero texto en ingles en ningun sitio (grep
+  confirmado en App.tsx, index.html, legal.ts, guides.ts). 100% español.
+
+### Por que tiene sentido de producto
+Herramienta de diagnostico de red/seguridad tiene audiencia natural fuera
+de España (sysadmins, developers hispanohablantes de otros paises +
+mercado angloparlante, mucho mayor). Cerrarse a español es decision de
+producto no tomada aun, no limitacion tecnica.
+
+### Por que NO es tarea de sesion rapida (advertencia para el futuro)
+- No es un patch pequeño: requiere tocar CADA string visible en App.tsx
+  (1700+ lineas), legal.ts, guides.ts, emails de alerts.ts/server.ts,
+  meta tags OG.
+- Patron estandar: extraer strings a es.json/en.json + selector de idioma
+  (useState + localStorage para recordar preferencia).
+- Riesgo alto si se hace con prisa: find/replace masivo puede romper JSX
+  en decenas de sitios simultaneamente (mismo tipo de error que RRSS hoy,
+  multiplicado por escala).
+
+### Recomendacion para cuando se retome
+Empezar con piloto pequeño y aislado (ej. solo ToS/FAQ en ingles) antes
+de tocar App.tsx completo. Sesion dedicada, con tiempo, no mezclado con
+otros pendientes del dia.
+
+Decision 2026-07-06: pospuesto, se anota como roadmap, NO se empieza hoy.
