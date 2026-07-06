@@ -35,6 +35,9 @@ interface NetworkAuditResult {
   context: string;
   contextIcon: string;
   issues: string[];
+  geoLat: number | null;
+  geoLng: number | null;
+  geoAccuracy: number | null;
   raw: any;
 }
 
@@ -173,6 +176,29 @@ export default function LocalNetworkDiagnostic({
       setStepMessage('Midiendo resolución DNS...');
       const dnsLatency = await measureDNSLatency();
       
+      // Step 5: Geolocalización (pide permiso al usuario)
+      let geoLat: number | null = null;
+      let geoLng: number | null = null;
+      let geoAccuracy: number | null = null;
+      try {
+        const geoPos = await new Promise<GeolocationPosition>((resolve, reject) => {
+          if (!navigator.geolocation) {
+            reject(new Error('Geolocalización no disponible'));
+            return;
+          }
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: false,
+            timeout: 5000,
+            maximumAge: 0,
+          });
+        });
+        geoLat = geoPos.coords.latitude;
+        geoLng = geoPos.coords.longitude;
+        geoAccuracy = geoPos.coords.accuracy;
+      } catch {
+        // Usuario denegó o no disponible
+      }
+      
       // Clasificar calidad de conexión
       const { context, icon: contextIcon } = classifyConnection(
         measuredLatency, measuredJitter, measuredSpeed
@@ -255,6 +281,9 @@ export default function LocalNetworkDiagnostic({
         context,
         contextIcon,
         issues,
+        geoLat,
+        geoLng,
+        geoAccuracy,
         raw: { conn }
       });
       
@@ -450,6 +479,39 @@ export default function LocalNetworkDiagnostic({
               </div>
             </div>
           </div>
+
+          {/* Geolocalización */}
+          {result.geoLat !== null && result.geoLng !== null && (
+            <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-sm">
+              <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-indigo-500" />
+                Tu Ubicación Detectada (por el navegador)
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                  <span className="text-[10px] uppercase font-mono text-slate-400 font-bold">Latitud</span>
+                  <p className="text-lg font-bold text-slate-800 font-mono">{result.geoLat.toFixed(4)}</p>
+                </div>
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                  <span className="text-[10px] uppercase font-mono text-slate-400 font-bold">Longitud</span>
+                  <p className="text-lg font-bold text-slate-800 font-mono">{result.geoLng.toFixed(4)}</p>
+                </div>
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                  <span className="text-[10px] uppercase font-mono text-slate-400 font-bold">Precisión</span>
+                  <p className="text-lg font-bold text-slate-800">
+                    {result.geoAccuracy ? `±${Math.round(result.geoAccuracy)}m` : 'N/A'}
+                  </p>
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    {result.geoAccuracy && result.geoAccuracy < 50 ? 'Alta (GPS)' :
+                     result.geoAccuracy && result.geoAccuracy < 500 ? 'Media (WiFi)' : 'Baja (IP)'}
+                  </p>
+                </div>
+              </div>
+              <p className="text-[11px] text-slate-400 mt-3">
+                Datos proporcionados por tu navegador. No se envían a ningún servidor.
+              </p>
+            </div>
+          )}
 
           {/* Hallazgos */}
           <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-sm">
