@@ -12,7 +12,7 @@ import { spawn } from 'child_process';
 import { createHash } from 'crypto';
 import cookieParser from 'cookie-parser';
 import * as authDb from './db';
-import { startAlertsCron } from './alerts';
+import { startAlertsCron, compareScans, sendEmail } from './alerts';
 import { isCommonPassword } from './src/utils/passwordBloom.js';
 dotenv.config();
 
@@ -1199,6 +1199,47 @@ app.get('/api/scan/history/:id', optionalAuth, async (req: any, res) => {
     analysisText: r.analysis_text, scanSource: r.scan_source,
     geo: JSON.parse(r.geo_json || '{}'), createdAt: r.created_at,
   });
+});
+
+// TEST: Forzar ejecución del cron de alertas
+app.post('/api/test/cron', async (req, res) => {
+  const users = authDb.getAllUsers().filter(u => u.isPremium && u.ipAddress && u.ipAddress !== 'pending' && u.ipAddress !== '0.0.0.0');
+  const results: any[] = [];
+  for (const u of users) {
+    try {
+      const scanRes = await fetch(`http://localhost:${PORT}/api/scan`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetIp: u.ipAddress, email: u.email }),
+      });
+      if (!scanRes.ok) {
+        results.push({ email: u.email, error: `Scan fallido: ${scanRes.status}` });
+        continue;
+      }
+      await scanRes.json();
+      const history = authDb.getScanHistory(u.email, 2);
+      if (history.length >= 2) {
+        const [curr, prev] = history;
+        const { hasChanges, changes } = compareScans(prev, curr);
+        if (hasChanges) {
+          const sent = await sendEmail({
+            to: u.email,
+            subject: 'MyIP: Cambios detectados (Test)',
+            text: changes.join('\n'),
+            html: `<h2>Cambios detectados en ${curr.target_ip}</h2><ul>${changes.map(c => `<li>${c}</li>`).join('')}</ul>`,
+          });
+          results.push({ email: u.email, changes, sent });
+        } else {
+          results.push({ email: u.email, changes: [] });
+        }
+      } else {
+        results.push({ email: u.email, error: 'Sin historial suficiente (mínimo 2 escaneos)' });
+      }
+    } catch (e) {
+      results.push({ email: u.email, error: String(e) });
+    }
+  }
+  res.json({ results });
 });
 
 // WiFi Audit — real detection via nmcli/iwconfig/ping
