@@ -38,7 +38,7 @@ async function checkWebRTCIp(): Promise<string | null> {
 }
 
 // Check if password has been breached using HaveIBeenPwned k-anonymity (free, no API key)
-async function checkPasswordBreach(password: string): Promise<number> {
+async function checkPasswordBreach(password: string): Promise<number | null> {
   if (!password || password.length < 4) return 0;
   try {
     const encoder = new TextEncoder();
@@ -50,6 +50,7 @@ async function checkPasswordBreach(password: string): Promise<number> {
     const suffix = hash.substring(5);
     
     const res = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`);
+    if (!res.ok) return null;
     const text = await res.text();
     const line = text.split('\n').find(l => l.startsWith(suffix));
     if (line) {
@@ -57,8 +58,9 @@ async function checkPasswordBreach(password: string): Promise<number> {
       return isNaN(count) ? 0 : count;
     }
     return 0;
-  } catch {
-    return 0;
+  } catch (e) {
+    console.error('[BreachCheck] Error:', e);
+    return null;
   }
 }
 
@@ -67,6 +69,7 @@ export default function TerminalSecurityCheck() {
   const [checks, setChecks] = useState<SecurityCheck[]>([]);
   const [passwordTest, setPasswordTest] = useState('');
   const [breachCount, setBreachCount] = useState<number | null>(null);
+  const [breachError, setBreachError] = useState<string | null>(null);
   const [checkingBreach, setCheckingBreach] = useState(false);
 
   const runChecks = async () => {

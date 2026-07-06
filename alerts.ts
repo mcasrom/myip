@@ -47,6 +47,7 @@ async function sendEmail({ to, subject, text, html }: { to: string; subject: str
     });
     if (data?.id) {
       console.log(`[RESEND] Email enviado a ${to} (ID: ${data.id})`);
+      authDb.incrementEmailsSent();
       return true;
     }
     console.log(`[RESEND] Error enviando email:`, data);

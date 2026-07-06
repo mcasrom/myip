@@ -68,6 +68,45 @@ try { db.exec('ALTER TABLE users ADD COLUMN tier TEXT'); } catch (e) { /* column
 try { db.exec('ALTER TABLE users ADD COLUMN monthly_scan_count INTEGER NOT NULL DEFAULT 0'); } catch (e) { /* columna ya existe */ }
 try { db.exec('ALTER TABLE users ADD COLUMN monthly_scan_reset TEXT'); } catch (e) { /* columna ya existe */ }
 
+// Tabla de estadísticas del sistema (una sola fila)
+db.exec(`
+CREATE TABLE IF NOT EXISTS system_stats (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  emails_sent INTEGER NOT NULL DEFAULT 0,
+  last_cron_run INTEGER,
+  last_cron_alerts INTEGER DEFAULT 0,
+  updated_at INTEGER NOT NULL
+);
+INSERT OR IGNORE INTO system_stats (id, updated_at) VALUES (1, strftime('%s', 'now') * 1000);
+`);
+
+export function incrementEmailsSent(): void {
+  db.prepare('UPDATE system_stats SET emails_sent = emails_sent + 1, updated_at = ? WHERE id = 1').run(Date.now());
+}
+
+export function updateLastCronRun(alertsCount: number): void {
+  db.prepare('UPDATE system_stats SET last_cron_run = ?, last_cron_alerts = ?, updated_at = ? WHERE id = 1')
+    .run(Date.now(), alertsCount, Date.now());
+}
+
+export function getSystemStats(): { totalUsers: number; premiumUsers: number; guestUsers: number; totalScans: number; emailsSent: number; lastCronRun: number | null; lastCronAlerts: number; serverStartTime: number } {
+  const users = db.prepare('SELECT COUNT(*) as total, SUM(CASE WHEN is_premium = 1 THEN 1 ELSE 0 END) as premium, SUM(CASE WHEN is_guest = 1 THEN 1 ELSE 0 END) as guest FROM users').get() as any;
+  const scans = db.prepare('SELECT COUNT(*) as total FROM scan_history').get() as any;
+  const stats = db.prepare('SELECT emails_sent, last_cron_run, last_cron_alerts FROM system_stats WHERE id = 1').get() as any;
+  return {
+    totalUsers: users?.total || 0,
+    premiumUsers: users?.premium || 0,
+    guestUsers: users?.guest || 0,
+    totalScans: scans?.total || 0,
+    emailsSent: stats?.emails_sent || 0,
+    lastCronRun: stats?.last_cron_run || null,
+    lastCronAlerts: stats?.last_cron_alerts || 0,
+    serverStartTime: serverStartTimestamp,
+  };
+}
+
+const serverStartTimestamp = Date.now();
+
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 dias
 
 export interface StoredUser {
