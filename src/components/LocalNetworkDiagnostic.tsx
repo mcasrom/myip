@@ -96,39 +96,38 @@ async function measureDNSLatency(): Promise<number> {
   }
 }
 
-// Clasificar contexto de red basado en métricas
-function classifyContext(
+// Clasificar calidad de conexión basada en métricas reales
+function classifyConnection(
   latency: number,
   jitter: number,
-  speed: number,
-  connType: string,
-  effectiveType: string
+  speed: number
 ): { context: string; icon: string } {
-  if (connType === 'cellular' || effectiveType === '3g') {
-    return { context: 'Red Móvil (3G/4G/5G)', icon: '📱' };
+  // Excelente: baja latencia, bajo jitter, alta velocidad
+  if (latency < 50 && jitter < 15 && speed > 20) {
+    return { context: 'Conexión de Alta Calidad', icon: '🟢' };
   }
   
-  // Conexión de larga distancia (latencia alta pero jitter aceptable)
-  if (latency > 150 && jitter < 30) {
-    return { context: 'Conexión Internacional / Larga Distancia', icon: '🌍' };
-  }
-
-  // Alta calidad: baja latencia, jitter bajo, alta velocidad
-  if (latency < 30 && jitter < 10 && speed > 50) {
-    return { context: 'Red Doméstica / Fibra Óptica', icon: '🏠' };
+  // Buena: latencia moderada o velocidad decente
+  if (latency < 100 && jitter < 30 && speed > 5) {
+    return { context: 'Conexión Aceptable', icon: '🟡' };
   }
   
-  // Calidad media
-  if (latency < 100 && jitter < 20) {
-    return { context: 'Red Fija (Cable/ADSL)', icon: '🖥️' };
+  // Congestionada: jitter alto indica inestabilidad
+  if (jitter > 40) {
+    return { context: 'Conexión Inestable / Congestionada', icon: '🔴' };
   }
   
-  // Congestión real (jitter muy alto + latencia alta)
-  if (jitter > 40 && latency > 100) {
-    return { context: 'Red Congestionada / Inestable', icon: '⚠️' };
+  // Lenta: latencia alta pero estable (conexión internacional o capada)
+  if (latency > 150) {
+    return { context: 'Conexión Lenta (Alta Latencia)', icon: '🟠' };
   }
   
-  return { context: 'Red Estándar', icon: '🌐' };
+  // Muy lenta
+  if (speed > 0 && speed < 2) {
+    return { context: 'Conexión Muy Limitada', icon: '🔴' };
+  }
+  
+  return { context: 'Conexión Básica', icon: '🟡' };
 }
 
 export default function LocalNetworkDiagnostic({ 
@@ -148,25 +147,25 @@ export default function LocalNetworkDiagnostic({
     setError(null);
     
     try {
-      // Step 1: Detectar tipo de conexión
+      // Step 1: Detectar tipo de conexión del navegador
       setCurrentStep(1);
       setStepMessage('Detectando tipo de conexión...');
       
       const conn = (navigator as any).connection || (navigator as any).mozConnection || (navigator as any).webkitConnection;
-      const connectionType = conn?.type || 'unknown';
-      const effectiveType = conn?.effectiveType || 'unknown';
+      const connectionType = conn?.type || 'no disponible';
+      const effectiveType = conn?.effectiveType || 'no disponible';
       const downlink = conn?.downlink || 0;
       const apiRtt = conn?.rtt || 0;
       const saveData = conn?.saveData || false;
       
       // Step 2: Medir latencia real
       setCurrentStep(2);
-      setStepMessage('Midiendo latencia de red...');
+      setStepMessage('Midiendo latencia...');
       const { avg: measuredLatency, jitter: measuredJitter } = await measureLatency(10);
       
       // Step 3: Medir velocidad
       setCurrentStep(3);
-      setStepMessage('Midiendo velocidad de descarga...');
+      setStepMessage('Midiendo velocidad...');
       const measuredSpeed = await measureSpeed();
       
       // Step 4: Medir DNS
@@ -174,22 +173,22 @@ export default function LocalNetworkDiagnostic({
       setStepMessage('Midiendo resolución DNS...');
       const dnsLatency = await measureDNSLatency();
       
-      // Clasificar contexto
-      const { context, icon: contextIcon } = classifyContext(
-        measuredLatency, measuredJitter, measuredSpeed, connectionType, effectiveType
+      // Clasificar calidad de conexión
+      const { context, icon: contextIcon } = classifyConnection(
+        measuredLatency, measuredJitter, measuredSpeed
       );
       
-      // Scoring
+      // Scoring basado en métricas reales
       let score = 100;
       const issues: string[] = [];
       
       // Latencia
       if (measuredLatency > 200) {
         score -= 30;
-        issues.push(`Latencia muy alta (${measuredLatency}ms). Posible congestión o distancia al servidor.`);
+        issues.push(`Latencia muy alta (${measuredLatency}ms). Tu conexión tiene un retardo significativo.`);
       } else if (measuredLatency > 100) {
         score -= 15;
-        issues.push(`Latencia elevada (${measuredLatency}ms). Puede afectar videollamadas y juegos.`);
+        issues.push(`Latencia elevada (${measuredLatency}ms). Puede afectar videollamadas y juegos online.`);
       } else if (measuredLatency > 50) {
         score -= 5;
         issues.push(`Latencia moderada (${measuredLatency}ms). Aceptable para la mayoría de usos.`);
@@ -198,25 +197,28 @@ export default function LocalNetworkDiagnostic({
       // Jitter (estabilidad)
       if (measuredJitter > 50) {
         score -= 25;
-        issues.push(`Jitter muy alto (${measuredJitter}ms). Red inestable, típica de redes públicas congestionadas.`);
+        issues.push(`Jitter muy alto (${measuredJitter}ms). Conexión inestable, típica de redes congestionadas.`);
       } else if (measuredJitter > 20) {
         score -= 15;
         issues.push(`Jitter elevado (${measuredJitter}ms). Posible variabilidad en videollamadas.`);
       }
       
       // Velocidad
-      if (measuredSpeed > 0 && measuredSpeed < 5) {
+      if (measuredSpeed > 0 && measuredSpeed < 2) {
         score -= 20;
         issues.push(`Velocidad muy baja (${measuredSpeed} Mbps).`);
-      } else if (measuredSpeed > 0 && measuredSpeed < 20) {
+      } else if (measuredSpeed > 0 && measuredSpeed < 10) {
         score -= 10;
         issues.push(`Velocidad limitada (${measuredSpeed} Mbps).`);
       }
       
       // DNS
-      if (dnsLatency > 100) {
+      if (dnsLatency > 200) {
         score -= 15;
-        issues.push(`DNS lento (${dnsLatency}ms). Considera Cloudflare (1.1.1.1) o Google (8.8.8.8).`);
+        issues.push(`DNS muy lento (${dnsLatency}ms).`);
+      } else if (dnsLatency > 100) {
+        score -= 5;
+        issues.push(`DNS lento (${dnsLatency}ms).`);
       }
       
       // Save Data
@@ -229,12 +231,13 @@ export default function LocalNetworkDiagnostic({
       
       let rating = 'Excelente';
       if (score >= 90) rating = 'Excelente';
-      else if (score >= 75) rating = 'Bueno';
-      else if (score >= 50) rating = 'Regular';
-      else rating = 'Crítico';
+      else if (score >= 75) rating = 'Buena';
+      else if (score >= 50) rating = 'Aceptable';
+      else if (score >= 25) rating = 'Deficiente';
+      else rating = 'Crítica';
       
       if (issues.length === 0) {
-        issues.push('Tu conexión es estable y rápida. Ideal para trabajo remoto, streaming y videollamadas.');
+        issues.push('Tu conexión funciona correctamente. Velocidad y estabilidad adecuadas.');
       }
       
       setResult({
@@ -257,12 +260,12 @@ export default function LocalNetworkDiagnostic({
       
       setRunning(false);
       setCurrentStep(0);
-      onToast('¡Auditoría de red completada con datos reales!', 'success');
+      onToast('Test de calidad completado', 'success');
     } catch (err: any) {
       setError(err.message || 'Error desconocido');
       setRunning(false);
       setCurrentStep(0);
-      onToast('Error en la auditoría de red', 'warning');
+      onToast('Error en el test de calidad', 'warning');
     }
   };
 
@@ -271,9 +274,9 @@ export default function LocalNetworkDiagnostic({
       <div className="bg-slate-900 border border-slate-700 p-4 sm:p-5 rounded-2xl flex items-start gap-3 text-white">
         <ShieldCheck className="w-5 h-5 text-indigo-400 flex-shrink-0 mt-0.5" />
         <div className="space-y-1.5">
-          <h4 className="text-sm font-bold text-indigo-300">Auditoría de Calidad de Enlace</h4>
+          <h3 className="text-sm sm:text-base font-bold">Test de Calidad de Conexión</h3>
           <p className="text-xs text-slate-300 leading-relaxed">
-            Este diagnóstico mide latencia real, jitter (estabilidad), velocidad de descarga y resolución DNS directamente desde tu navegador. Sin suposiciones, sin acceso a tu router.
+            Mide la velocidad, latencia y estabilidad real de tu conexión a internet. Funciona desde cualquier red: WiFi, móvil o cable.
           </p>
         </div>
       </div>
@@ -285,12 +288,12 @@ export default function LocalNetworkDiagnostic({
             <Activity className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-300" />
           </div>
           <div>
-            <span className="text-[9px] sm:text-[10px] font-mono tracking-widest text-indigo-300 uppercase font-bold">Diagnóstico de Red en Tiempo Real</span>
-            <h2 className="text-lg sm:text-2xl font-bold font-sans">Auditoría de Calidad de Enlace</h2>
+            <span className="text-[9px] sm:text-[10px] font-mono tracking-widest text-indigo-300 uppercase font-bold">Test de Calidad</span>
+            <h2 className="text-lg sm:text-2xl font-bold font-sans">¿Tu conexión es buena o mala?</h2>
           </div>
         </div>
         <p className="text-sm text-slate-300 leading-relaxed">
-          Detecta si estás en una red doméstica, móvil, pública o congestionada. Mide latencia, jitter, velocidad y DNS para evaluar la calidad real de tu conexión.
+          Mide latencia, jitter, velocidad de descarga y resolución DNS. Datos reales desde tu navegador, sin suposiciones.
         </p>
 
         <div className="pt-2">
@@ -300,7 +303,7 @@ export default function LocalNetworkDiagnostic({
             className="w-full sm:w-auto bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 text-white font-bold text-sm px-6 py-3.5 rounded-xl shadow-sm transition-all flex items-center justify-center gap-2"
           >
             <RefreshCw className={`w-4 h-4 ${running ? 'animate-spin' : ''}`} />
-            {running ? 'Auditando...' : 'Ejecutar Auditoría de Red'}
+            {running ? 'Midiendo...' : 'Ejecutar Test'}
           </button>
         </div>
       </div>
@@ -314,7 +317,7 @@ export default function LocalNetworkDiagnostic({
             </div>
           </div>
           <div className="space-y-2">
-            <p className="font-bold text-slate-800 text-base sm:text-lg">Auditando tu conexión...</p>
+            <p className="font-bold text-slate-800 text-base sm:text-lg">Midiendo tu conexión...</p>
             <div className="flex items-center justify-center gap-2 text-xs sm:text-sm text-indigo-600 font-semibold font-mono bg-indigo-50 px-3 sm:px-4 py-1.5 rounded-full border border-indigo-100">
               <span className="w-2 h-2 rounded-full bg-indigo-500 animate-ping" />
               Paso {currentStep} de 4: {stepMessage}
@@ -343,7 +346,7 @@ export default function LocalNetworkDiagnostic({
             <div className="flex items-center gap-3 sm:gap-4">
               <span className="text-3xl sm:text-4xl">{result.contextIcon}</span>
               <div>
-                <span className="text-[9px] sm:text-[10px] font-mono tracking-widest text-indigo-300 uppercase font-bold">Contexto Detectado</span>
+                <span className="text-[9px] sm:text-[10px] font-mono tracking-widest text-indigo-300 uppercase font-bold">Calidad Detectada</span>
                 <h3 className="text-lg sm:text-xl font-bold">{result.context}</h3>
               </div>
             </div>
@@ -353,7 +356,7 @@ export default function LocalNetworkDiagnostic({
           <div className="bg-white border border-slate-200 rounded-3xl p-4 sm:p-8 shadow-sm text-slate-800">
             <div className="grid grid-cols-1 md:grid-cols-12 gap-6 sm:gap-8 items-center">
               <div className="md:col-span-4 flex flex-col items-center justify-center text-center space-y-2 border-b md:border-b-0 md:border-r border-slate-100 pb-4 sm:pb-6 md:pb-0 md:pr-8">
-                <span className="text-xs uppercase font-mono tracking-widest text-slate-400 font-bold">Valoración de Red</span>
+                <span className="text-xs uppercase font-mono tracking-widest text-slate-400 font-bold">Puntuación</span>
                 <div className="relative w-28 h-28 sm:w-36 sm:h-36 flex items-center justify-center">
                   <svg className="w-full h-full transform -rotate-90">
                     <circle cx="72" cy="72" r="64" strokeWidth="8" stroke="#f1f5f9" fill="transparent" />
@@ -372,107 +375,96 @@ export default function LocalNetworkDiagnostic({
                 </div>
                 <span className={`text-xs sm:text-sm font-bold uppercase tracking-wider px-2 sm:px-3 py-1 rounded-full ${
                   result.rating === 'Excelente' ? 'bg-emerald-50 text-emerald-800 border border-emerald-100' :
-                  result.rating === 'Bueno' ? 'bg-indigo-50 text-indigo-800 border border-indigo-100' :
-                  result.rating === 'Regular' ? 'bg-amber-50 text-amber-800 border border-amber-100' :
+                  result.rating === 'Buena' ? 'bg-indigo-50 text-indigo-800 border border-indigo-100' :
+                  result.rating === 'Aceptable' ? 'bg-amber-50 text-amber-800 border border-amber-100' :
+                  result.rating === 'Deficiente' ? 'bg-orange-50 text-orange-800 border border-orange-100' :
                   'bg-red-50 text-red-800 border border-red-100'
                 }`}>
                   {result.rating}
                 </span>
               </div>
 
-              <div className="md:col-span-8 space-y-4">
-                <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider font-mono">Métricas Reales de tu Conexión</h3>
-                <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                  <div className="bg-slate-50 p-3 sm:p-4 rounded-xl border border-slate-100">
-                    <div className="flex items-center gap-1.5 sm:gap-2 mb-1">
-                      <Zap className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500" />
-                      <span className="text-[8px] sm:text-[9px] uppercase font-mono text-slate-400 font-bold">Tipo de Conexión</span>
-                    </div>
-                    <p className="text-sm sm:text-base font-bold text-slate-800 font-mono capitalize">{result.connectionType}</p>
-                    {result.effectiveType !== 'unknown' && (
-                      <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5">Efectiva: {result.effectiveType.toUpperCase()}</p>
-                    )}
+              <div className="md:col-span-8 grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Clock className="w-4 h-4 text-indigo-500" />
+                    <span className="text-[10px] uppercase font-mono text-slate-400 font-bold">Latencia (RTT)</span>
                   </div>
-                  <div className="bg-slate-50 p-3 sm:p-4 rounded-xl border border-slate-100">
-                    <div className="flex items-center gap-1.5 sm:gap-2 mb-1">
-                      <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500" />
-                      <span className="text-[8px] sm:text-[9px] uppercase font-mono text-slate-400 font-bold">Latencia (RTT)</span>
-                    </div>
-                    <p className="text-sm sm:text-base font-bold text-slate-800 font-mono">{result.measuredLatency} ms</p>
-                    {result.rtt > 0 && (
-                      <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5">API: {result.rtt} ms</p>
-                    )}
+                  <p className="text-xl font-bold text-slate-800">
+                    {result.measuredLatency > 0 ? `${result.measuredLatency} ms` : 'N/A'}
+                  </p>
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    {result.measuredLatency === 0 ? 'No se pudo medir' :
+                     result.measuredLatency < 50 ? 'Excelente' :
+                     result.measuredLatency < 100 ? 'Aceptable' :
+                     result.measuredLatency < 200 ? 'Elevada' : 'Muy alta'}
+                  </p>
+                </div>
+
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Activity className="w-4 h-4 text-indigo-500" />
+                    <span className="text-[10px] uppercase font-mono text-slate-400 font-bold">Jitter (Estabilidad)</span>
                   </div>
-                  <div className="bg-slate-50 p-3 sm:p-4 rounded-xl border border-slate-100">
-                    <div className="flex items-center gap-1.5 sm:gap-2 mb-1">
-                      <Activity className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-rose-500" />
-                      <span className="text-[8px] sm:text-[9px] uppercase font-mono text-slate-400 font-bold">Jitter (Estabilidad)</span>
-                    </div>
-                    <p className="text-sm sm:text-base font-bold text-slate-800 font-mono">{result.measuredJitter} ms</p>
-                    <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5">{result.measuredJitter < 10 ? 'Muy estable' : result.measuredJitter < 30 ? 'Estable' : 'Inestable'}</p>
+                  <p className="text-xl font-bold text-slate-800">
+                    {result.measuredJitter > 0 ? `${result.measuredJitter} ms` : 'N/A'}
+                  </p>
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    {result.measuredJitter === 0 ? 'No se pudo medir' :
+                     result.measuredJitter < 15 ? 'Muy estable' :
+                     result.measuredJitter < 30 ? 'Estable' :
+                     result.measuredJitter < 50 ? 'Inestable' : 'Muy inestable'}
+                  </p>
+                </div>
+
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Download className="w-4 h-4 text-indigo-500" />
+                    <span className="text-[10px] uppercase font-mono text-slate-400 font-bold">Velocidad Descarga</span>
                   </div>
-                  <div className="bg-slate-50 p-3 sm:p-4 rounded-xl border border-slate-100">
-                    <div className="flex items-center gap-1.5 sm:gap-2 mb-1">
-                      <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-cyan-500" />
-                      <span className="text-[8px] sm:text-[9px] uppercase font-mono text-slate-400 font-bold">Velocidad Descarga</span>
-                    </div>
-                    <p className="text-sm sm:text-base font-bold text-slate-800 font-mono">{result.measuredSpeed > 0 ? `${result.measuredSpeed} Mbps` : 'N/A'}</p>
-                    {result.downlink > 0 && (
-                      <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5">API: ~{result.downlink} Mbps</p>
-                    )}
+                  <p className="text-xl font-bold text-slate-800">
+                    {result.measuredSpeed > 0 ? `${result.measuredSpeed} Mbps` : 'N/A'}
+                  </p>
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    {result.measuredSpeed === 0 ? 'No se pudo medir' :
+                     result.measuredSpeed > 50 ? 'Muy rápida' :
+                     result.measuredSpeed > 20 ? 'Rápida' :
+                     result.measuredSpeed > 5 ? 'Moderada' : 'Lenta'}
+                  </p>
+                </div>
+
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Globe className="w-4 h-4 text-indigo-500" />
+                    <span className="text-[10px] uppercase font-mono text-slate-400 font-bold">Resolución DNS</span>
                   </div>
-                  <div className="bg-slate-50 p-3 sm:p-4 rounded-xl border border-slate-100">
-                    <div className="flex items-center gap-1.5 sm:gap-2 mb-1">
-                      <Globe className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-500" />
-                      <span className="text-[8px] sm:text-[9px] uppercase font-mono text-slate-400 font-bold">Resolución DNS</span>
-                    </div>
-                    <p className="text-sm sm:text-base font-bold text-slate-800 font-mono">{result.dnsLatency > 0 ? `${result.dnsLatency} ms` : 'N/A'}</p>
-                  </div>
-                  <div className="bg-slate-50 p-3 sm:p-4 rounded-xl border border-slate-100">
-                    <div className="flex items-center gap-1.5 sm:gap-2 mb-1">
-                      <Monitor className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-500" />
-                      <span className="text-[8px] sm:text-[9px] uppercase font-mono text-slate-400 font-bold">Ahorro de Datos</span>
-                    </div>
-                    <p className="text-sm sm:text-base font-bold text-slate-800 font-mono">{result.saveData ? 'Activado' : 'Desactivado'}</p>
-                  </div>
+                  <p className="text-xl font-bold text-slate-800">
+                    {result.dnsLatency > 0 ? `${result.dnsLatency} ms` : 'N/A'}
+                  </p>
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    {result.dnsLatency === 0 ? 'No se pudo medir' :
+                     result.dnsLatency < 50 ? 'Rápido' :
+                     result.dnsLatency < 100 ? 'Aceptable' : 'Lento'}
+                  </p>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Findings */}
-          <div className="bg-white border border-slate-200 rounded-3xl p-4 sm:p-8 shadow-sm text-slate-800 space-y-4 sm:space-y-6">
-            <h3 className="text-base font-bold text-slate-800 flex items-center gap-2">
-              <Gauge className="w-5 h-5 text-indigo-600" />
+          {/* Hallazgos */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-sm">
+            <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-500" />
               Hallazgos
             </h3>
-            {result.issues.length === 0 ? (
-              <div className="bg-emerald-50 border border-emerald-100 p-4 sm:p-5 rounded-2xl flex items-start gap-3">
-                <CheckCircle className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-600 flex-shrink-0 mt-0.5" />
-                <div className="space-y-1">
-                  <h4 className="text-sm font-bold text-emerald-900">Conexión óptima</h4>
-                  <p className="text-xs text-emerald-700 leading-relaxed">
-                    Tu conexión es estable y rápida. Ideal para trabajo remoto, streaming y videollamadas.
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-2 sm:space-y-3">
-                {result.issues.map((issue, idx) => {
-                  const isWarning = issue.includes('⚠️') || issue.includes('muy') || issue.includes('inestable');
-                  return (
-                    <div key={idx} className={`${isWarning ? 'bg-red-50 border-red-100' : 'bg-amber-50 border-amber-100'} p-3 sm:p-4 rounded-xl flex items-start gap-2 sm:gap-3 border`}>
-                      {isWarning ? (
-                        <ShieldAlert className="w-4 h-4 sm:w-5 sm:h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                      ) : (
-                        <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                      )}
-                      <p className={`text-xs ${isWarning ? 'text-red-800' : 'text-amber-800'} leading-relaxed font-medium`}>{issue}</p>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+            <ul className="space-y-2">
+              {result.issues.map((issue, idx) => (
+                <li key={idx} className="text-xs text-slate-600 flex items-start gap-2">
+                  <span className="text-amber-500 mt-0.5">•</span>
+                  {issue}
+                </li>
+              ))}
+            </ul>
           </div>
         </motion.div>
       )}
