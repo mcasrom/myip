@@ -370,7 +370,7 @@ app.use((req, res, next) => {
 // ============================================================================
 // Speedtest endpoints (para mediciones reales desde el navegador)
 // ============================================================================
-const speedTestData = Buffer.alloc(10_000_000, 0); // 10MB para test real de velocidad
+const speedTestData = Buffer.alloc(500_000, 0); // 500KB - test rápido y fiable
 
 app.get('/api/speedtest/ping', (req, res) => {
   res.json({ t: Date.now() });
