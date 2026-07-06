@@ -1264,3 +1264,98 @@ de tocar App.tsx completo. Sesion dedicada, con tiempo, no mezclado con
 otros pendientes del dia.
 
 Decision 2026-07-06: pospuesto, se anota como roadmap, NO se empieza hoy.
+
+## Sesión 2026-07-07 — 4 features rápidas del roadmap "Valor Añadido" completadas
+
+### Contexto
+Retomado el roadmap de 2026-07-06 (Security Score visual, Sin cambios,
+Comparativa anónima, etc.), priorizado por ratio impacto/esfuerzo. Las
+4 opciones de menor riesgo/dificultad de la tabla quedaron cerradas hoy,
+cada una con su propio deploy verificado end-to-end (tsc --noEmit ->
+build -> rsync -> docker compose up -d --build -> logs limpios).
+
+### 1. Security Score visual (barra 0-100) — YA EXISTÍA, verificado
+No requirió código nuevo. server.ts ya calculaba `scoreNumeric` (líneas
+1099-1105) y TrafficLight.tsx ya lo renderizaba como barra de color con
+"{scoreNumeric}/100". Confirmado en producción vía grep sobre el bundle
+JS servido (`de 100 pts` presente en index-oNyypEF0.js).
+
+### 2. "Sin cambios detectados desde hace X días" — CERRADO
+- alerts.ts: `compareScans()` exportada (antes solo uso interno del cron).
+- server.ts: import de `compareScans`; antes de guardar el escaneo nuevo,
+  se consulta `authDb.getScanHistory(user.email, 1)` para obtener el
+  escaneo anterior, se calcula `noChanges` (inverso de `hasChanges`) y
+  `daysSinceLastScan` (diff de `created_at` en días). Ambos incluidos en
+  la respuesta JSON del escaneo.
+- src/types.ts: campos opcionales `noChanges`/`daysSinceLastScan`.
+- src/App.tsx: mensaje bajo el TrafficLight si `noChanges === true`.
+- Limitación conocida: solo aplica a usuarios Premium (mismo gating que
+  `/api/scan/history`, que ya exige `isPremium`).
+- Deploy verificado: build limpio, contenedor recreado sin errores,
+  commit `68c8b93`.
+
+### 3. Popup automático de cambios detectados tras escaneo — CERRADO
+- Decisión de UX (confirmada con Miguel): aparece automáticamente si
+  `changes.length > 0`, no requiere click manual.
+- server.ts: nueva variable `detectedChanges` (= `cmp.changes`), incluida
+  en la respuesta JSON como `changes`.
+- src/types.ts: campo opcional `changes?: string[]`.
+- src/components/ChangesPopup.tsx (nuevo): modal clonando el patrón visual
+  ya usado en el modal de guía iOS de PWAInstallBanner.tsx (`fixed inset-0
+  z-50 bg-slate-950/80 backdrop-blur-sm`, card blanca `rounded-3xl`).
+- src/App.tsx: `useState<boolean>` para controlar visibilidad, trigger
+  justo después de `setScanResult(data)` si `data.changes.length > 0`,
+  render condicional junto a `PWAInstallBanner`.
+- Deploy verificado: build limpio, contenedor recreado sin errores,
+  commit `c0ebdad`.
+
+### 4. Comparativa anónima (tu score vs media de la comunidad) — CERRADO
+- Investigación previa al patch: `scan_history` NO tenía columna numérica
+  persistida del score (solo el categórico green/yellow/red). Los 34
+  registros existentes en producción eran 100% "green" categórico, lo
+  que hacía inútil una comparativa por categoría — se optó por migrar
+  esquema y comparar el número real 0-100.
+- db.ts: migración `ALTER TABLE scan_history ADD COLUMN score_numeric
+  INTEGER` con el mismo patrón try/catch ya usado para `tier`/
+  `monthly_scan_count` (SQLite no soporta `ADD COLUMN IF NOT EXISTS`).
+  `saveScanRecord()` ahora acepta y persiste `scoreNumeric`. Nueva función
+  `getCommunityStats()`: `SELECT AVG(score_numeric) as avg, COUNT(*) as
+  total FROM scan_history WHERE score_numeric IS NOT NULL` (los 34
+  registros viejos con NULL quedan excluidos del promedio automáticamente,
+  sin migración de datos históricos).
+- server.ts: `scoreNumeric` pasado a `saveScanRecord()`; `communityAverage`
+  (resultado de `getCommunityStats().avgScore`) incluido en la respuesta
+  JSON del escaneo.
+- src/types.ts: campo opcional `communityAverage?: number | null`.
+- src/App.tsx: texto "Tu puntuación: X — Media de la comunidad: Y" bajo
+  el TrafficLight, junto al mensaje de "sin cambios".
+- Verificado en producción tras el deploy: `PRAGMA table_info(scan_history)`
+  confirma la columna `score_numeric` ya presente en el esquema real.
+- Nota para vigilar: la media empieza en 0 muestras útiles (solo cuenta
+  escaneos NUEVOS a partir de hoy); revisar en ~1 semana si conviene
+  mostrar aviso de "pocos datos aún" mientras `totalScored` sea bajo.
+- Deploy verificado: build limpio, migración de esquema confirmada en
+  runtime, commit `9a47d27`.
+
+### Metodología de la sesión (para repetir)
+Cada feature siguió el mismo ciclo estricto: inspección con grep/sed
+antes de escribir una sola línea (nunca asumir estructura de código sin
+verla), patch Python anchor-based (`content.count(anchor) == 1` o aborta
+y restaura backups automáticamente), `tsc --noEmit` obligatorio antes de
+build, build local antes de tocar el servidor, deploy a la ruta correcta
+confirmada (`/home/deploy/myip/`, NO `/home/deploy/apps/myip/` — error
+de un intento de deploy hoy, corregido sin dejar rastro, carpeta vacía
+borrada), y verificación de logs post-deploy antes de dar por cerrado.
+Cero roturas en las 3 features con código nuevo.
+
+### Pendiente (siguiente en la cola del roadmap 2026-07-06)
+- [ ] Fase 2 auditoría (lastCronRun/emailsSent aún null/0, sigue sin
+      resolver de sesiones anteriores)
+- [ ] Inventario de dispositivos (fingerprint_engine + nmap -O) — esfuerzo
+      medio, siguiente candidato natural tras cerrar las 4 rápidas
+- [ ] Webhook Stripe — sigue bloqueado por tipo de clave (falta sk_test_
+      estándar, no rk_test_ restringida), sin tocar hoy
+- [ ] i18n Español/Inglés — pospuesto a sesión dedicada, decisión ya
+      tomada el 2026-07-06, no mezclar con pendientes sueltos
+- [ ] CSP sigue desactivado temporalmente (Qwen lo quitó, reconfigurar
+      pendiente de sesión anterior)
