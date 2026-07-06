@@ -154,6 +154,12 @@ export function deleteSession(token: string): void {
   db.prepare('DELETE FROM sessions WHERE token = ?').run(token);
 }
 
+export function deleteUserAccount(email: string): void {
+  db.prepare('DELETE FROM sessions WHERE email = ?').run(email);
+  db.prepare('DELETE FROM scan_history WHERE email = ?').run(email);
+  db.prepare('DELETE FROM users WHERE email = ?').run(email);
+}
+
 // Scan History
 export interface ScanRecord {
   id: number;
