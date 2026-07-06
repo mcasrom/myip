@@ -362,8 +362,28 @@ app.use(express.json());
 app.use(cookieParser());
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   next();
+});
+
+// ============================================================================
+// Speedtest endpoints (para mediciones reales desde el navegador)
+// ============================================================================
+const speedTestData = Buffer.alloc(10_000_000, 0); // 10MB para test real de velocidad
+
+app.get('/api/speedtest/ping', (req, res) => {
+  res.json({ t: Date.now() });
+});
+
+app.get('/api/speedtest/download', (req, res) => {
+  res.setHeader('Content-Type', 'application/octet-stream');
+  res.setHeader('Cache-Control', 'no-store');
+  res.send(speedTestData);
+});
+
+app.get('/api/speedtest/dns', (req, res) => {
+  res.json({ ok: true, t: Date.now() });
 });
 
 // In-memory database
@@ -635,6 +655,27 @@ app.post('/api/auth/logout', (req, res) => {
   if (token) authDb.deleteSession(token);
   res.clearCookie('myip_session');
   res.json({ message: 'Sesion cerrada.' });
+});
+
+// Auth: Delete account (RGPD Art. 17 - Right to erasure)
+app.post('/api/auth/delete-account', optionalAuth, (req: any, res) => {
+  if (!req.authUser) return res.status(401).json({ error: 'Debes iniciar sesión para eliminar tu cuenta.' });
+  const email = req.authUser;
+  
+  // Remove from in-memory cache
+  delete usersDb[email];
+  
+  // Remove from SQLite (user, sessions, scan history)
+  try {
+    authDb.deleteUserAccount(email);
+  } catch (e) {
+    console.error('[AUTH] Error eliminando cuenta:', e);
+    return res.status(500).json({ error: 'Error interno al eliminar la cuenta.' });
+  }
+  
+  res.clearCookie('myip_session');
+  console.log(`[AUTH] Cuenta eliminada (RGPD): ${email}`);
+  res.json({ message: 'Tu cuenta y todos tus datos han sido eliminados permanentemente.' });
 });
 
 // Acceso invitado: inmediato, sin datos personales

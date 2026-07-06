@@ -38,15 +38,15 @@ interface NetworkAuditResult {
   raw: any;
 }
 
-// Medición de latencia real via fetch a Cloudflare (ligero, ~1KB)
+// Medición de latencia real via nuestro servidor
 async function measureLatency(samples = 10): Promise<{ avg: number; jitter: number }> {
-  const url = 'https://www.cloudflare.com/cdn-cgi/trace';
+  const url = '/api/speedtest/ping';
   const times: number[] = [];
   
   for (let i = 0; i < samples; i++) {
     const start = performance.now();
     try {
-      await fetch(url, { mode: 'no-cors', cache: 'no-store' });
+      await fetch(url, { cache: 'no-store' });
       const elapsed = performance.now() - start;
       times.push(elapsed);
     } catch {
@@ -56,11 +56,9 @@ async function measureLatency(samples = 10): Promise<{ avg: number; jitter: numb
   
   if (times.length < 3) return { avg: 0, jitter: 0 };
   
-  // Descartar primera muestra (cold start)
   const stable = times.slice(1);
   const avg = stable.reduce((a, b) => a + b, 0) / stable.length;
   
-  // Jitter = desviación media entre mediciones consecutivas
   let jitterSum = 0;
   for (let i = 1; i < stable.length; i++) {
     jitterSum += Math.abs(stable[i] - stable[i - 1]);
@@ -70,14 +68,14 @@ async function measureLatency(samples = 10): Promise<{ avg: number; jitter: numb
   return { avg: Math.round(avg), jitter: Math.round(jitter) };
 }
 
-// Estimación de velocidad de descarga via recurso pequeño
+// Velocidad de descarga via nuestro servidor (10MB)
 async function measureSpeed(): Promise<number> {
-  const url = 'https://speed.cloudflare.com/__down?bytes=5000000'; // 5MB
+  const url = '/api/speedtest/download';
   const start = performance.now();
   try {
     const response = await fetch(url, { cache: 'no-store' });
     const blob = await response.blob();
-    const elapsed = (performance.now() - start) / 1000; // segundos
+    const elapsed = (performance.now() - start) / 1000;
     const bytes = blob.size;
     const mbps = (bytes * 8) / (elapsed * 1_000_000);
     return Math.round(mbps * 10) / 10;
@@ -86,12 +84,12 @@ async function measureSpeed(): Promise<number> {
   }
 }
 
-// Latencia DNS via resolución de hostname
+// Latencia via nuestro servidor
 async function measureDNSLatency(): Promise<number> {
-  const url = 'https://www.google.com/favicon.ico';
+  const url = '/api/speedtest/dns';
   const start = performance.now();
   try {
-    await fetch(url, { mode: 'no-cors', cache: 'no-store' });
+    await fetch(url, { cache: 'no-store' });
     return Math.round(performance.now() - start);
   } catch {
     return 0;
