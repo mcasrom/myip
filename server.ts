@@ -1032,7 +1032,7 @@ app.post('/api/scan', optionalAuth, async (req: any, res) => {
     const icon = p.status === 'open' ? '🔓 ABIERTO' : p.status === 'unknown' ? '❓ SIN VERIFICAR' : '🔒 CERRADO';
     return `* **Puerto ${p.port} (${p.service})**: ${icon}. ${p.explanation}`;
   }).join('\n');
-  const blackBullets = reputation.map(r => `* **${r.listName}**: ${r.clean ? '✅ Limpia' : '❌ ' + r.details}`).join('\n');
+  const blackBullets = reputation.map(r => `* **${r.listName}**: ${r.unverified ? '⚪ Sin verificar' : r.clean ? '✅ Limpia' : '❌ ' + r.details}`).join('\n');
 
   analysisText = `
 ### 1. Resumen de la IP
