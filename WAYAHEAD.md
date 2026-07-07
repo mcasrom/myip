@@ -1677,3 +1677,22 @@ Comando para verificar manana:
 - [ ] Borrar linea #otro_stripe= del .env local (ya migrada a STRIPE_SECRET_KEY_TEST)
 - [ ] Matar cualquier proceso node/curl huerfano en puerto 3000 antes de la proxima sesion:
       fuser -k 3000/tcp
+
+## Sesión 2026-07-07 (mañana) — Webhook Stripe verificado + script auditoría
+
+### Webhook Stripe: CERRADO ✅
+- Problema: server usaba `rk_test_` (restricted key) que no verifica firmas de webhook.
+- Solución: actualizado a `sk_test_51TMtvL1yXjIoL1LjdbGli...` (rotación anterior).
+- Creado webhook en Stripe apuntando a `https://myip.viajeinteligencia.com/api/webhooks/stripe`.
+- `DB_PATH=/app/data/myip.sqlite3` añadido al .env del server (container no arrancaba sin ello).
+- `stripe trigger checkout.session.completed` → webhook recibe evento, firma válida, 200 OK.
+- Pendiente: probar checkout real con tarjeta 4242 en producción.
+
+### Script de auditoría
+- `scripts/auditoria_myip.py` — panel de estadísticas de producción vía SSH.
+- Muestra: usuarios, escaneos, IPs únicas, top IPs, scans por día, premium, contadores.
+- Ejecución: `python3 scripts/auditoria_myip.py` (desde raíz del proyecto o ruta absoluta).
+
+### Estadísticas actuales (BD producción)
+- Usuarios: 6 | Escaneos: 42 | IPs únicas: 8 | Premium: 2
+- Top IP: 1.146.110.90 (16 escaneos)
