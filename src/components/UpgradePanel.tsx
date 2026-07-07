@@ -31,8 +31,6 @@ export default function UpgradePanel({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [devCode, setDevCode] = useState('');
-  const [devEmail, setDevEmail] = useState('');
-  const [devPassword, setDevPassword] = useState('');
   const [devMsg, setDevMsg] = useState<string | null>(null);
   const [devMsgType, setDevMsgType] = useState<'success' | 'error'>('error');
 
@@ -83,30 +81,14 @@ export default function UpgradePanel({
   const handleDevCode = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!devCode.trim()) { setDevMsg('Introduce un código.'); setDevMsgType('error'); return; }
-    const useEmail = email || devEmail.trim();
-    if (!useEmail) { setDevMsg('Introduce un email.'); setDevMsgType('error'); return; }
-    
+    if (!email) {
+      setDevMsg('Debes registrarte e iniciar sesión primero (pestaña Perfil).'); setDevMsgType('error'); return;
+    }
     try {
-      // Si no está logueado, registrar primero
-      if (!email) {
-        if (!devPassword || devPassword.length < 8) {
-          setDevMsg('La contraseña debe tener al menos 8 caracteres.'); setDevMsgType('error'); return;
-        }
-        const regRes = await fetch('/api/auth/register', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: useEmail, password: devPassword })
-        });
-        const regData = await regRes.json();
-        if (!regRes.ok) { setDevMsg(regData.error); setDevMsgType('error'); return; }
-        onUpgradeSuccess(regData.user);
-      }
-      
-      // Canjear código
       const codeRes = await fetch('/api/premium/redeem-code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: useEmail, code: devCode })
+        body: JSON.stringify({ email, code: devCode })
       });
       const codeData = await codeRes.json();
       if (!codeRes.ok) { setDevMsg(codeData.error); setDevMsgType('error'); return; }
@@ -249,54 +231,47 @@ export default function UpgradePanel({
       {!isPremium && (
         <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-4">
           <h3 className="text-sm font-bold text-slate-700 font-mono">Acceso Desarrollador</h3>
-          <form onSubmit={handleDevCode} className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-end">
-            <div className="sm:col-span-4 space-y-1">
-              <label className="text-[10px] font-mono uppercase text-slate-400 font-bold">Email</label>
-              <input
-                type="email"
-                placeholder="tu@email.com"
-                value={email || devEmail}
-                onChange={(e) => setDevEmail(e.target.value)}
-                disabled={!!email}
-                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-              />
+          {!email ? (
+            <div className="text-sm text-slate-600 space-y-2">
+              <p>Debes <strong>registrarte e iniciar sesión</strong> primero para canjear un código premium.</p>
+              <p className="text-xs text-slate-500">Ve a la pestaña <strong>Perfil</strong> → crea tu cuenta → vuelve aquí e introduce tu código.</p>
             </div>
-            {!email && (
-              <div className="sm:col-span-3 space-y-1">
-                <label className="text-[10px] font-mono uppercase text-slate-400 font-bold">Contraseña</label>
+          ) : (
+            <form onSubmit={handleDevCode} className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-end">
+              <div className="sm:col-span-6 space-y-1">
+                <label className="text-[10px] font-mono uppercase text-slate-400 font-bold">Email</label>
                 <input
-                  type="password"
-                  placeholder="Mín. 8 caracteres"
-                  value={devPassword}
-                  onChange={(e) => setDevPassword(e.target.value)}
-                  className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                  type="email"
+                  value={email}
+                  disabled
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-500 focus:outline-none"
                 />
               </div>
-            )}
-            <div className={`sm:col-span-${email ? '4' : '3'} space-y-1`}>
-              <label className="text-[10px] font-mono uppercase text-slate-400 font-bold">Código</label>
-              <input
-                type="password"
-                placeholder="Introduce tu código"
-                value={devCode}
-                onChange={(e) => setDevCode(e.target.value.toUpperCase())}
-                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-              />
-            </div>
-            <div className="sm:col-span-4">
-              <button
-                type="submit"
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-xl text-sm transition-all flex items-center justify-center gap-2"
-              >
-                <ShieldCheck className="w-4 h-4" /> Activar Premium
-              </button>
-            </div>
-            {devMsg && (
-              <div className={`sm:col-span-12 text-sm font-mono ${devMsgType === 'success' ? 'text-emerald-600' : 'text-rose-500'}`}>
-                {devMsg}
+              <div className="sm:col-span-6 space-y-1">
+                <label className="text-[10px] font-mono uppercase text-slate-400 font-bold">Código</label>
+                <input
+                  type="password"
+                  placeholder="Introduce tu código"
+                  value={devCode}
+                  onChange={(e) => setDevCode(e.target.value.toUpperCase())}
+                  className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                />
               </div>
-            )}
-          </form>
+              <div className="sm:col-span-12">
+                <button
+                  type="submit"
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-xl text-sm transition-all flex items-center justify-center gap-2"
+                >
+                  <ShieldCheck className="w-4 h-4" /> Activar Premium
+                </button>
+              </div>
+              {devMsg && (
+                <div className={`sm:col-span-12 text-sm font-mono ${devMsgType === 'success' ? 'text-emerald-600' : 'text-rose-500'}`}>
+                  {devMsg}
+                </div>
+              )}
+            </form>
+          )}
         </div>
       )}
 
