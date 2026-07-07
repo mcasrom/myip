@@ -32,6 +32,7 @@ export default function UpgradePanel({
   const [error, setError] = useState<string | null>(null);
   const [devCode, setDevCode] = useState('');
   const [devEmail, setDevEmail] = useState('');
+  const [devPassword, setDevPassword] = useState('');
   const [devMsg, setDevMsg] = useState<string | null>(null);
   const [devMsgType, setDevMsgType] = useState<'success' | 'error'>('error');
 
@@ -84,15 +85,24 @@ export default function UpgradePanel({
     if (!devCode.trim()) { setDevMsg('Introduce un código.'); setDevMsgType('error'); return; }
     const useEmail = email || devEmail.trim();
     if (!useEmail) { setDevMsg('Introduce un email.'); setDevMsgType('error'); return; }
+    
     try {
-      const regRes = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: useEmail })
-      });
-      const regData = await regRes.json();
-      if (!regRes.ok) { setDevMsg(regData.error); setDevMsgType('error'); return; }
-      if (!email) onUpgradeSuccess(regData.user);
+      // Si no está logueado, registrar primero
+      if (!email) {
+        if (!devPassword || devPassword.length < 8) {
+          setDevMsg('La contraseña debe tener al menos 8 caracteres.'); setDevMsgType('error'); return;
+        }
+        const regRes = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: useEmail, password: devPassword })
+        });
+        const regData = await regRes.json();
+        if (!regRes.ok) { setDevMsg(regData.error); setDevMsgType('error'); return; }
+        onUpgradeSuccess(regData.user);
+      }
+      
+      // Canjear código
       const codeRes = await fetch('/api/premium/redeem-code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -251,7 +261,19 @@ export default function UpgradePanel({
                 className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
               />
             </div>
-            <div className="sm:col-span-4 space-y-1">
+            {!email && (
+              <div className="sm:col-span-3 space-y-1">
+                <label className="text-[10px] font-mono uppercase text-slate-400 font-bold">Contraseña</label>
+                <input
+                  type="password"
+                  placeholder="Mín. 8 caracteres"
+                  value={devPassword}
+                  onChange={(e) => setDevPassword(e.target.value)}
+                  className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                />
+              </div>
+            )}
+            <div className={`sm:col-span-${email ? '4' : '3'} space-y-1`}>
               <label className="text-[10px] font-mono uppercase text-slate-400 font-bold">Código</label>
               <input
                 type="password"
