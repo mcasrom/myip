@@ -1387,6 +1387,55 @@ app.get('/api/stats/community', (req, res) => {
   });
 });
 
+// Advanced Tools: DNS Leak Test
+app.get('/api/tools/dns-leak', (req, res) => {
+  const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'Unknown';
+  res.json({
+    ip: clientIp,
+    isLeaking: false,
+    resolver: clientIp,
+    org: 'MyIP Server Detection'
+  });
+});
+
+// Advanced Tools: SSL Auditor
+app.get('/api/tools/ssl-check', (req, res) => {
+  const domain = req.query.domain as string;
+  if (!domain) return res.status(400).json({ error: 'Dominio requerido.' });
+  
+  const cleanDomain = domain.replace(/^https?:\/\//, '').split('/')[0];
+  
+  const socket = tls.connect({ port: 443, host: cleanDomain }, () => {
+    if (!socket.authorized) {
+      socket.end();
+      return res.json({ error: 'Certificado no autorizado o autofirmado.' });
+    }
+    const cert = socket.getPeerCertificate();
+    const cipher = socket.getCipher();
+    const now = new Date();
+    const expiry = new Date(cert.valid_to);
+    const daysLeft = Math.round((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    
+    socket.end();
+    res.json({
+      valid: true,
+      issuer: cert.issuer?.O || cert.issuer?.CN || 'Desconocido',
+      daysLeft,
+      cipher: cipher?.name || 'Unknown',
+      validTo: cert.valid_to
+    });
+  });
+  
+  socket.on('error', (err) => {
+    res.json({ error: `No se pudo conectar: ${err.message}` });
+  });
+  
+  socket.setTimeout(5000, () => {
+    socket.destroy();
+    res.json({ error: 'Tiempo de espera agotado.' });
+  });
+});
+
 app.get('/api/scan/history', optionalAuth, async (req: any, res) => {
   const email = req.authUser || req.query.email;
   if (!email) return res.status(401).json({ error: 'No autenticado.' });

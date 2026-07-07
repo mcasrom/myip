@@ -37,7 +37,7 @@ import PWAInstallBanner from './components/PWAInstallBanner';
 import ChangesPopup from './components/ChangesPopup';
 import WelcomeModal from './components/WelcomeModal';
 import CommunityKPIs from './components/CommunityKPIs';
-import NetworkAgent from './components/NetworkAgent';
+import AdvancedTools from './components/AdvancedTools';
 import LocalNetworkDiagnostic from './components/LocalNetworkDiagnostic';
 import TerminalSecurityCheck from './components/TerminalSecurityCheck';
 import { ScanResult, UserSession } from './types';
@@ -1668,7 +1668,7 @@ export default function App() {
           </div>
         )}
         {/* TAB: ADVANCED TOOLS */}
-        {activeTab === 'advanced' && <NetworkAgent />}
+        {activeTab === 'advanced' && <AdvancedTools />}
         {/* TAB 5: PROFILE / UPGRADE */}
         {activeTab === 'profile' && (
           <div className="space-y-10">
