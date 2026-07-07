@@ -58,7 +58,7 @@ async function sendEmail({ to, subject, text, html }: { to: string; subject: str
   }
 }
 
-function compareScans(prev: any, curr: any): { hasChanges: boolean; changes: string[] } {
+export function compareScans(prev: any, curr: any): { hasChanges: boolean; changes: string[] } {
   const changes: string[] = [];
   try {
     const prevPorts = JSON.parse(prev.ports_json || '[]');

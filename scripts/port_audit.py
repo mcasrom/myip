@@ -31,6 +31,13 @@ CRITICAL_PORTS = {
     21: "FTP (File Transfer Protocol)",
     25: "SMTP (Email Server)",
     53: "DNS (Domain Name System)",
+    139: "NetBIOS (Compartición de archivos Windows)",
+    445: "SMB / Samba (Compartición de archivos)",
+    631: "IPP (Impresora de red)",
+    9100: "JetDirect (Impresora de red)",
+    515: "LPD (Impresora de red)",
+    5900: "VNC (Escritorio remoto)",
+    23: "Telnet (Acceso remoto sin cifrar)",
 }
 
 # Rangos de IP privada — NUNCA escanear

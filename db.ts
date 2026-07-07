@@ -67,6 +67,7 @@ CREATE TABLE IF NOT EXISTS scan_history (
 try { db.exec('ALTER TABLE users ADD COLUMN tier TEXT'); } catch (e) { /* columna ya existe */ }
 try { db.exec('ALTER TABLE users ADD COLUMN monthly_scan_count INTEGER NOT NULL DEFAULT 0'); } catch (e) { /* columna ya existe */ }
 try { db.exec('ALTER TABLE users ADD COLUMN monthly_scan_reset TEXT'); } catch (e) { /* columna ya existe */ }
+try { db.exec('ALTER TABLE scan_history ADD COLUMN score_numeric INTEGER'); } catch (e) { /* columna ya existe */ }
 
 // Tabla de estadísticas del sistema (una sola fila)
 db.exec(`
@@ -105,6 +106,13 @@ export function getSystemStats(): { totalUsers: number; premiumUsers: number; gu
   };
 }
 
+export function getCommunityStats(): { avgScore: number | null; totalScored: number } {
+  const row = db.prepare('SELECT AVG(score_numeric) as avg, COUNT(*) as total FROM scan_history WHERE score_numeric IS NOT NULL').get() as any;
+  return {
+    avgScore: row?.avg !== null && row?.avg !== undefined ? Math.round(row.avg) : null,
+    totalScored: row?.total || 0,
+  };
+}
 const serverStartTimestamp = Date.now();
 
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 dias
@@ -217,16 +225,16 @@ export interface ScanRecord {
 export function saveScanRecord(email: string, scanData: {
   targetIp: string; score: string; scoreReason: string;
   ports: any[]; reputation: any[]; analysisText: string;
-  scanSource: string; geo: any;
+  scanSource: string; geo: any; scoreNumeric?: number;
 }): void {
   db.prepare(`
-    INSERT INTO scan_history (email, target_ip, score, score_reason, ports_json, reputation_json, analysis_text, scan_source, geo_json, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO scan_history (email, target_ip, score, score_reason, ports_json, reputation_json, analysis_text, scan_source, geo_json, created_at, score_numeric)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     email, scanData.targetIp, scanData.score, scanData.scoreReason,
     JSON.stringify(scanData.ports), JSON.stringify(scanData.reputation),
     scanData.analysisText, scanData.scanSource, JSON.stringify(scanData.geo),
-    Date.now()
+    Date.now(), scanData.scoreNumeric ?? null
   );
 }
 

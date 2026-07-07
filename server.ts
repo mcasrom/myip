@@ -12,7 +12,7 @@ import { spawn } from 'child_process';
 import { createHash } from 'crypto';
 import cookieParser from 'cookie-parser';
 import * as authDb from './db';
-import { startAlertsCron } from './alerts';
+import { startAlertsCron, compareScans } from './alerts';
 import { isCommonPassword } from './src/utils/passwordBloom.js';
 dotenv.config();
 
@@ -356,6 +356,50 @@ async function sendEmail({ to, subject, text, html }: { to: string; subject: str
 // Express App
 // ============================================================================
 const app = express();
+
+// Webhook de Stripe: DEBE ir antes de express.json() global, porque Stripe
+// necesita el body RAW (sin parsear) para verificar la firma HMAC.
+app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), async (req, res) => {
+  const sig = req.headers['stripe-signature'];
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  const stripe = getStripe();
+  if (!stripe || !webhookSecret || !sig) {
+    console.error('[WEBHOOK] Stripe/webhook secret no configurado o falta firma.');
+    return res.status(400).send('Webhook no configurado.');
+  }
+  let event: Stripe.Event;
+  try {
+    event = stripe.webhooks.constructEvent(req.body, sig as string, webhookSecret);
+  } catch (err: any) {
+    console.error('[WEBHOOK] Firma invalida:', err.message);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+  if (event.type === 'checkout.session.completed') {
+    const session = event.data.object as Stripe.Checkout.Session;
+    if (session.payment_status === 'paid' && session.metadata?.email) {
+      const normalizedEmail = session.metadata.email.toLowerCase().trim();
+      const resolvedTier = session.metadata.tier === 'monthly' ? 'monthly' : 'lifetime';
+      if (!usersDb[normalizedEmail]) {
+        usersDb[normalizedEmail] = { email: normalizedEmail, isPremium: true, ipAddress: '0.0.0.0', scanCount: 0, verified: true, tier: resolvedTier, monthlyScanCount: 0 };
+      } else {
+        usersDb[normalizedEmail].isPremium = true;
+        usersDb[normalizedEmail].verified = true;
+        usersDb[normalizedEmail].tier = resolvedTier;
+      }
+      try {
+        authDb.updateUserFields(normalizedEmail, { isPremium: true, tier: resolvedTier });
+        console.log(`[WEBHOOK] Premium activado via webhook para ${normalizedEmail} (tier: ${resolvedTier})`);
+      } catch (e) {
+        console.error('[WEBHOOK] No se pudo persistir tier en SQLite:', e);
+      }
+    } else {
+      console.log('[WEBHOOK] checkout.session.completed recibido pero sin email/pago confirmado, ignorado.');
+    }
+  } else {
+    console.log(`[WEBHOOK] Evento recibido sin manejar: ${event.type}`);
+  }
+  res.json({ received: true });
+});
 const PORT = parseInt(process.env.PORT || '3000', 10);
 
 app.use(express.json());
@@ -984,6 +1028,76 @@ app.post('/api/scan', optionalAuth, async (req: any, res) => {
       unknownExplanation: 'No se pudo verificar el estado del puerto HTTP alternativo (8080). Ningún método de escaneo está disponible.',
       unknownRecommendation: 'Configura Shodan, Censys o nmap para verificar este puerto.',
     },
+    139: {
+      service: 'NetBIOS (Compartición de Archivos Windows)',
+      openRisk: 'high',
+      openExplanation: 'El puerto NetBIOS (139) está expuesto a internet. Este servicio permite listar y acceder a carpetas compartidas de Windows y nunca debería ser accesible desde fuera de tu red local.',
+      openRecommendation: 'Bloquea este puerto en tu router/firewall inmediatamente. La compartición de archivos debe limitarse a tu red local, nunca exponerse a internet.',
+      closedExplanation: 'El puerto NetBIOS (139) no es accesible desde internet. Correcto para equipos domésticos.',
+      closedRecommendation: 'No se requiere acción. Mantén la compartición de archivos solo en tu red local.',
+      unknownExplanation: 'No se pudo verificar el estado del puerto NetBIOS (139). Ningún método de escaneo está disponible.',
+      unknownRecommendation: 'Configura Shodan, Censys o nmap para verificar este puerto.',
+    },
+    445: {
+      service: 'SMB / Samba (Compartición de Archivos)',
+      openRisk: 'high',
+      openExplanation: '¡Crítico! El puerto SMB/Samba (445) está expuesto a internet. Cualquiera podría intentar listar o acceder a tus carpetas compartidas, e incluso explotar vulnerabilidades conocidas de SMB (como WannaCry).',
+      openRecommendation: 'Bloquea este puerto en tu router/firewall de inmediato. SMB nunca debe exponerse a internet; úsalo solo dentro de tu red local o mediante VPN.',
+      closedExplanation: 'El puerto SMB/Samba (445) no es accesible desde internet. Correcto para equipos domésticos.',
+      closedRecommendation: 'No se requiere acción. Mantén la compartición de archivos solo en tu red local.',
+      unknownExplanation: 'No se pudo verificar el estado del puerto SMB/Samba (445). Ningún método de escaneo está disponible.',
+      unknownRecommendation: 'Configura Shodan, Censys o nmap para verificar este puerto.',
+    },
+    631: {
+      service: 'IPP (Impresora de Red)',
+      openRisk: 'medium',
+      openExplanation: 'El puerto de impresión IPP (631) está expuesto a internet. Cualquiera podría enviar trabajos de impresión a tu impresora o, en algunos modelos, acceder a su panel de configuración.',
+      openRecommendation: 'Bloquea este puerto en tu router/firewall. Las impresoras deben ser accesibles solo desde tu red local.',
+      closedExplanation: 'El puerto de impresión IPP (631) no es accesible desde internet. Correcto para equipos domésticos.',
+      closedRecommendation: 'No se requiere acción. Mantén tu impresora accesible solo en tu red local.',
+      unknownExplanation: 'No se pudo verificar el estado del puerto IPP (631). Ningún método de escaneo está disponible.',
+      unknownRecommendation: 'Configura Shodan, Censys o nmap para verificar este puerto.',
+    },
+    9100: {
+      service: 'JetDirect (Impresora de Red)',
+      openRisk: 'medium',
+      openExplanation: 'El puerto JetDirect (9100), usado por muchas impresoras de red, está expuesto a internet. Cualquiera podría enviar trabajos de impresión directamente a tu impresora.',
+      openRecommendation: 'Bloquea este puerto en tu router/firewall. Las impresoras deben ser accesibles solo desde tu red local.',
+      closedExplanation: 'El puerto JetDirect (9100) no es accesible desde internet. Correcto para equipos domésticos.',
+      closedRecommendation: 'No se requiere acción. Mantén tu impresora accesible solo en tu red local.',
+      unknownExplanation: 'No se pudo verificar el estado del puerto JetDirect (9100). Ningún método de escaneo está disponible.',
+      unknownRecommendation: 'Configura Shodan, Censys o nmap para verificar este puerto.',
+    },
+    515: {
+      service: 'LPD (Impresora de Red)',
+      openRisk: 'medium',
+      openExplanation: 'El puerto de impresión LPD (515) está expuesto a internet. Cualquiera podría enviar trabajos de impresión a tu impresora.',
+      openRecommendation: 'Bloquea este puerto en tu router/firewall. Las impresoras deben ser accesibles solo desde tu red local.',
+      closedExplanation: 'El puerto de impresión LPD (515) no es accesible desde internet. Correcto para equipos domésticos.',
+      closedRecommendation: 'No se requiere acción. Mantén tu impresora accesible solo en tu red local.',
+      unknownExplanation: 'No se pudo verificar el estado del puerto LPD (515). Ningún método de escaneo está disponible.',
+      unknownRecommendation: 'Configura Shodan, Censys o nmap para verificar este puerto.',
+    },
+    5900: {
+      service: 'VNC (Escritorio Remoto)',
+      openRisk: 'high',
+      openExplanation: '¡Atención! El puerto VNC (5900) está expuesto a internet. Esto permite a cualquiera intentar tomar control remoto de tu equipo, muchas veces con contraseñas débiles o inexistentes por defecto.',
+      openRecommendation: 'Bloquea este puerto en tu router/firewall inmediatamente. Si necesitas escritorio remoto, usa una VPN en lugar de exponer VNC directamente.',
+      closedExplanation: 'El puerto VNC (5900) no es accesible desde internet. Correcto para equipos domésticos.',
+      closedRecommendation: 'No se requiere acción. Si necesitas acceso remoto, usa una VPN en lugar de exponer VNC.',
+      unknownExplanation: 'No se pudo verificar el estado del puerto VNC (5900). Ningún método de escaneo está disponible.',
+      unknownRecommendation: 'Configura Shodan, Censys o nmap para verificar este puerto.',
+    },
+    23: {
+      service: 'Telnet (Acceso Remoto sin Cifrar)',
+      openRisk: 'high',
+      openExplanation: '¡Crítico! El puerto Telnet (23) está expuesto a internet. Telnet transmite usuario y contraseña en texto plano, sin ningún cifrado — es uno de los puertos más buscados por bots maliciosos.',
+      openRecommendation: 'Cierra este puerto de inmediato. Usa SSH (puerto 22) en su lugar, que sí cifra la conexión.',
+      closedExplanation: 'El puerto Telnet (23) no es accesible desde internet. Correcto para equipos domésticos.',
+      closedRecommendation: 'No se requiere acción. Nunca deberías necesitar Telnet expuesto a internet.',
+      unknownExplanation: 'No se pudo verificar el estado del puerto Telnet (23). Ningún método de escaneo está disponible.',
+      unknownRecommendation: 'Configura Shodan, Censys o nmap para verificar este puerto.',
+    },
   };
 
   const enrichedPorts = ports.map((p: any) => {
@@ -1172,12 +1286,26 @@ ${score === 'green' ? '- **Mantenimiento**: Realiza escaneos periódicos para ve
   }
 
   // Save to scan history for logged-in users
+  let noChanges = false;
+  let daysSinceLastScan: number | null = null;
+  let detectedChanges: string[] = [];
   if (user) {
     try {
+      const prevHistory = authDb.getScanHistory(user.email, 1);
+      if (prevHistory.length > 0) {
+        const prev = prevHistory[0] as any;
+        const cmp = compareScans(prev, {
+          ports_json: JSON.stringify(enrichedPorts),
+          reputation_json: JSON.stringify(reputation),
+        });
+        noChanges = !cmp.hasChanges;
+        daysSinceLastScan = Math.floor((now - prev.created_at) / (1000 * 60 * 60 * 24));
+        detectedChanges = cmp.changes;
+      }
       authDb.saveScanRecord(user.email, {
         targetIp: ip, score, scoreReason,
         ports: enrichedPorts, reputation, analysisText,
-        scanSource: portScanSource, geo,
+        scanSource: portScanSource, geo, scoreNumeric,
       });
     } catch (err) { console.log('[HISTORY] Save error:', err); }
   }
@@ -1185,6 +1313,8 @@ ${score === 'green' ? '- **Mantenimiento**: Realiza escaneos periódicos para ve
   res.json({
     ip, timestamp: now, score, scoreReason, scoreNumeric, ports: enrichedPorts, reputation, sslInfo,
     analysisText, grokReport: grokReport || undefined, scanSource: portScanSource, geo,
+    noChanges, daysSinceLastScan, changes: detectedChanges,
+    communityAverage: authDb.getCommunityStats().avgScore,
   });
 });
 
