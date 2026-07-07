@@ -1375,6 +1375,18 @@ ${score === 'green' ? '- **Mantenimiento**: Realiza escaneos periódicos para ve
 });
 
 // Scan History (Premium)
+app.get('/api/stats/community', (req, res) => {
+  const stats = authDb.getSystemStats();
+  const community = authDb.getCommunityStats();
+  res.json({
+    totalScans: stats.totalScans,
+    totalUsers: stats.totalUsers,
+    premiumUsers: stats.premiumUsers,
+    avgScore: community.avgScore,
+    totalScored: community.totalScored,
+  });
+});
+
 app.get('/api/scan/history', optionalAuth, async (req: any, res) => {
   const email = req.authUser || req.query.email;
   if (!email) return res.status(401).json({ error: 'No autenticado.' });
