@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { CreditCard, ShieldCheck, Mail, RefreshCw, Radio, BellRing, Sparkles, Check, Server, Building, Award, Clock, ChevronDown } from 'lucide-react';
 import MarkdownRenderer from './MarkdownRenderer';
+import ScanTimeline from './ScanTimeline';
 
 interface UpgradePanelProps {
   email: string;
@@ -723,6 +724,14 @@ export default function UpgradePanel({
                     <p><span className="font-semibold">Puertos:</span> {(expandedScan.ports || []).join(', ') || 'ninguno'}</p>
                     {expandedScan.analysisText && <MarkdownRenderer content={expandedScan.analysisText} />}
                   </div>
+                )}
+
+                {/* Timeline visual */}
+                {isHistoryOpen && scanHistory.length > 0 && (
+                  <ScanTimeline
+                    scans={scanHistory}
+                    onScanClick={loadScanDetail}
+                  />
                 )}
               </div>
             </div>
