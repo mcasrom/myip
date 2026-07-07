@@ -11,9 +11,10 @@ interface ToolCardProps {
   running: boolean;
   status: 'idle' | 'running' | 'success' | 'warning' | 'error';
   result?: { message: string; details?: string };
+  input?: React.ReactNode;
 }
 
-const ToolCard = ({ icon, category, title, description, actionLabel, onRun, running, status, result }: ToolCardProps) => (
+const ToolCard = ({ icon, category, title, description, actionLabel, onRun, running, status, result, input }: ToolCardProps) => (
   <div className={`bg-white border rounded-2xl p-5 shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-1 ${
     status === 'success' ? 'border-emerald-200 ring-1 ring-emerald-100' :
     status === 'warning' ? 'border-amber-200 ring-1 ring-amber-100' :
@@ -36,6 +37,8 @@ const ToolCard = ({ icon, category, title, description, actionLabel, onRun, runn
 
     <h3 className="text-sm font-bold text-slate-800 mb-1">{title}</h3>
     <p className="text-xs text-slate-500 leading-relaxed mb-4 h-10">{description}</p>
+
+    {input && <div className="mb-3">{input}</div>}
 
     <button
       onClick={onRun}
@@ -220,6 +223,15 @@ export default function AdvancedTools() {
           running={sslStatus === 'running'}
           status={sslStatus}
           result={sslResult}
+          input={
+            <input
+              type="text"
+              placeholder="ej. google.com"
+              value={sslDomain}
+              onChange={(e) => setSslDomain(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          }
         />
 
         <ToolCard
@@ -248,15 +260,6 @@ export default function AdvancedTools() {
                   <h3 className="text-sm font-bold text-slate-800">Mapeador de Red Local (Demo)</h3>
                   <p className="text-xs text-slate-500">Descubre dispositivos en tu WiFi/Ethernet. (Escaneo real próximamente).</p>
                 </div>
-              </div>
-              <div className="flex w-full sm:w-auto gap-3">
-                <input
-                  type="text"
-                  placeholder="Dominio para SSL (ej. google.com)"
-                  value={sslDomain}
-                  onChange={(e) => setSslDomain(e.target.value)}
-                  className="flex-1 sm:w-48 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
               </div>
             </div>
             
