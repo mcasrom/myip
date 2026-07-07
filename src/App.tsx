@@ -1668,7 +1668,29 @@ export default function App() {
           </div>
         )}
         {/* TAB: ADVANCED TOOLS */}
-        {activeTab === 'advanced' && <AdvancedTools />}
+        {activeTab === 'advanced' && (
+          user?.isPremium ? (
+            <AdvancedTools />
+          ) : (
+            <div className="max-w-2xl mx-auto text-center py-12 px-4">
+              <div className="bg-white border border-slate-200 rounded-3xl p-8 shadow-lg">
+                <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                  <Shield className="w-8 h-8" />
+                </div>
+                <h2 className="text-2xl font-bold text-slate-800 mb-3">Herramientas de Seguridad Avanzada</h2>
+                <p className="text-slate-500 mb-6 leading-relaxed">
+                  Accede a diagnósticos profesionales: escáner de URLs con VirusTotal, auditoría SSL, detección de VPN, análisis forense de emails y más.
+                </p>
+                <button
+                  onClick={() => setActiveTab('profile')}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-xl transition-colors flex items-center gap-2 mx-auto"
+                >
+                  Adquirir Plan Premium <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )
+        )}
         {/* TAB 5: PROFILE / UPGRADE */}
         {activeTab === 'profile' && (
           <div className="space-y-10">

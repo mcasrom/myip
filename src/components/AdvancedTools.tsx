@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, Eye, Lock, Globe, Search, CheckCircle, AlertTriangle, Play, Network, Router, Monitor, Printer, Server, ArrowRight, Copy, ExternalLink, Info, Link, Mail, Fingerprint, Terminal, Code, Wifi, ShieldOff, ShieldCheck } from 'lucide-react';
+import { Shield, Eye, Lock, Globe, Search, CheckCircle, AlertTriangle, Play, Network, Router, Monitor, Printer, Server, ArrowRight, Copy, ExternalLink, Info, Link, Mail, Fingerprint, Terminal, Code, Wifi, ShieldOff, ShieldCheck, KeyRound, FileText } from 'lucide-react';
 
 // --- Reusable Tool Card ---
 interface ToolCardProps {
@@ -16,7 +16,7 @@ interface ToolCardProps {
 }
 
 const ToolCard = ({ icon, category, title, description, actionLabel, onRun, running, status, result, input }: ToolCardProps) => (
-  <div className={`bg-white border rounded-2xl p-5 shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-1 ${
+  <div className={`bg-white border rounded-2xl p-5 shadow-sm transition-all duration-300 hover:shadow-md ${
     status === 'success' ? 'border-emerald-200 ring-1 ring-emerald-100' :
     status === 'warning' ? 'border-amber-200 ring-1 ring-amber-100' :
     status === 'pending' ? 'border-blue-200 ring-1 ring-blue-100 bg-blue-50/30' :
@@ -44,7 +44,7 @@ const ToolCard = ({ icon, category, title, description, actionLabel, onRun, runn
     <button
       onClick={onRun}
       disabled={running}
-      className={`w-full text-xs font-bold py-2.5 rounded-lg transition-all flex items-center justify-center gap-2 ${
+      className={`w-full text-xs font-bold py-2.5 rounded-lg transition-all flex items-center justify-center gap-2 min-h-[36px] ${
         running ? 'bg-slate-200 text-slate-400 cursor-wait' :
         status === 'pending' ? 'bg-blue-600 text-white hover:bg-blue-700' :
         status === 'success' ? 'bg-emerald-600 text-white hover:bg-emerald-700' :
@@ -88,12 +88,6 @@ const ToolCard = ({ icon, category, title, description, actionLabel, onRun, runn
 );
 
 // --- Sub-Components for Advanced Tools ---
-
-const DEMO_DEVICES = [
-  { ip: '192.168.1.1', type: 'router', latency: 2 },
-  { ip: '192.168.1.15', type: 'computer', latency: 12 },
-  { ip: '192.168.1.20', type: 'printer', latency: 45 },
-];
 
 function BrowserFingerprint() {
   const [status, setStatus] = useState<'idle' | 'running' | 'success' | 'warning' | 'error'>('idle');
@@ -236,7 +230,7 @@ function EmailForensics() {
 }
 
 function URLScanner() {
-  const [status, setStatus] = useState<'idle' | 'running' | 'success' | 'warning' | 'error'>('idle');
+  const [status, setStatus] = useState<'idle' | 'running' | 'success' | 'warning' | 'error' | 'pending'>('idle');
   const [result, setResult] = useState<{ message: string; details?: string } | null>(null);
   const [url, setUrl] = useState('');
   const [scanData, setScanData] = useState<any>(null);
@@ -331,8 +325,22 @@ function VpnDetector() {
       await new Promise<void>(resolve => {
         pc.onicecandidate = (evt) => {
           if (evt.candidate) {
-            const match = evt.candidate.candidate.match(/([0-9]{1,3}\.){3}[0-9]{1,3}/);
-            if (match && !localIps.includes(match[0])) localIps.push(match[0]);
+            const candidateStr = evt.candidate.candidate;
+            
+            // Detectar mDNS (ej: uuid.local) - común en Mac/Safari/Chrome moderno
+            if (candidateStr.includes('.local')) {
+               if (!localIps.includes('mDNS (Identidad Local)')) localIps.push('mDNS (Identidad Local)');
+            }
+
+            // Detectar IPv4 estándar
+            const match = candidateStr.match(/([0-9]{1,3}\.){3}[0-9]{1,3}/);
+            if (match) {
+               const ip = match[0];
+               // Ignorar si es la misma IP pública que ya vemos (loopback o NAT hairpin)
+               if (ip !== data.ip && !localIps.includes(ip)) {
+                 localIps.push(ip);
+               }
+            }
           } else {
             resolve();
           }
@@ -353,11 +361,15 @@ function VpnDetector() {
       }
 
       if (localIps.length > 0) {
-        const hasLeak = localIps.some(ip => ip.startsWith('192.168.') || ip.startsWith('10.'));
+        // Cualquier IP local o mDNS es una fuga de privacidad
+        const hasLeak = localIps.some(ip => 
+           ip.startsWith('192.168.') || ip.startsWith('10.') || ip.startsWith('172.') || ip.includes('mDNS')
+        );
+        
         if (hasLeak) {
           verdict = 'error';
-          msg = '¡Fuga WebRTC! Tu IP local está visible para las webs.';
-          details += ` | IPs Locales: ${localIps.join(', ')}`;
+          msg = '¡Fuga WebRTC! Tu identidad local o IP está visible.';
+          details += ` | Detectado: ${localIps.join(', ')}`;
         }
       }
 
@@ -385,6 +397,148 @@ function VpnDetector() {
   );
 }
 
+function PortTester() {
+  const [status, setStatus] = useState<'idle' | 'running' | 'success' | 'warning' | 'error'>('idle');
+  const [result, setResult] = useState<{ message: string; details?: string } | null>(null);
+  const [port, setPort] = useState('');
+  const [scanResult, setScanResult] = useState<any>(null);
+
+  const runCheck = async () => {
+    if (!port) {
+      setStatus('error');
+      setResult({ message: 'Introduce un puerto válido (1-65535).' });
+      return;
+    }
+    setStatus('running');
+    setResult(null);
+    try {
+      const res = await fetch('/api/tools/port-test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ port: parseInt(port) })
+      });
+      const data = await res.json();
+      
+      setScanResult(data);
+      if (data.status === 'open') {
+        setStatus('warning');
+        setResult({ message: `Puerto ${port} ABIERTO al exterior.`, details: 'Tu router está redirigiendo tráfico a este puerto.' });
+      } else if (data.status === 'closed') {
+        setStatus('success');
+        setResult({ message: `Puerto ${port} CERRADO.`, details: 'No se detectó servicio escuchando.' });
+      } else {
+        setStatus('warning');
+        setResult({ message: `Puerto ${port} FILTRADO/TIMEOUT.`, details: 'Posible firewall bloqueando la petición.' });
+      }
+    } catch (e: any) {
+      setStatus('error');
+      setResult({ message: e.message || 'Error al verificar puerto.' });
+    }
+  };
+
+  return (
+    <ToolCard
+      category="Red"
+      icon={<KeyRound className="w-5 h-5" />}
+      title="External Port Tester"
+      description="¿Está tu puerto accesible desde internet? Ideal para validar Port Forwarding (juegos, servidores, cámaras)."
+      actionLabel="Verificar Puerto"
+      onRun={runCheck}
+      running={status === 'running'}
+      status={status}
+      result={result}
+      input={
+        <input
+          type="number"
+          placeholder="ej. 8080, 25565, 3389"
+          value={port}
+          onChange={(e) => setPort(e.target.value)}
+          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        />
+      }
+    />
+  );
+}
+
+function HeaderAnalyzer() {
+  const [status, setStatus] = useState<'idle' | 'running' | 'success' | 'warning' | 'error'>('idle');
+  const [result, setResult] = useState<{ message: string; details?: string } | null>(null);
+  const [url, setUrl] = useState('');
+  const [analysis, setAnalysis] = useState<any>(null);
+
+  const runCheck = async () => {
+    if (!url) {
+      setStatus('error');
+      setResult({ message: 'Introduce un dominio o URL.' });
+      return;
+    }
+    setStatus('running');
+    setResult(null);
+    try {
+      const res = await fetch(`/api/tools/header-check?url=${encodeURIComponent(url)}`);
+      const data = await res.json();
+      
+      if (data.error) throw new Error(data.error);
+      
+      setAnalysis(data);
+      const gradeColor = data.grade === 'A' ? 'success' : data.grade === 'B' ? 'success' : data.grade === 'C' ? 'warning' : 'error';
+      setStatus(gradeColor as any);
+      setResult({
+        message: `Calificación de Seguridad: ${data.grade}`,
+        details: `Servidor: ${data.checks.server}`
+      });
+    } catch (e: any) {
+      setStatus('error');
+      setResult({ message: e.message || 'Error analizando cabeceras.' });
+    }
+  };
+
+  return (
+    <div className="col-span-1 md:col-span-2 lg:col-span-3">
+      <ToolCard
+        category="Infraestructura"
+        icon={<FileText className="w-5 h-5" />}
+        title="Security Header Analyzer"
+        description="Audita la configuración de seguridad HTTP de cualquier web (HSTS, CSP, X-Frame, etc)."
+        actionLabel="Analizar Cabeceras"
+        onRun={runCheck}
+        running={status === 'running'}
+        status={status}
+        result={result}
+        input={
+          <input
+            type="text"
+            placeholder="https://ejemplo.com"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+        }
+      />
+      {analysis && (
+        <div className="mt-3 bg-white border border-slate-200 rounded-xl p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 text-xs">
+          <div className="text-center">
+            <p className="text-slate-500 mb-1">HSTS</p>
+            <p className={`font-bold ${analysis.checks.hsts ? 'text-emerald-600' : 'text-red-600'}`}>{analysis.checks.hsts ? 'OK' : 'FAIL'}</p>
+          </div>
+          <div className="text-center">
+            <p className="text-slate-500 mb-1">CSP</p>
+            <p className={`font-bold ${analysis.checks.csp ? 'text-emerald-600' : 'text-red-600'}`}>{analysis.checks.csp ? 'OK' : 'FAIL'}</p>
+          </div>
+          <div className="text-center">
+            <p className="text-slate-500 mb-1">X-Frame</p>
+            <p className={`font-bold ${analysis.checks.xFrameOptions ? 'text-emerald-600' : 'text-red-600'}`}>{analysis.checks.xFrameOptions ? 'OK' : 'FAIL'}</p>
+          </div>
+          <div className="text-center">
+            <p className="text-slate-500 mb-1">X-Content</p>
+            <p className={`font-bold ${analysis.checks.xContentType ? 'text-emerald-600' : 'text-red-600'}`}>{analysis.checks.xContentType ? 'OK' : 'FAIL'}</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // --- Main Component ---
 
 export default function AdvancedTools() {
@@ -400,10 +554,6 @@ export default function AdvancedTools() {
   // State for IP Reputation
   const [repStatus, setRepStatus] = useState<'idle' | 'running' | 'success' | 'warning' | 'error'>('idle');
   const [repResult, setRepResult] = useState<{ message: string; details?: string } | null>(null);
-
-  // State for Network Mapper
-  const [netStatus, setNetStatus] = useState<'idle' | 'running' | 'success' | 'warning' | 'error'>('idle');
-  const [netResult, setNetResult] = useState<{ message: string; details?: string } | null>(null);
 
   const runDnsLeakTest = async () => {
     setDnsStatus('running');
@@ -470,40 +620,29 @@ export default function AdvancedTools() {
     }
   };
 
-  const runNetworkDemo = async () => {
-    setNetStatus('running');
-    setNetResult(null);
-    await new Promise(r => setTimeout(r, 1500));
-    setNetStatus('success');
-    setNetResult({
-      message: `Demo: ${DEMO_DEVICES.length} dispositivos encontrados.`,
-      details: DEMO_DEVICES.map(d => `${d.ip} (${d.type})`).join(', ')
-    });
-  };
-
   return (
     <div className="space-y-8 max-w-6xl mx-auto px-4 sm:px-0">
       {/* Hero Section */}
-      <div className="relative overflow-hidden bg-slate-900 rounded-3xl p-8 sm:p-12 text-center shadow-2xl">
+      <div className="relative overflow-hidden bg-slate-900 rounded-3xl p-6 sm:p-10 text-center shadow-2xl">
         <div className="absolute top-0 left-0 w-full h-full bg-[url('/grid.svg')] opacity-10" />
-        <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 left-0 w-64 h-64 bg-emerald-500/20 rounded-full blur-3xl" />
+        <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-500/20 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-emerald-500/20 rounded-full blur-3xl" />
         
         <div className="relative z-10">
-          <span className="inline-block px-3 py-1 bg-indigo-500/20 text-indigo-300 text-[10px] font-bold uppercase tracking-wider rounded-full mb-4 border border-indigo-500/30">
+          <span className="inline-block px-3 py-1 bg-indigo-500/20 text-indigo-300 text-[10px] font-bold uppercase tracking-wider rounded-full mb-3 border border-indigo-500/30">
             Centro de Diagnóstico Profesional
           </span>
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-white mb-4 tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-white mb-3 tracking-tight">
             Herramientas de <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-emerald-400">Seguridad Avanzada</span>
           </h1>
-          <p className="text-slate-400 max-w-2xl mx-auto text-sm sm:text-base leading-relaxed">
-            Verifica tu privacidad, analiza la integridad de sitios web y explora tu red local con herramientas diseñadas para usuarios exigentes.
+          <p className="text-slate-400 max-w-xl mx-auto text-xs sm:text-sm leading-relaxed">
+            Verifica tu privacidad, analiza la integridad de sitios web y protege tu identidad con herramientas diseñadas para usuarios exigentes.
           </p>
         </div>
       </div>
 
       {/* Tools Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* VPN & Proxy Detector */}
         <VpnDetector />
 
@@ -558,73 +697,17 @@ export default function AdvancedTools() {
         {/* URL Scanner */}
         <URLScanner />
         
+        {/* Port Tester */}
+        <PortTester />
+
         {/* Browser Fingerprint */}
         <BrowserFingerprint />
 
         {/* Email Forensics */}
         <EmailForensics />
 
-        {/* Network Mapper */}
-        <div className="col-span-1 md:col-span-2 lg:col-span-3">
-          <div className={`bg-white border rounded-2xl p-6 shadow-sm transition-all duration-300 hover:shadow-md ${
-            netStatus === 'success' ? 'border-emerald-200 ring-1 ring-emerald-100' : 'border-slate-200'
-          }`}>
-            <div className="flex items-center gap-4 mb-4">
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${netStatus === 'success' ? 'bg-emerald-100 text-emerald-600' : 'bg-indigo-50 text-indigo-600'}`}>
-                <Network className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-slate-800">Mapeador de Red Local (Demo)</h3>
-                <p className="text-xs text-slate-500">Descubre dispositivos en tu WiFi/Ethernet. (Escaneo real próximamente).</p>
-              </div>
-            </div>
-            
-            <button
-              onClick={runNetworkDemo}
-              disabled={netStatus === 'running'}
-              className={`w-full sm:w-auto text-xs font-bold py-2.5 px-6 rounded-lg transition-all flex items-center justify-center gap-2 ${
-                netStatus === 'running' ? 'bg-slate-200 text-slate-400 cursor-wait' :
-                netStatus === 'success' ? 'bg-emerald-600 text-white hover:bg-emerald-700' :
-                'bg-slate-900 text-white hover:bg-slate-800'
-              }`}
-            >
-              {netStatus === 'running' ? (
-                <>
-                  <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                  Escaneando red...
-                </>
-              ) : (
-                <>
-                  <Play className="w-3.5 h-3.5" /> Iniciar Demo de Red
-                </>
-              )}
-            </button>
-
-            {netResult && (
-              <div className="mt-4 p-4 rounded-xl bg-slate-50 border border-slate-100">
-                <div className="flex items-center gap-2 text-emerald-700 font-bold text-sm mb-3">
-                  <CheckCircle className="w-4 h-4" /> {netResult.message}
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {DEMO_DEVICES.map((d) => (
-                    <div key={d.ip} className="flex items-center gap-3 bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
-                      <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center text-slate-600">
-                        {d.type === 'router' ? <Router className="w-4 h-4" /> :
-                         d.type === 'computer' ? <Monitor className="w-4 h-4" /> :
-                         d.type === 'printer' ? <Printer className="w-4 h-4" /> :
-                         <Server className="w-4 h-4" />}
-                      </div>
-                      <div>
-                        <p className="text-xs font-mono font-bold text-slate-700">{d.ip}</p>
-                        <p className="text-[10px] text-slate-500 capitalize">{d.type} · {d.latency}ms</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+        {/* Header Analyzer */}
+        <HeaderAnalyzer />
       </div>
 
       {/* CTA Footer */}

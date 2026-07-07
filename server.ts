@@ -7,6 +7,7 @@ import Stripe from 'stripe';
 import crypto from 'crypto';
 import https from 'https';
 import tls from 'tls';
+import net from 'net';
 import dns from 'dns';
 import { spawn } from 'child_process';
 import { createHash } from 'crypto';
@@ -1509,6 +1510,80 @@ app.get('/api/tools/ip-info', (req, res) => {
       isLikelyVpn: isSuspicious
     });
   });
+});
+
+// Advanced Tools: External Port Tester
+app.post('/api/tools/port-test', (req, res) => {
+  const { port, targetIp } = req.body;
+  if (!port) return res.status(400).json({ error: 'Puerto requerido.' });
+  
+  const clientIp = (req.headers['x-forwarded-for'] || req.socket.remoteAddress) as string;
+  const ipToTest = targetIp || clientIp;
+  
+  const socket = net.connect({ host: ipToTest, port: parseInt(port), timeout: 5000 }, () => {
+    socket.end();
+    res.json({ status: 'open', ip: ipToTest, port: parseInt(port) });
+  });
+  
+  socket.on('error', (err: any) => {
+    if (err.code === 'ECONNREFUSED') {
+      res.json({ status: 'closed', ip: ipToTest, port: parseInt(port) });
+    } else if (err.code === 'ETIMEDOUT') {
+      res.json({ status: 'filtered', ip: ipToTest, port: parseInt(port) });
+    } else {
+      res.json({ status: 'error', message: err.message });
+    }
+  });
+  
+  socket.setTimeout(5000, () => {
+    socket.destroy();
+    res.json({ status: 'filtered', ip: ipToTest, port: parseInt(port) });
+  });
+});
+
+// Advanced Tools: Security Header Analyzer
+app.get('/api/tools/header-check', async (req, res) => {
+  let url = req.query.url as string;
+  if (!url) return res.status(400).json({ error: 'URL requerida.' });
+  if (!url.startsWith('http')) url = 'https://' + url;
+  
+  try {
+    const response = await fetch(url, { method: 'GET', redirect: 'follow' });
+    const headers: Record<string, string> = {};
+    response.headers.forEach((value, key) => {
+      headers[key] = value;
+    });
+    
+    // Analysis
+    const checks = {
+      hsts: !!headers['strict-transport-security'],
+      csp: !!headers['content-security-policy'],
+      xFrameOptions: !!headers['x-frame-options'],
+      xContentType: headers['x-content-type-options'] === 'nosniff',
+      referrerPolicy: !!headers['referrer-policy'],
+      permissionsPolicy: !!headers['permissions-policy'],
+      server: headers['server'] || 'Hidden',
+    };
+    
+    // Simple Grading
+    let score = 0;
+    if (checks.hsts) score++;
+    if (checks.csp) score++;
+    if (checks.xFrameOptions) score++;
+    if (checks.xContentType) score++;
+    if (checks.referrerPolicy) score++;
+    if (checks.permissionsPolicy) score++;
+    
+    let grade = 'F';
+    if (score === 6) grade = 'A';
+    else if (score >= 4) grade = 'B';
+    else if (score >= 2) grade = 'C';
+    else grade = 'D';
+    
+    res.json({ grade, checks, headers });
+  } catch (e: any) {
+    res.json({ error: `No se pudo acceder: ${e.message}` });
+  }
 });
 
 app.get('/api/scan/history', optionalAuth, async (req: any, res) => {
