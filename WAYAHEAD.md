@@ -1482,3 +1482,33 @@ Nota: esto depende del pendiente de arquitectura ya documentado arriba
 (script Python descargable, el escaneo NO puede hacerse desde el backend
 Hetzner por estar en red distinta a la LAN del usuario) — sin resolver
 eso primero, no hay datos que graficar.
+
+## Sesión 2026-07-07 (continuación) — Gap de cobertura de puertos CERRADO
+
+Patch aplicado siguiendo el plan documentado en la entrada anterior
+(hallazgo del mismo día).
+
+### Cambios
+- scripts/port_audit.py: CRITICAL_PORTS ampliado de 12 a 19 puertos —
+  añadidos 139 (NetBIOS), 445 (SMB/Samba), 631 (IPP), 9100 (JetDirect),
+  515 (LPD), 5900 (VNC), 23 (Telnet). UPnP/1900 (UDP) dejado fuera por
+  ahora, según lo ya decidido (coste de escaneo UDP, documentado como
+  limitación conocida).
+- server.ts: 7 entradas nuevas en portDefinitions con explicacion/
+  recomendacion especifica por servicio (antes solo 5 de 12 puertos
+  tenian explicacion; ahora 12 de 19).
+
+### Verificacion de rendimiento (la duda real antes de tocar produccion)
+- Local (laptop): escaneo completo de 19 puertos contra 8.8.8.8 = 10s
+  reales (`time python3 port_audit.py`).
+- Produccion (dentro del contenedor Docker, tras deploy): 1.7s para los
+  mismos 19 puertos contra la misma IP de prueba — bien por debajo del
+  timeout de 120s en scan_with_nmap() y del Promise.race de 30s en
+  server.ts. Cero impacto de rendimiento, cobertura casi duplicada.
+
+### Pendiente (siguiente patch, NO mezclado con este)
+- [ ] Completar las 7 explicaciones genericas restantes (3389, 5432,
+      6379, 27017, 21, 25, 53) — mismo patron, separado a proposito para
+      mantener el diff de este commit legible
+- [ ] Decidir si se añade UPnP/1900 con -sU (coste real de escaneo UDP,
+      medir antes de decidir)
