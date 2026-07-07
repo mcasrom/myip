@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Network, Globe, Router, Monitor, Printer, Tv, Server, Shield, AlertTriangle, Clock, Play, Wifi } from 'lucide-react';
+import { Network, Globe, Router, Monitor, Printer, Tv, Server, Shield, AlertTriangle, Clock, Play, Wifi, Lock } from 'lucide-react';
 
 interface DiscoveredDevice {
   ip: string;
@@ -17,71 +17,31 @@ const DEMO_DEVICES: DiscoveredDevice[] = [
 ];
 
 export default function NetworkMapper() {
-  const [localIp, setLocalIp] = useState<string | null>(null);
   const [devices, setDevices] = useState<DiscoveredDevice[]>([]);
   const [scanning, setScanning] = useState(false);
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState<string>('');
 
-  const detectLocalIp = (): Promise<string | null> => {
-    return new Promise((resolve) => {
-      try {
-        const pc = new RTCPeerConnection({ iceServers: [] });
-        pc.createDataChannel('');
-        pc.createOffer().then(offer => pc.setLocalDescription(offer));
-        
-        pc.onicecandidate = (evt) => {
-          if (evt.candidate) {
-            const match = evt.candidate.candidate.match(/([0-9]{1,3}\.){3}[0-9]{1,3}/);
-            if (match) {
-              const ip = match[0];
-              if (ip.startsWith('192.168.') || ip.startsWith('10.') || ip.startsWith('172.')) {
-                pc.close();
-                resolve(ip);
-                return;
-              }
-            }
-          }
-        };
-        setTimeout(() => { pc.close(); resolve(null); }, 3000);
-      } catch {
-        resolve(null);
-      }
-    });
-  };
-
-  const startScan = async (demo = false) => {
+  const startDemoScan = async () => {
     setScanning(true);
     setProgress(0);
     setDevices([]);
-    setStatus(demo ? 'Ejecutando demostración...' : 'Detectando tu IP local...');
+    setStatus('Ejecutando demostración...');
     
-    if (!demo) {
-      const ip = await detectLocalIp();
-      setLocalIp(ip);
-      if (!ip) {
-        setStatus('No se pudo detectar IP local (posible bloqueo del navegador). Prueba el Modo Demo.');
-        setScanning(false);
-        return;
+    try {
+      for (let i = 0; i <= 100; i += 5) {
+        setProgress(i);
+        await new Promise(r => setTimeout(r, 50));
       }
-      setStatus(`Escaneando red ${ip.split('.').slice(0,3).join('.')}...`);
-    }
 
-    // Simulación de progreso
-    for (let i = 0; i <= 100; i += 5) {
-      setProgress(i);
-      await new Promise(r => setTimeout(r, 100));
-    }
-
-    if (demo) {
       setDevices(DEMO_DEVICES);
       setStatus('Escaneo de demostración completado.');
-    } else {
-      // Aquí iría la lógica real de sondeo (actualmente limitada por Mixed Content en HTTPS)
-      setDevices([]);
-      setStatus('Escaneo completado. No se detectaron dispositivos (limitación de seguridad del navegador).');
+    } catch (error) {
+      console.error("Scan error:", error);
+      setStatus('Error durante el escaneo.');
+    } finally {
+      setScanning(false);
     }
-    setScanning(false);
   };
 
   const getIcon = (type: DiscoveredDevice['type']) => {
@@ -104,27 +64,36 @@ export default function NetworkMapper() {
           <h2 className="text-xl font-bold">Mapeador de Red Local</h2>
         </div>
         <p className="text-sm text-slate-300">
-          Descubre dispositivos en tu red WiFi/Ethernet. 100% en navegador, sin descargas.
+          Visualiza tu topología de red. El escaneo real requiere permisos avanzados (próximamente).
         </p>
       </div>
 
       {/* Controls */}
       <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-4 shadow-sm">
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          {/* Real Scan - Disabled/Future */}
           <button
-            onClick={() => startScan(false)}
+            disabled
+            className="bg-slate-100 text-slate-400 font-bold py-3 px-6 rounded-xl flex items-center justify-center gap-2 cursor-not-allowed relative group"
+          >
+            <Lock className="w-4 h-4" />
+            Escaneo Real (Próximamente)
+            
+            {/* Tooltip */}
+            <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-64 p-3 bg-slate-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl">
+              <p className="font-bold mb-1">Requiere extensión o agente local</p>
+              <p className="text-slate-400">Los navegadores bloquean el escaneo de red por seguridad. Estamos trabajando en una solución segura.</p>
+            </div>
+          </button>
+
+          {/* Demo Scan - Active */}
+          <button
+            onClick={startDemoScan}
             disabled={scanning}
             className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white font-bold py-3 px-6 rounded-xl transition-colors flex items-center justify-center gap-2"
           >
-            {scanning ? <Clock className="w-4 h-4 animate-spin" /> : <Wifi className="w-4 h-4" />}
-            Escaneo Real
-          </button>
-          <button
-            onClick={() => startScan(true)}
-            disabled={scanning}
-            className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3 px-6 rounded-xl transition-colors flex items-center justify-center gap-2"
-          >
-            <Play className="w-4 h-4" /> Modo Demo
+            {scanning ? <Clock className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+            Modo Demo
           </button>
         </div>
         
@@ -141,15 +110,9 @@ export default function NetworkMapper() {
         )}
         
         {!scanning && status && (
-          <div className={`text-xs p-3 rounded-lg ${status.includes('Error') || status.includes('No se pudo') ? 'bg-amber-50 text-amber-700' : 'bg-slate-50 text-slate-600'}`}>
+          <div className="text-xs p-3 rounded-lg bg-slate-50 text-slate-600">
             {status}
           </div>
-        )}
-
-        {localIp && (
-          <p className="text-xs text-center text-slate-500">
-            Tu IP local detectada: <span className="font-mono font-bold text-indigo-600">{localIp}</span>
-          </p>
         )}
       </div>
 
