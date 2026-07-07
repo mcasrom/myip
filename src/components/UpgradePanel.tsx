@@ -5,6 +5,7 @@ import MarkdownRenderer from './MarkdownRenderer';
 interface UpgradePanelProps {
   email: string;
   isPremium: boolean;
+  premiumExpiresAt?: number;
   onUpgradeSuccess: (user: any) => void;
   onSimulateAlert: () => void;
   onSendReport: (type: string) => void;
@@ -15,6 +16,7 @@ interface UpgradePanelProps {
 export default function UpgradePanel({
   email,
   isPremium,
+  premiumExpiresAt,
   onUpgradeSuccess,
   onSimulateAlert,
   onSendReport,
@@ -639,11 +641,21 @@ export default function UpgradePanel({
                 </div>
                 <div className="flex justify-between text-xs text-slate-600">
                   <span>Tipo de Licencia:</span>
-                  <span className="text-amber-600 font-bold">Premium Permanente</span>
+                  <span className="text-amber-600 font-bold">
+                    {premiumExpiresAt ? 'Premium 30 días' : 'Premium Permanente'}
+                  </span>
                 </div>
+                {premiumExpiresAt && (
+                  <div className="flex justify-between text-xs text-slate-600">
+                    <span>Expira:</span>
+                    <span className="font-mono text-slate-700 font-bold">
+                      {new Date(premiumExpiresAt).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between text-xs text-slate-600">
                   <span>Soporte Técnico:</span>
-                  <span className="text-indigo-600 font-bold">Prioritario de por vida</span>
+                  <span className="text-indigo-600 font-bold">Prioritario</span>
                 </div>
               </div>
 

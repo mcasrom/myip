@@ -1676,6 +1676,7 @@ export default function App() {
               <UpgradePanel
                 email={user?.email || ''}
                 isPremium={user?.isPremium || false}
+                premiumExpiresAt={user?.premiumExpiresAt}
                 onUpgradeSuccess={handleUpgradeSuccess}
                 onSimulateAlert={handleSimulateAlert}
                 onSendReport={handleSendReport}

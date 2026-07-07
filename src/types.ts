@@ -52,6 +52,7 @@ export interface UserSession {
   lastScanTime?: number;
   scanCount: number;
   isGuest?: boolean;
+  premiumExpiresAt?: number;
 }
 
 export interface SecurityGuide {

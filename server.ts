@@ -436,6 +436,7 @@ interface DbUser {
   lastScanTime?: number; scanCount: number;
   verified: boolean; isGuest?: boolean; premiumCode?: string;
   tier?: string; monthlyScanCount?: number; monthlyScanReset?: string;
+  premiumExpiresAt?: number;
 }
 const usersDb: Record<string, DbUser> = {};
 // Hidratar cache en memoria desde SQLite al arrancar (sobrevive a reinicios)
@@ -444,7 +445,8 @@ for (const u of authDb.getAllUsers()) {
     email: u.email, isPremium: u.isPremium, ipAddress: u.ipAddress,
     lastScanTime: u.lastScanTime, scanCount: u.scanCount,
     verified: u.verified, isGuest: u.isGuest, premiumCode: u.premiumCode,
-    tier: u.tier, monthlyScanCount: u.monthlyScanCount, monthlyScanReset: u.monthlyScanReset
+    tier: u.tier, monthlyScanCount: u.monthlyScanCount, monthlyScanReset: u.monthlyScanReset,
+    premiumExpiresAt: u.premiumExpiresAt
   };
 }
 console.log(`[DB] ${authDb.getAllUsers().length} usuario(s) cargado(s) desde SQLite.`);
@@ -453,7 +455,15 @@ function optionalAuth(req: any, res: any, next: any) {
   const token = req.cookies?.myip_session;
   if (token) {
     const su = authDb.getSessionUser(token);
-    if (su) req.authUser = su.email;
+    if (su) {
+      req.authUser = su.email;
+      // Verificar si el premium ha expirado
+      if (su.isPremium && su.premiumExpiresAt && su.premiumExpiresAt < Date.now()) {
+        authDb.updateUserFields(su.email, { isPremium: false, premiumExpiresAt: undefined });
+        if (usersDb[su.email]) usersDb[su.email].isPremium = false;
+        console.log(`[AUTH] Premium expirado para ${su.email}`);
+      }
+    }
   }
   next();
 }
@@ -462,6 +472,12 @@ function requireAuth(req: any, res: any, next: any) {
   const su = token ? authDb.getSessionUser(token) : undefined;
   if (!su) return res.status(401).json({ error: 'No autenticado. Inicia sesion.' });
   req.authUser = su.email;
+  // Verificar si el premium ha expirado
+  if (su.isPremium && su.premiumExpiresAt && su.premiumExpiresAt < Date.now()) {
+    authDb.updateUserFields(su.email, { isPremium: false, premiumExpiresAt: undefined });
+    if (usersDb[su.email]) usersDb[su.email].isPremium = false;
+    console.log(`[AUTH] Premium expirado para ${su.email}`);
+  }
   next();
 }
 
@@ -786,17 +802,57 @@ app.post('/api/premium/redeem-code', (req, res) => {
   if (!email || !code) return res.status(400).json({ error: 'Se requiere email y código.' });
   const normalizedEmail = email.toLowerCase().trim();
   const trimmedCode = code.trim().toUpperCase();
-  const devCode = DEV_PREMIUM_CODES[trimmedCode];
-  if (!devCode) return res.status(400).json({ error: 'Código inválido.' });
+
+  // 1. Intentar con SQLite (códigos persistentes con expiración)
+  const validation = authDb.validatePremiumCode(trimmedCode);
+  let redeemed = false;
+  let expiresAt: number | undefined;
+
+  if (validation.valid) {
+    const result = authDb.redeemPremiumCode(trimmedCode);
+    if (result.success) {
+      expiresAt = Date.now() + (30 * 24 * 60 * 60 * 1000); // 30 días desde el canje
+      redeemed = true;
+    } else {
+      return res.status(400).json({ error: result.reason });
+    }
+  } else {
+    // 2. Fallback: códigos legacy en memoria (ALPHA, BETA)
+    const devCode = DEV_PREMIUM_CODES[trimmedCode];
+    if (!devCode) return res.status(400).json({ error: 'Código inválido.' });
+    devCode.uses++;
+    expiresAt = Date.now() + (30 * 24 * 60 * 60 * 1000);
+    redeemed = true;
+  }
+
+  if (!redeemed) return res.status(400).json({ error: 'No se pudo canjear el código.' });
+
+  // Actualizar usuario en memoria y SQLite
   if (!usersDb[normalizedEmail]) {
-    usersDb[normalizedEmail] = { email: normalizedEmail, isPremium: true, ipAddress: '0.0.0.0', scanCount: 0, verified: true, isGuest: false, premiumCode: trimmedCode };
+    usersDb[normalizedEmail] = { email: normalizedEmail, isPremium: true, ipAddress: '0.0.0.0', scanCount: 0, verified: true, isGuest: false, premiumCode: trimmedCode, premiumExpiresAt: expiresAt };
   } else {
     usersDb[normalizedEmail].isPremium = true;
     usersDb[normalizedEmail].premiumCode = trimmedCode;
+    usersDb[normalizedEmail].premiumExpiresAt = expiresAt;
   }
-  devCode.uses++;
-  console.log(`[PREMIUM CODE] ${trimmedCode} usado por ${normalizedEmail} (uso #${devCode.uses})`);
-  res.json({ message: '¡Premium activado!', user: { email: normalizedEmail, isPremium: true, scanCount: usersDb[normalizedEmail].scanCount } });
+
+  try {
+    authDb.updateUserFields(normalizedEmail, { isPremium: true, premiumCode: trimmedCode, premiumExpiresAt: expiresAt });
+  } catch (e) {
+    console.error('[PREMIUM CODE] No se pudo persistir en SQLite:', e);
+  }
+
+  console.log(`[PREMIUM CODE] ${trimmedCode} usado por ${normalizedEmail} (expira: ${new Date(expiresAt).toISOString()})`);
+  res.json({ message: '¡Premium activado por 30 días!', user: { email: normalizedEmail, isPremium: true, scanCount: usersDb[normalizedEmail].scanCount, premiumExpiresAt: expiresAt } });
+});
+
+// Admin: generar código premium (solo para el dueño)
+app.post('/api/admin/generate-code', (req, res) => {
+  const { label, maxUses, daysValid } = req.body;
+  if (!label) return res.status(400).json({ error: 'Se requiere una etiqueta.' });
+  const code = authDb.createPremiumCode(label, maxUses || 1, daysValid || 30);
+  console.log(`[ADMIN] Código premium generado: ${code.code} (${code.label}, ${code.maxUses} usos, ${daysValid || 30} días)`);
+  res.json({ code: code.code, label: code.label, maxUses: code.maxUses, daysValid: daysValid || 30, expiresAt: code.expiresAt });
 });
 
 // Stripe Checkout Session
