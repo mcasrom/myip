@@ -23,7 +23,8 @@ import {
   Info,
   RefreshCw,
   Share2,
-  Copy
+  Copy,
+  Terminal
 } from 'lucide-react';
 import RadarScanner from './components/RadarScanner';
 import TrafficLight from './components/TrafficLight';
@@ -36,6 +37,7 @@ import PWAInstallBanner from './components/PWAInstallBanner';
 import ChangesPopup from './components/ChangesPopup';
 import WelcomeModal from './components/WelcomeModal';
 import CommunityKPIs from './components/CommunityKPIs';
+import NetworkAgent from './components/NetworkAgent';
 import LocalNetworkDiagnostic from './components/LocalNetworkDiagnostic';
 import TerminalSecurityCheck from './components/TerminalSecurityCheck';
 import { ScanResult, UserSession } from './types';
@@ -44,7 +46,7 @@ import socialPreviewImg from './assets/images/myip_preview.jpg';
 import socialIconImg from './assets/images/myip_icon.jpg';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'home' | 'dashboard' | 'guides' | 'about' | 'profile' | 'legal' | 'methodology' | 'tos' | 'faq'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'dashboard' | 'guides' | 'about' | 'profile' | 'legal' | 'methodology' | 'tos' | 'faq' | 'advanced'>('home');
   const [homeSubTab, setHomeSubTab] = useState<'public' | 'local'>('public');
   const [detectedIp, setDetectedIp] = useState<string>('');
   const [isSimulatedIp, setIsSimulatedIp] = useState<boolean>(false);
@@ -454,6 +456,14 @@ export default function App() {
               }`}
             >
               FAQ
+            </button>
+            <button
+              onClick={() => setActiveTab('advanced')}
+              className={`px-4 py-2 rounded-lg text-xs font-semibold tracking-wide transition-all flex items-center gap-1.5 ${
+                activeTab === 'advanced' ? 'bg-amber-600 text-white shadow-sm' : 'text-amber-300 hover:text-amber-200'
+              }`}
+            >
+              <Terminal className="w-3 h-3" /> Herramientas Avanzadas
             </button>
             <button
               onClick={() => setActiveTab('about')}
@@ -1657,6 +1667,8 @@ export default function App() {
             </div>
           </div>
         )}
+        {/* TAB: ADVANCED TOOLS */}
+        {activeTab === 'advanced' && <NetworkAgent />}
         {/* TAB 5: PROFILE / UPGRADE */}
         {activeTab === 'profile' && (
           <div className="space-y-10">
