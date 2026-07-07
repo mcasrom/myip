@@ -105,12 +105,41 @@ def main():
     premium = ssh_run("SELECT COUNT(*) FROM users WHERE is_premium = 1;")
     print(f"  Premium: {premium}")
     if premium and int(premium) > 0:
-        rows = ssh_run("SELECT email, tier FROM users WHERE is_premium = 1;")
+        rows = ssh_run("SELECT email, tier, premium_code, premium_expires_at FROM users WHERE is_premium = 1;")
         if rows:
+            print(f"  {'Email':<35} {'Tipo':<15} {'Código':<25} {'Expira':<12}")
+            print(f"  {'─'*35} {'─'*15} {'─'*25} {'─'*12}")
             for line in rows.split("\n"):
                 parts = line.split("|")
-                if len(parts) == 2:
-                    print(f"    - {parts[0]} ({parts[1]})")
+                if len(parts) >= 4:
+                    email, tier, code, exp_ts = parts[0], parts[1], parts[2], parts[3]
+                    try:
+                        from datetime import datetime
+                        fecha = datetime.fromtimestamp(int(exp_ts) / 1000).strftime("%d/%m/%Y") if exp_ts else 'N/A'
+                    except Exception:
+                        fecha = exp_ts or 'N/A'
+                    print(f"  {email:<35} {tier or 'N/A':<15} {code or 'N/A':<25} {fecha:<12}")
+
+    # ── Códigos Premium ───────────────────────────────────────────────────
+    section("CÓDIGOS PREMIUM GENERADOS")
+    codes = ssh_run("SELECT code, label, max_uses, current_uses, expires_at FROM premium_codes ORDER BY created_at DESC;")
+    if codes:
+        print(f"  {'Código':<28} {'Label':<12} {'Usos':<10} {'Expira':<12} {'Estado':<10}")
+        print(f"  {'─'*28} {'─'*12} {'─'*10} {'─'*12} {'─'*10}")
+        for line in codes.split("\n"):
+            parts = line.split("|")
+            if len(parts) >= 5:
+                code, label, max_u, cur_u, exp_ts = parts[0], parts[1], parts[2], parts[3], parts[4]
+                try:
+                    from datetime import datetime
+                    fecha = datetime.fromtimestamp(int(exp_ts) / 1000).strftime("%d/%m/%Y")
+                    estado = "Activo" if int(cur_u) < int(max_u) and int(exp_ts) > int(datetime.now().timestamp() * 1000) else "Agotado/Expirado"
+                except Exception:
+                    fecha = exp_ts
+                    estado = "N/A"
+                print(f"  {code:<28} {label:<12} {cur_u}/{max_u:<10} {fecha:<12} {estado:<10}")
+    else:
+        print("  No hay códigos generados.")
 
     # ── Emails enviados ───────────────────────────────────────────────────
     section("EMAILS ENVIADOS")
