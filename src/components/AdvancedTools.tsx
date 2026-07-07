@@ -10,7 +10,7 @@ interface ToolCardProps {
   actionLabel: string;
   onRun: () => void;
   running: boolean;
-  status: 'idle' | 'running' | 'success' | 'warning' | 'error';
+  status: 'idle' | 'running' | 'success' | 'warning' | 'error' | 'pending';
   result?: { message: string; details?: string };
   input?: React.ReactNode;
 }
