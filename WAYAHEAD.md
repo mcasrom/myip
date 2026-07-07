@@ -1264,3 +1264,435 @@ de tocar App.tsx completo. Sesion dedicada, con tiempo, no mezclado con
 otros pendientes del dia.
 
 Decision 2026-07-06: pospuesto, se anota como roadmap, NO se empieza hoy.
+
+## Sesión 2026-07-07 — 4 features rápidas del roadmap "Valor Añadido" completadas
+
+### Contexto
+Retomado el roadmap de 2026-07-06 (Security Score visual, Sin cambios,
+Comparativa anónima, etc.), priorizado por ratio impacto/esfuerzo. Las
+4 opciones de menor riesgo/dificultad de la tabla quedaron cerradas hoy,
+cada una con su propio deploy verificado end-to-end (tsc --noEmit ->
+build -> rsync -> docker compose up -d --build -> logs limpios).
+
+### 1. Security Score visual (barra 0-100) — YA EXISTÍA, verificado
+No requirió código nuevo. server.ts ya calculaba `scoreNumeric` (líneas
+1099-1105) y TrafficLight.tsx ya lo renderizaba como barra de color con
+"{scoreNumeric}/100". Confirmado en producción vía grep sobre el bundle
+JS servido (`de 100 pts` presente en index-oNyypEF0.js).
+
+### 2. "Sin cambios detectados desde hace X días" — CERRADO
+- alerts.ts: `compareScans()` exportada (antes solo uso interno del cron).
+- server.ts: import de `compareScans`; antes de guardar el escaneo nuevo,
+  se consulta `authDb.getScanHistory(user.email, 1)` para obtener el
+  escaneo anterior, se calcula `noChanges` (inverso de `hasChanges`) y
+  `daysSinceLastScan` (diff de `created_at` en días). Ambos incluidos en
+  la respuesta JSON del escaneo.
+- src/types.ts: campos opcionales `noChanges`/`daysSinceLastScan`.
+- src/App.tsx: mensaje bajo el TrafficLight si `noChanges === true`.
+- Limitación conocida: solo aplica a usuarios Premium (mismo gating que
+  `/api/scan/history`, que ya exige `isPremium`).
+- Deploy verificado: build limpio, contenedor recreado sin errores,
+  commit `68c8b93`.
+
+### 3. Popup automático de cambios detectados tras escaneo — CERRADO
+- Decisión de UX (confirmada con Miguel): aparece automáticamente si
+  `changes.length > 0`, no requiere click manual.
+- server.ts: nueva variable `detectedChanges` (= `cmp.changes`), incluida
+  en la respuesta JSON como `changes`.
+- src/types.ts: campo opcional `changes?: string[]`.
+- src/components/ChangesPopup.tsx (nuevo): modal clonando el patrón visual
+  ya usado en el modal de guía iOS de PWAInstallBanner.tsx (`fixed inset-0
+  z-50 bg-slate-950/80 backdrop-blur-sm`, card blanca `rounded-3xl`).
+- src/App.tsx: `useState<boolean>` para controlar visibilidad, trigger
+  justo después de `setScanResult(data)` si `data.changes.length > 0`,
+  render condicional junto a `PWAInstallBanner`.
+- Deploy verificado: build limpio, contenedor recreado sin errores,
+  commit `c0ebdad`.
+
+### 4. Comparativa anónima (tu score vs media de la comunidad) — CERRADO
+- Investigación previa al patch: `scan_history` NO tenía columna numérica
+  persistida del score (solo el categórico green/yellow/red). Los 34
+  registros existentes en producción eran 100% "green" categórico, lo
+  que hacía inútil una comparativa por categoría — se optó por migrar
+  esquema y comparar el número real 0-100.
+- db.ts: migración `ALTER TABLE scan_history ADD COLUMN score_numeric
+  INTEGER` con el mismo patrón try/catch ya usado para `tier`/
+  `monthly_scan_count` (SQLite no soporta `ADD COLUMN IF NOT EXISTS`).
+  `saveScanRecord()` ahora acepta y persiste `scoreNumeric`. Nueva función
+  `getCommunityStats()`: `SELECT AVG(score_numeric) as avg, COUNT(*) as
+  total FROM scan_history WHERE score_numeric IS NOT NULL` (los 34
+  registros viejos con NULL quedan excluidos del promedio automáticamente,
+  sin migración de datos históricos).
+- server.ts: `scoreNumeric` pasado a `saveScanRecord()`; `communityAverage`
+  (resultado de `getCommunityStats().avgScore`) incluido en la respuesta
+  JSON del escaneo.
+- src/types.ts: campo opcional `communityAverage?: number | null`.
+- src/App.tsx: texto "Tu puntuación: X — Media de la comunidad: Y" bajo
+  el TrafficLight, junto al mensaje de "sin cambios".
+- Verificado en producción tras el deploy: `PRAGMA table_info(scan_history)`
+  confirma la columna `score_numeric` ya presente en el esquema real.
+- Nota para vigilar: la media empieza en 0 muestras útiles (solo cuenta
+  escaneos NUEVOS a partir de hoy); revisar en ~1 semana si conviene
+  mostrar aviso de "pocos datos aún" mientras `totalScored` sea bajo.
+- Deploy verificado: build limpio, migración de esquema confirmada en
+  runtime, commit `9a47d27`.
+
+### Metodología de la sesión (para repetir)
+Cada feature siguió el mismo ciclo estricto: inspección con grep/sed
+antes de escribir una sola línea (nunca asumir estructura de código sin
+verla), patch Python anchor-based (`content.count(anchor) == 1` o aborta
+y restaura backups automáticamente), `tsc --noEmit` obligatorio antes de
+build, build local antes de tocar el servidor, deploy a la ruta correcta
+confirmada (`/home/deploy/myip/`, NO `/home/deploy/apps/myip/` — error
+de un intento de deploy hoy, corregido sin dejar rastro, carpeta vacía
+borrada), y verificación de logs post-deploy antes de dar por cerrado.
+Cero roturas en las 3 features con código nuevo.
+
+### Pendiente (siguiente en la cola del roadmap 2026-07-06)
+- [ ] Fase 2 auditoría (lastCronRun/emailsSent aún null/0, sigue sin
+      resolver de sesiones anteriores)
+- [ ] Inventario de dispositivos (fingerprint_engine + nmap -O) — esfuerzo
+      medio, siguiente candidato natural tras cerrar las 4 rápidas
+- [ ] Webhook Stripe — sigue bloqueado por tipo de clave (falta sk_test_
+      estándar, no rk_test_ restringida), sin tocar hoy
+- [ ] i18n Español/Inglés — pospuesto a sesión dedicada, decisión ya
+      tomada el 2026-07-06, no mezclar con pendientes sueltos
+- [ ] CSP sigue desactivado temporalmente (Qwen lo quitó, reconfigurar
+      pendiente de sesión anterior)
+
+## Duda aclarada 2026-07-07 — Test de Calidad de Red vs Test de Seguridad (dos sistemas distintos)
+
+Pregunta de Miguel: el chequeo da casi 100/100 siempre, ¿no detecta fallos?
+
+Aclarado por inspección de codigo (no habia confusion de bug, son DOS
+sistemas distintos con proposito distinto):
+- `LocalNetworkDiagnostic.tsx` ("Network Quality"): mide latencia/jitter/
+  velocidad/DNS via fetch() del navegador contra /api/speedtest/*. Empieza
+  en 100, resta solo por lentitud de conexion. NO escanea puertos, NO
+  consulta listas negras, NO detecta vulnerabilidades — es normal que de
+  casi 100/100 con buena conexion, no es un bug ni una falta de deteccion.
+- El escaneo principal (TrafficLight/scoreNumeric): este SI es seguridad
+  real. Target = IP publica del usuario (x-real-ip/x-forwarded-for),
+  nmap real + listas negras (AbuseIPDB/Spamhaus/etc). Este es el que
+  puede bajar de 100 y detecta exposicion real del router/NAT.
+Sin ambiguedad de codigo, cerrado sin patch (era pregunta, no bug).
+
+## Roadmap — Inventario de dispositivos locales (topologia de red), analisis de arquitectura
+
+Idea: esquema grafico de la LAN del usuario (IPs, gateway, dispositivos)
+via python-nmap/scapy + networkx + matplotlib/graphviz. Encaja con
+"Inventario de dispositivos" ya evaluado en 2026-07-02 (reusar
+fingerprint_engine.py de ThreatRadar).
+
+Complejidad desglosada:
+- Descubrimiento (nmap -sn, python-nmap): FACIL, mismo patron que
+  port_audit.py ya existente.
+- Identificar gateway real (no asumir .1, leer tabla de rutas): MEDIO.
+- Fingerprint de tipo de dispositivo (MAC OUI vendor lookup): MEDIO,
+  heuristico no exacto, reusar fingerprint_engine.py.
+- Dibujar grafo (networkx + matplotlib/graphviz): FACIL una vez el dato
+  esta limpio.
+
+BLOQUEADOR DE ARQUITECTURA (no es problema de codigo, es de diseño):
+myip es SaaS en Hetzner (Alemania) — el servidor NO tiene ruta de red
+a la LAN domestica del usuario. Un escaneo de dispositivos locales debe
+ejecutarse DENTRO de la LAN del usuario, nunca desde el backend.
+Dos caminos reales:
+  1. Script Python descargable (mismo patron que password_health.py) que
+     el usuario corre en su maquina, con opcion de subir resultado a myip
+     para visualizarlo — unico camino realista para un solo-dev.
+  2. Agente/app nativa instalable — fuera de alcance de una sesion.
+Decision: si se retoma, empezar por opcion 1, sesion dedicada aparte,
+no mezclar con pendientes sueltos del dia a dia.
+
+## Hallazgo 2026-07-07 — Gap real de cobertura de puertos (Samba/impresoras NO detectados)
+
+Pregunta de Miguel: si tengo Samba o puerto de impresora abierto, ¿se
+detecta? Respuesta confirmada por codigo: NO, y no es un bug sutil —
+es que esos puertos no estan en la lista que se le pide a nmap escanear.
+
+`scripts/port_audit.py` -> `CRITICAL_PORTS` (lista fija pasada a
+`nmap -p <lista>`, NO es un top-N de nmap): solo cubre
+22,80,443,3306,8080,3389,5432,6379,27017,21,25,53. Ningun puerto de
+Samba/NetBIOS (139,445), impresoras (631 IPP, 9100 JetDirect, 515 LPD),
+VNC (5900), Telnet (23), UPnP (1900) esta en esa lista — nmap ni
+siquiera los consulta, no aparecen ni como "closed"/"filtered".
+
+Gap secundario (ya detectado antes, menor): de los 12 puertos que SI se
+escanean, solo 5 (22,80,443,3306,8080) tienen explicacion especifica en
+`portDefinitions` de server.ts — los otros 7 (3389,5432,6379,27017,21,
+25,53) se detectan pero caen en mensaje generico "puerto desconocido".
+
+Impacto: vector de riesgo domestico mas comun (Samba mal configurado
+exponiendo carpetas, impresora de red accesible) es invisible hoy. Score
+puede marcar 100/100 con ese fallo presente sin que el test lo pregunte.
+
+### Pendiente (patch concreto para retomar, NO empezar sin sesion dedicada)
+- [ ] Añadir a CRITICAL_PORTS (port_audit.py): 139, 445 (Samba/NetBIOS),
+      631 (IPP), 9100 (JetDirect), 515 (LPD), 5900 (VNC), 23 (Telnet),
+      1900 (UPnP, sobre UDP - nmap necesitaria -sU, coste extra de tiempo
+      de escaneo, decidir si vale la pena o se documenta como limitacion)
+- [ ] Añadir entradas correspondientes en portDefinitions (server.ts) con
+      openExplanation/openRecommendation especificas por servicio (ej.
+      Samba: "Tu compartición de archivos está expuesta a internet,
+      cualquiera podría listar o acceder a tus carpetas compartidas")
+- [ ] Completar tambien las 7 explicaciones genericas que faltan hoy
+      (3389,5432,6379,27017,21,25,53) mientras se toca este archivo
+- [ ] Nota de rendimiento: cada puerto nuevo añade tiempo de escaneo
+      nmap (timeout actual 120s en scan_with_nmap) - verificar que anadir
+      ~7-8 puertos mas no empuja el escaneo fuera de rangos razonables
+      para el usuario (medir antes/despues del cambio)
+
+## Roadmap — Esquema gráfico de dispositivos: opciones de UX evaluadas 2026-07-07
+
+Pregunta de Miguel tras confirmar viabilidad tecnica (ver entrada anterior
+sobre bloqueador de arquitectura LAN): ¿el grafico es estetico, da valor
+real al usuario?
+
+### Valor: SI, confirmado
+Usuario domestico normal no sabe que dispositivos tiene conectados a su
+router. Mapa visual convierte "12 puertos abiertos" (abstracto) en "esta
+camara que no reconoces esta aqui" (concreto, accionable). El valor real
+es detectar el dispositivo intruso/olvidado, no solo estetica.
+
+### 3 opciones evaluadas, de menos a mas esfuerzo
+
+**Opcion A — Lista jerarquica simple (recomendada para empezar)**
+Router como raiz, dispositivos como hijos, iconos lucide-react ya
+disponibles, color por riesgo. Cero librerias nuevas, cero diseño de
+grafico real. Poco "wow" visual pero 100% del valor funcional. Permite
+validar si a los usuarios les importa esto antes de invertir mas.
+
+**Opcion B — Grafo interactivo real (D3.js o vis.js, client-side)**
+Nodo central + lineas a cada dispositivo, iconos por tipo, color por
+riesgo. Vendible en capturas de marketing, pero es una app React/D3
+nueva de esfuerzo real, no un simple render.
+
+**Opcion C — Imagen estatica Python (networkx + matplotlib)**
+La idea original planteada. Se ve mas "informe tecnico" que "app
+pulida" — coherente con publico sysadmin/developer, menos atractivo
+para usuario domestico medio (target principal actual segun ToS).
+
+### Decision recomendada
+Empezar por Opcion A (barata, reusa componentes ya existentes tipo
+TrafficLight/ChangesPopup). Si engancha con usuarios reales, subir a
+Opcion B con calma, sesion dedicada aparte.
+
+Nota: esto depende del pendiente de arquitectura ya documentado arriba
+(script Python descargable, el escaneo NO puede hacerse desde el backend
+Hetzner por estar en red distinta a la LAN del usuario) — sin resolver
+eso primero, no hay datos que graficar.
+
+## Sesión 2026-07-07 (continuación) — Gap de cobertura de puertos CERRADO
+
+Patch aplicado siguiendo el plan documentado en la entrada anterior
+(hallazgo del mismo día).
+
+### Cambios
+- scripts/port_audit.py: CRITICAL_PORTS ampliado de 12 a 19 puertos —
+  añadidos 139 (NetBIOS), 445 (SMB/Samba), 631 (IPP), 9100 (JetDirect),
+  515 (LPD), 5900 (VNC), 23 (Telnet). UPnP/1900 (UDP) dejado fuera por
+  ahora, según lo ya decidido (coste de escaneo UDP, documentado como
+  limitación conocida).
+- server.ts: 7 entradas nuevas en portDefinitions con explicacion/
+  recomendacion especifica por servicio (antes solo 5 de 12 puertos
+  tenian explicacion; ahora 12 de 19).
+
+### Verificacion de rendimiento (la duda real antes de tocar produccion)
+- Local (laptop): escaneo completo de 19 puertos contra 8.8.8.8 = 10s
+  reales (`time python3 port_audit.py`).
+- Produccion (dentro del contenedor Docker, tras deploy): 1.7s para los
+  mismos 19 puertos contra la misma IP de prueba — bien por debajo del
+  timeout de 120s en scan_with_nmap() y del Promise.race de 30s en
+  server.ts. Cero impacto de rendimiento, cobertura casi duplicada.
+
+### Pendiente (siguiente patch, NO mezclado con este)
+- [ ] Completar las 7 explicaciones genericas restantes (3389, 5432,
+      6379, 27017, 21, 25, 53) — mismo patron, separado a proposito para
+      mantener el diff de este commit legible
+- [ ] Decidir si se añade UPnP/1900 con -sU (coste real de escaneo UDP,
+      medir antes de decidir)
+
+## Sesión 2026-07-07 (noche) — Webhook Stripe CERRADO (bloqueado desde 2026-07-03)
+
+### Desbloqueo de la clave
+La clave test estándar correcta (`sk_test_51...`) llevaba semanas ya
+generada, guardada en `.env` bajo el nombre `#otro_stripe=` (comentada,
+sin usar) desde la sesión 2026-07-05. Nunca se relacionó con el bloqueo
+de `STRIPE_SECRET_KEY_TEST` (que seguia siendo una `rk_test_` restringida)
+hasta revisar el .env a fondo hoy. Activada copiando su valor a
+STRIPE_SECRET_KEY_TEST.
+
+### stripe listen — confirmado funcionando
+`stripe listen --forward-to http://localhost:3000/api/webhooks/stripe
+--api-key sk_test_...` -> "Ready! ... webhook signing secret is whsec_..."
+sin error 403. La restriccion de scopes de la key vieja (rk_test_,
+sin permiso "Debugging Tools Write") ya no aplica.
+
+### Endpoint /api/webhooks/stripe implementado
+- server.ts: nuevo endpoint montado con `express.raw({type:
+  'application/json'})`, ANTES de `app.use(express.json())` global (linea
+  358), imprescindible para que Stripe pueda verificar la firma HMAC
+  sobre el body sin parsear.
+- Verifica firma via `stripe.webhooks.constructEvent(req.body, sig,
+  webhookSecret)`, usando STRIPE_WEBHOOK_SECRET (variable nueva).
+- Maneja `checkout.session.completed`: misma logica que
+  `/api/premium/verify-session` ya validada (normaliza email, resuelve
+  tier desde metadata, actualiza usersDb en memoria + authDb.
+  updateUserFields en SQLite) — ambos caminos quedan sincronizados como
+  estaba planeado.
+- Otros tipos de evento: logueados como "sin manejar", sin error, para
+  visibilidad futura sin bloquear nada.
+- tsc --noEmit limpio. Commit `bb16f70`.
+
+### Incidente de patch — anchor no encontrado, resuelto sin perdida
+Primer intento (script Python con heredoc + comillas triples anidadas)
+fallo con "anchor encontrado 0 veces" — probablemente el heredoc se
+corrompio al pegarse en terminal (multiples comandos mezclados en el
+output). Backup intacto confirmado por `diff` antes de reintentar.
+Metodo alternativo usado con exito: snippet en archivo de texto aparte
+(`cat > archivo.txt << 'EOF'`, verificado con `wc -l`/`head`/`tail` antes
+de tocar server.ts) + insercion via `sed -i '358r archivo.txt' server.ts`
+por numero de linea exacto. Mas robusto que heredoc con comillas
+anidadas para bloques de codigo largos — considerar como metodo
+preferido para patches grandes en el futuro.
+
+### Pruebas end-to-end (test mode local)
+- `stripe trigger checkout.session.completed` -> stripe listen reenvio
+  el evento, servidor respondio 200, log
+  "[WEBHOOK] checkout.session.completed recibido pero sin email/pago
+  confirmado, ignorado." — correcto, `stripe trigger` genera evento
+  generico sin la metadata custom (email/tier) que solo existe en
+  sesiones reales creadas por server.ts. Firma verificada correctamente
+  (si fallara, response seria 400, no 200).
+- Otros eventos de la cascada de fixtures de Stripe (product.created,
+  price.created, charge.succeeded, payment_intent.*, charge.updated)
+  logueados correctamente como "sin manejar", sin crash.
+
+### Webhook de PRODUCCION creado (live mode)
+- Bug encontrado al crear el webhook de produccion: comando usaba
+  `grep STRIPE_SECRET_KEY .env` (sin anclaje `^` ni `=`) — matcheaba
+  TANTO `STRIPE_SECRET_KEY=` como `STRIPE_SECRET_KEY_TEST=`, devolviendo
+  dos valores separados por salto de linea. Ese `\n` interno rompia la
+  cabecera HTTP Authorization (`net/http: invalid header field value`).
+  Fix: `grep '^STRIPE_SECRET_KEY='` (anclado + con el `=`) — mismo tipo
+  de bug de anclaje que ya habiamos evitado en sesiones anteriores con
+  `cut -c1-8`, pero esta vez colado en un comando distinto. Leccion:
+  SIEMPRE anclar `^` y incluir el `=` al hacer grep sobre variables de
+  .env que puedan ser prefijo de otras (ej. STRIPE_SECRET_KEY vs
+  STRIPE_SECRET_KEY_TEST).
+- Webhook creado con exito via API (`stripe webhook_endpoints create`),
+  modo live, URL https://myip.viajeinteligencia.com/api/webhooks/stripe,
+  evento checkout.session.completed. ID: we_1TqPbZ1yXjIoL1LjhfjP1MA6.
+  Secret de produccion: whsec_3UoLfjGnP9upr3iUZAVmsa74nolD3rKa (distinto
+  al de test local, correcto segun el plan original).
+- STRIPE_WEBHOOK_SECRET añadido al .env del servidor Hetzner (no existia
+  antes, confirmado con grep vacio previo).
+- Deploy de server.ts al servidor (rsync + docker compose up -d --build),
+  contenedor recreado sin errores.
+- Verificacion final end-to-end en produccion real: `curl -X POST
+  https://myip.viajeinteligencia.com/api/webhooks/stripe` sin firma
+  valida -> 400 (rechazo correcto). Confirma cadena completa: DNS ->
+  Cloudflare -> Nginx -> Docker -> Express -> verificacion HMAC, todo
+  operativo.
+
+### Estado: CERRADO
+Webhook de Stripe, pendiente desde 2026-07-03, funcional en test y
+produccion. Unico camino de confirmacion de pago ahora es doble:
+`/api/premium/verify-session` (frontend, tras redireccion) +
+`/api/webhooks/stripe` (server-to-server, no depende de que el
+navegador del cliente complete la redireccion) — resuelve el riesgo de
+pago cobrado sin isPremium activado que motivo originalmente esta tarea.
+
+### Pendiente (limpieza menor, no bloqueante)
+- [ ] Borrar la linea `#otro_stripe=...` del .env local, ya migrada a
+      STRIPE_SECRET_KEY_TEST (sed -i '/^#otro_stripe=/d' .env)
+- [ ] Confirmar un pago real de prueba con tarjeta 4242 4242 4242 4242
+      contra el checkout real (no solo `stripe trigger`) para validar
+      el camino completo con metadata.email/tier real, no simulado
+- [ ] Considerar añadir mas eventos al webhook si hacen falta en el
+      futuro (ej. `checkout.session.expired`, `charge.refunded`) —
+      hoy solo checkout.session.completed esta manejado
+
+## Sesión 2026-07-07 (madrugada) — Webhook Stripe: codigo cerrado, falta 1 prueba con pago real
+
+### Lo que YA esta confirmado y funcionando (no repetir)
+- Endpoint /api/webhooks/stripe implementado, deployado en local Y produccion.
+- Verificado con `stripe trigger checkout.session.completed`: firma OK,
+  respuesta 200, logica correcta (ignora evento sin metadata, como se
+  espera de un trigger simulado).
+- Verificado en produccion real con curl sin firma: 400 (rechazo correcto).
+- Webhook de produccion creado en Stripe (modo live), whsec_ guardado en
+  .env del servidor Hetzner. Commit bb16f70 + 9585092.
+- CONCLUSION: el codigo del webhook esta completo y correcto. Lo unico
+  que falta es la ultima milla: un pago real end-to-end con tarjeta de
+  test para confirmar que `isPremium` se activa en la SQLite real.
+
+### Pendiente exacto para retomar (bloqueo fue de logistica de terminales, NO de codigo)
+Intento de hoy fallo por gestion de multiples terminales (tmux resulto
+incomodo para copiar/pegar, procesos se perdieron entre ventanas). El
+plan es correcto, solo hace falta ejecutarlo con calma:
+
+1. Terminal 1 (dejar corriendo, NO tocar mas):
+   cd ~/myip
+   STRIPE_SECRET_KEY="$(grep '^STRIPE_SECRET_KEY_TEST=' .env | cut -d= -f2)" APP_URL="https://myip.viajeinteligencia.com" npm run dev
+   Esperar a ver "MyIP server running on http://0.0.0.0:3000" y que NO
+   crashee tras unos segundos.
+
+2. Terminal 2 (dejar corriendo, NO tocar mas):
+   cd ~/myip
+   stripe listen --forward-to http://localhost:3000/api/webhooks/stripe --api-key "$(grep '^STRIPE_SECRET_KEY_TEST=' .env | cut -d= -f2)"
+   Esperar a ver "Ready!".
+
+3. Terminal 3 (aqui se trabaja):
+   curl -X POST http://localhost:3000/api/premium/create-checkout-session \
+     -H "Content-Type: application/json" \
+     -d '{"email":"test-checkout3@example.com","tier":"lifetime"}'
+   Copiar checkoutUrl, abrir en navegador, pagar con 4242 4242 4242 4242,
+   fecha 12/30, CVC 123.
+
+4. Tras pagar, revisar Terminal 1 y 2 (deberian mostrar
+   "[WEBHOOK] Premium activado..." y evento 200 respectivamente).
+
+5. Confirmar en SQLite:
+   node -e "
+   const Database = require('better-sqlite3');
+   const db = new Database('myip.sqlite3');
+   console.log(JSON.stringify(db.prepare('SELECT email, is_premium, tier FROM users WHERE email = ?').get('test-checkout3@example.com')));
+   "
+
+### Hallazgo colateral IMPORTANTE encontrado hoy, sin resolver
+`.env` local tiene `APP_URL="MY_APP_URL"` — placeholder de plantilla SIN
+RELLENAR, no una URL real ni siquiera localhost. Esto rompe cualquier
+flujo que dependa de APP_URL en local (creacion de checkout session da
+error url_invalid de Stripe, botones de email con URL de vuelta, etc).
+PENDIENTE URGENTE: verificar si el .env del SERVIDOR (Hetzner,
+/home/deploy/myip/.env) tiene el mismo problema o esta bien configurado
+- si esta mal en produccion, es un bug activo ahora mismo afectando
+  usuarios reales, no solo dev local.
+Comando para verificar manana:
+  ssh deploy@178.105.80.193 "grep '^APP_URL=' /home/deploy/myip/.env"
+
+### Limpieza pendiente menor
+- [ ] Borrar linea #otro_stripe= del .env local (ya migrada a STRIPE_SECRET_KEY_TEST)
+- [ ] Matar cualquier proceso node/curl huerfano en puerto 3000 antes de la proxima sesion:
+      fuser -k 3000/tcp
+
+## Sesión 2026-07-07 (mañana) — Webhook Stripe verificado + script auditoría
+
+### Webhook Stripe: CERRADO ✅
+- Problema: server usaba `rk_test_` (restricted key) que no verifica firmas de webhook.
+- Solución: actualizado a `sk_test_51TMtvL1yXjIoL1LjdbGli...` (rotación anterior).
+- Creado webhook en Stripe apuntando a `https://myip.viajeinteligencia.com/api/webhooks/stripe`.
+- `DB_PATH=/app/data/myip.sqlite3` añadido al .env del server (container no arrancaba sin ello).
+- `stripe trigger checkout.session.completed` → webhook recibe evento, firma válida, 200 OK.
+- Pendiente: probar checkout real con tarjeta 4242 en producción.
+
+### Script de auditoría
+- `scripts/auditoria_myip.py` — panel de estadísticas de producción vía SSH.
+- Muestra: usuarios, escaneos, IPs únicas, top IPs, scans por día, premium, contadores.
+- Ejecución: `python3 scripts/auditoria_myip.py` (desde raíz del proyecto o ruta absoluta).
+
+### Estadísticas actuales (BD producción)
+- Usuarios: 6 | Escaneos: 42 | IPs únicas: 8 | Premium: 2
+- Top IP: 1.146.110.90 (16 escaneos)

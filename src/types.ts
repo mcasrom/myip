@@ -28,6 +28,10 @@ export interface ScanResult {
   ip: string;
   timestamp: number;
   score: ScanScore;
+  noChanges?: boolean;
+  daysSinceLastScan?: number | null;
+  changes?: string[];
+  communityAverage?: number | null;
   ports: PortScanItem[];
   reputation: ReputationItem[];
   sslInfo: SslInfo | null;
@@ -48,6 +52,7 @@ export interface UserSession {
   lastScanTime?: number;
   scanCount: number;
   isGuest?: boolean;
+  premiumExpiresAt?: number;
 }
 
 export interface SecurityGuide {

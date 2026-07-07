@@ -68,6 +68,7 @@ try { db.exec('ALTER TABLE users ADD COLUMN tier TEXT'); } catch (e) { /* column
 try { db.exec('ALTER TABLE users ADD COLUMN monthly_scan_count INTEGER NOT NULL DEFAULT 0'); } catch (e) { /* columna ya existe */ }
 try { db.exec('ALTER TABLE users ADD COLUMN monthly_scan_reset TEXT'); } catch (e) { /* columna ya existe */ }
 try { db.exec('ALTER TABLE scan_history ADD COLUMN score_numeric INTEGER'); } catch (e) { /* columna ya existe */ }
+try { db.exec('ALTER TABLE users ADD COLUMN premium_expires_at INTEGER'); } catch (e) { /* columna ya existe */ }
 
 // Tabla de estadísticas del sistema (una sola fila)
 db.exec(`
@@ -80,6 +81,79 @@ CREATE TABLE IF NOT EXISTS system_stats (
 );
 INSERT OR IGNORE INTO system_stats (id, updated_at) VALUES (1, strftime('%s', 'now') * 1000);
 `);
+
+// Tabla de códigos premium (persistente, con expiración y límite de usos)
+db.exec(`
+CREATE TABLE IF NOT EXISTS premium_codes (
+  code TEXT PRIMARY KEY,
+  label TEXT NOT NULL,
+  max_uses INTEGER NOT NULL DEFAULT 1,
+  current_uses INTEGER NOT NULL DEFAULT 0,
+  expires_at INTEGER NOT NULL,
+  created_at INTEGER NOT NULL
+);
+`);
+
+export interface PremiumCodeRecord {
+  code: string;
+  label: string;
+  maxUses: number;
+  currentUses: number;
+  expiresAt: number;
+  createdAt: number;
+}
+
+export function createPremiumCode(label: string, maxUses: number, daysValid: number = 30): PremiumCodeRecord {
+  const code = 'MYIP-' + crypto.randomBytes(4).toString('hex').toUpperCase() + '-' + Date.now().toString(36).toUpperCase();
+  const now = Date.now();
+  const expiresAt = now + (daysValid * 24 * 60 * 60 * 1000);
+  db.prepare(`
+    INSERT INTO premium_codes (code, label, max_uses, current_uses, expires_at, created_at)
+    VALUES (?, ?, ?, 0, ?, ?)
+  `).run(code, label, maxUses, expiresAt, now);
+  return { code, label, maxUses, currentUses: 0, expiresAt, createdAt: now };
+}
+
+export function validatePremiumCode(code: string): { valid: boolean; reason?: string; record?: PremiumCodeRecord } {
+  const row = db.prepare('SELECT * FROM premium_codes WHERE code = ?').get(code) as any;
+  if (!row) return { valid: false, reason: 'Código no encontrado.' };
+  if (row.current_uses >= row.max_uses) return { valid: false, reason: 'Código agotado (límite de usos alcanzado).' };
+  if (row.expires_at < Date.now()) return { valid: false, reason: 'Código expirado.' };
+  return { valid: true, record: rowToPremiumCode(row) };
+}
+
+export function redeemPremiumCode(code: string): { success: boolean; reason?: string } {
+  const validation = validatePremiumCode(code);
+  if (!validation.valid) return { success: false, reason: validation.reason };
+  db.prepare('UPDATE premium_codes SET current_uses = current_uses + 1 WHERE code = ?').run(code);
+  return { success: true };
+}
+
+export function getActivePremiumCodes(): PremiumCodeRecord[] {
+  return db.prepare('SELECT * FROM premium_codes WHERE current_uses < max_uses AND expires_at > ? ORDER BY created_at DESC')
+    .all(Date.now()).map(rowToPremiumCode);
+}
+
+export function getExpiredPremiumCodes(): PremiumCodeRecord[] {
+  return db.prepare('SELECT * FROM premium_codes WHERE expires_at < ? OR current_uses >= max_uses ORDER BY expires_at ASC')
+    .all(Date.now()).map(rowToPremiumCode);
+}
+
+export function deleteExpiredPremiumCodes(): number {
+  const result = db.prepare('DELETE FROM premium_codes WHERE expires_at < ? OR current_uses >= max_uses').run(Date.now());
+  return result.changes;
+}
+
+function rowToPremiumCode(row: any): PremiumCodeRecord {
+  return {
+    code: row.code,
+    label: row.label,
+    maxUses: row.max_uses,
+    currentUses: row.current_uses,
+    expiresAt: row.expires_at,
+    createdAt: row.created_at,
+  };
+}
 
 export function incrementEmailsSent(): void {
   db.prepare('UPDATE system_stats SET emails_sent = emails_sent + 1, updated_at = ? WHERE id = 1').run(Date.now());
@@ -130,6 +204,7 @@ export interface StoredUser {
   tier?: string;
   monthlyScanCount: number;
   monthlyScanReset?: string;
+  premiumExpiresAt?: number;
 }
 
 function rowToUser(row: any): StoredUser {
@@ -146,6 +221,7 @@ function rowToUser(row: any): StoredUser {
     tier: row.tier ?? undefined,
     monthlyScanCount: row.monthly_scan_count ?? 0,
     monthlyScanReset: row.monthly_scan_reset ?? undefined,
+    premiumExpiresAt: row.premium_expires_at ?? undefined,
   };
 }
 
@@ -173,14 +249,14 @@ export async function verifyPassword(email: string, plainPassword: string): Prom
   return bcrypt.compare(plainPassword, user.passwordHash);
 }
 
-export function updateUserFields(email: string, fields: Partial<{ isPremium: boolean; ipAddress: string; lastScanTime: number; scanCount: number; premiumCode: string; tier: string; monthlyScanCount: number; monthlyScanReset: string }>): void {
+export function updateUserFields(email: string, fields: Partial<{ isPremium: boolean; ipAddress: string; lastScanTime: number; scanCount: number; premiumCode: string; tier: string; monthlyScanCount: number; monthlyScanReset: string; premiumExpiresAt: number }>): void {
   const current = getUserByEmail(email);
   if (!current) return;
   const merged = { ...current, ...fields };
   db.prepare(`
-    UPDATE users SET is_premium = ?, ip_address = ?, last_scan_time = ?, scan_count = ?, premium_code = ?, tier = ?, monthly_scan_count = ?, monthly_scan_reset = ?
+    UPDATE users SET is_premium = ?, ip_address = ?, last_scan_time = ?, scan_count = ?, premium_code = ?, tier = ?, monthly_scan_count = ?, monthly_scan_reset = ?, premium_expires_at = ?
     WHERE email = ?
-  `).run(merged.isPremium ? 1 : 0, merged.ipAddress, merged.lastScanTime ?? null, merged.scanCount, merged.premiumCode ?? null, merged.tier ?? null, merged.monthlyScanCount ?? 0, merged.monthlyScanReset ?? null, email);
+  `).run(merged.isPremium ? 1 : 0, merged.ipAddress, merged.lastScanTime ?? null, merged.scanCount, merged.premiumCode ?? null, merged.tier ?? null, merged.monthlyScanCount ?? 0, merged.monthlyScanReset ?? null, merged.premiumExpiresAt ?? null, email);
 }
 
 export function createSession(email: string): string {

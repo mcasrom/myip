@@ -33,6 +33,7 @@ import UpgradePanel from './components/UpgradePanel';
 import MarkdownRenderer from './components/MarkdownRenderer';
 import { tosContent, faqContent } from './data/legal';
 import PWAInstallBanner from './components/PWAInstallBanner';
+import ChangesPopup from './components/ChangesPopup';
 import LocalNetworkDiagnostic from './components/LocalNetworkDiagnostic';
 import TerminalSecurityCheck from './components/TerminalSecurityCheck';
 import { ScanResult, UserSession } from './types';
@@ -50,6 +51,7 @@ export default function App() {
   const [user, setUser] = useState<UserSession | null>(null);
   const [scanning, setScanning] = useState<boolean>(false);
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
+  const [showChangesPopup, setShowChangesPopup] = useState<boolean>(false);
   const [rateLimitError, setRateLimitError] = useState<string | null>(null);
   const [legalConsentAccepted, setLegalConsentAccepted] = useState<boolean>(true);
   const [shareCopied, setShareCopied] = useState<boolean>(false);
@@ -276,6 +278,9 @@ export default function App() {
       // Both state updates together to prevent race conditions
       setScanResult(data);
       setActiveTab('dashboard');
+      if (data.changes && data.changes.length > 0) {
+        setShowChangesPopup(true);
+      }
       
       triggerToast('¡Análisis de Salud Digital completado con éxito!', 'success');
       
@@ -487,6 +492,9 @@ export default function App() {
             
             {/* PWA Installation Assistant Banner */}
             <PWAInstallBanner />
+            {showChangesPopup && scanResult?.changes && (
+              <ChangesPopup changes={scanResult.changes} onClose={() => setShowChangesPopup(false)} />
+            )}
             
             {/* Hero / Pitch */}
             <div className="text-center space-y-4">
@@ -899,6 +907,16 @@ export default function App() {
               {/* Traffic Light widget Left Column */}
               <div className="md:col-span-5 lg:col-span-4 space-y-6">
                 <TrafficLight score={scanResult.score} scoreNumeric={scanResult.scoreNumeric} />
+                {scanResult.noChanges && typeof scanResult.daysSinceLastScan === 'number' && (
+                  <p className="text-xs text-slate-500 text-center mt-2">
+                    Sin cambios detectados desde hace {scanResult.daysSinceLastScan} dia(s).
+                  </p>
+                )}
+                {typeof scanResult.communityAverage === 'number' && (
+                  <p className="text-xs text-slate-500 text-center mt-2">
+                    Tu puntuacion: <span className="font-bold text-indigo-600">{scanResult.scoreNumeric}</span> — Media de la comunidad: <span className="font-bold">{scanResult.communityAverage}</span>
+                  </p>
+                )}
 
                 {/* Blacklists Check Summary widget */}
                 <div className="bg-white border border-slate-200 p-5 rounded-2xl space-y-4 shadow-sm">
@@ -1658,6 +1676,7 @@ export default function App() {
               <UpgradePanel
                 email={user?.email || ''}
                 isPremium={user?.isPremium || false}
+                premiumExpiresAt={user?.premiumExpiresAt}
                 onUpgradeSuccess={handleUpgradeSuccess}
                 onSimulateAlert={handleSimulateAlert}
                 onSendReport={handleSendReport}
