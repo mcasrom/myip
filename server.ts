@@ -356,6 +356,50 @@ async function sendEmail({ to, subject, text, html }: { to: string; subject: str
 // Express App
 // ============================================================================
 const app = express();
+
+// Webhook de Stripe: DEBE ir antes de express.json() global, porque Stripe
+// necesita el body RAW (sin parsear) para verificar la firma HMAC.
+app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), async (req, res) => {
+  const sig = req.headers['stripe-signature'];
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  const stripe = getStripe();
+  if (!stripe || !webhookSecret || !sig) {
+    console.error('[WEBHOOK] Stripe/webhook secret no configurado o falta firma.');
+    return res.status(400).send('Webhook no configurado.');
+  }
+  let event: Stripe.Event;
+  try {
+    event = stripe.webhooks.constructEvent(req.body, sig as string, webhookSecret);
+  } catch (err: any) {
+    console.error('[WEBHOOK] Firma invalida:', err.message);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+  if (event.type === 'checkout.session.completed') {
+    const session = event.data.object as Stripe.Checkout.Session;
+    if (session.payment_status === 'paid' && session.metadata?.email) {
+      const normalizedEmail = session.metadata.email.toLowerCase().trim();
+      const resolvedTier = session.metadata.tier === 'monthly' ? 'monthly' : 'lifetime';
+      if (!usersDb[normalizedEmail]) {
+        usersDb[normalizedEmail] = { email: normalizedEmail, isPremium: true, ipAddress: '0.0.0.0', scanCount: 0, verified: true, tier: resolvedTier, monthlyScanCount: 0 };
+      } else {
+        usersDb[normalizedEmail].isPremium = true;
+        usersDb[normalizedEmail].verified = true;
+        usersDb[normalizedEmail].tier = resolvedTier;
+      }
+      try {
+        authDb.updateUserFields(normalizedEmail, { isPremium: true, tier: resolvedTier });
+        console.log(`[WEBHOOK] Premium activado via webhook para ${normalizedEmail} (tier: ${resolvedTier})`);
+      } catch (e) {
+        console.error('[WEBHOOK] No se pudo persistir tier en SQLite:', e);
+      }
+    } else {
+      console.log('[WEBHOOK] checkout.session.completed recibido pero sin email/pago confirmado, ignorado.');
+    }
+  } else {
+    console.log(`[WEBHOOK] Evento recibido sin manejar: ${event.type}`);
+  }
+  res.json({ received: true });
+});
 const PORT = parseInt(process.env.PORT || '3000', 10);
 
 app.use(express.json());
