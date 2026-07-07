@@ -1498,14 +1498,14 @@ app.post('/api/tools/url-scan', async (req, res) => {
 
 // Advanced Tools: IP Info & VPN Check
 app.get('/api/tools/ip-info', (req, res) => {
-  const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress) as string;
+  const clientIp = (req.headers['x-forwarded-for'] || req.socket.remoteAddress) as string;
   
   // Reverse DNS para ver si es un datacenter/VPN conocido
-  dns.reverse(ip, (err, hostnames) => {
+  dns.reverse(clientIp, (err, hostnames) => {
     const isSuspicious = hostnames?.some(h => /vpn|proxy|cloud|aws|azure|digitalocean|hetzner|ovh|server/i.test(h)) || false;
     
     res.json({
-      ip,
+      ip: clientIp,
       hostnames: hostnames || [],
       isLikelyVpn: isSuspicious
     });
@@ -1539,6 +1539,46 @@ app.post('/api/tools/port-test', (req, res) => {
     socket.destroy();
     res.json({ status: 'filtered', ip: ipToTest, port: parseInt(port) });
   });
+});
+
+// Advanced Tools: IP Reputation (VirusTotal)
+app.get('/api/tools/ip-reputation', async (req, res) => {
+  const ip = req.query.ip as string;
+  const vtApiKey = process.env.VIRUSTOTAL_API_KEY;
+  
+  if (!ip) return res.status(400).json({ error: 'IP requerida.' });
+  if (!vtApiKey) return res.status(500).json({ error: 'Servicio no configurado.' });
+
+  try {
+    const vtRes = await fetch(`https://www.virustotal.com/api/v3/ip_addresses/${ip}`, {
+      headers: { 'x-apikey': vtApiKey }
+    });
+
+    if (!vtRes.ok) throw new Error('Error consultando VirusTotal');
+
+    const data = await vtRes.json();
+    const stats = data.data.attributes.last_analysis_stats;
+    const reputation = data.data.attributes.reputation;
+    const country = data.data.attributes.country || 'Desconocido';
+    const asOwner = data.data.attributes.as_owner || 'Desconocido';
+    
+    const malicious = stats.malicious || 0;
+    const suspicious = stats.suspicious || 0;
+    
+    res.json({
+      ip,
+      malicious,
+      suspicious,
+      harmless: stats.harmless || 0,
+      undetected: stats.undetected || 0,
+      reputation,
+      country,
+      asOwner,
+      lastAnalysisDate: new Date(data.data.attributes.last_analysis_date * 1000).toLocaleDateString()
+    });
+  } catch (e: any) {
+    res.json({ error: e.message || 'Error verificando reputación.' });
+  }
 });
 
 // Advanced Tools: Security Header Analyzer

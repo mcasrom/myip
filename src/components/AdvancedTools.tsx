@@ -552,23 +552,22 @@ export default function AdvancedTools() {
   const [sslDomain, setSslDomain] = useState('');
 
   // State for IP Reputation
-  const [repStatus, setRepStatus] = useState<'idle' | 'running' | 'success' | 'warning' | 'error'>('idle');
-  const [repResult, setRepResult] = useState<{ message: string; details?: string } | null>(null);
+  // (Handled inside IPReputation component)
 
   const runDnsLeakTest = async () => {
     setDnsStatus('running');
     setDnsResult(null);
     try {
-      const res = await fetch('/api/tools/dns-leak');
+      const res = await fetch('/api/tools/ip-info');
       const data = await res.json();
       setDnsStatus('success');
       setDnsResult({
-        message: 'Conexión DNS segura. No se detectaron fugas.',
-        details: `IP visible: ${data.ip}`
+        message: `Tu IP pública: ${data.ip}`,
+        details: data.isLikelyVpn ? 'Posible Datacenter/VPN detectado.' : 'IP residencial detectada.'
       });
     } catch {
       setDnsStatus('error');
-      setDnsResult({ message: 'Error de conexión al servidor de prueba.' });
+      setDnsResult({ message: 'Error al obtener información de IP.' });
     }
   };
 
@@ -603,22 +602,55 @@ export default function AdvancedTools() {
     }
   };
 
-  const runReputationCheck = async () => {
-    setRepStatus('running');
-    setRepResult(null);
+function IPReputation() {
+  const [status, setStatus] = useState<'idle' | 'running' | 'success' | 'warning' | 'error'>('idle');
+  const [result, setResult] = useState<{ message: string; details?: string } | null>(null);
+  const [repData, setRepData] = useState<any>(null);
+
+  const runCheck = async () => {
+    setStatus('running');
+    setResult(null);
     try {
-      const res = await fetch('/api/ip/detect');
-      const ipData = await res.json();
-      setRepStatus('success');
-      setRepResult({
-        message: `IP limpia. No aparece en listas negras.`,
-        details: `IP analizada: ${ipData.ip}`
-      });
-    } catch {
-      setRepStatus('error');
-      setRepResult({ message: 'No se pudo verificar la reputación.' });
+      // Get current IP first
+      const ipRes = await fetch('/api/ip/detect');
+      const ipData = await ipRes.json();
+      
+      const res = await fetch(`/api/tools/ip-reputation?ip=${encodeURIComponent(ipData.ip)}`);
+      const data = await res.json();
+      
+      if (data.error) throw new Error(data.error);
+      
+      setRepData(data);
+      if (data.malicious > 0) {
+        setStatus('error');
+        setResult({ message: `¡ALERTA! ${data.malicious} motores detectaron actividad maliciosa.`, details: `Reputación: ${data.reputation}` });
+      } else if (data.suspicious > 0) {
+        setStatus('warning');
+        setResult({ message: `${data.suspicious} motores marcan la IP como sospechosa.`, details: `Reputación: ${data.reputation}` });
+      } else {
+        setStatus('success');
+        setResult({ message: 'IP limpia. Sin detecciones maliciosas.', details: `ISP: ${data.asOwner} | País: ${data.country}` });
+      }
+    } catch (e: any) {
+      setStatus('error');
+      setResult({ message: e.message || 'Error verificando reputación.' });
     }
   };
+
+  return (
+    <ToolCard
+      category="Reputación"
+      icon={<Globe className="w-5 h-5" />}
+      title="IP Reputation (VirusTotal)"
+      description="Verifica si tu IP pública aparece en listas negras de 80+ motores de seguridad."
+      actionLabel="Verificar mi IP"
+      onRun={runCheck}
+      running={status === 'running'}
+      status={status}
+      result={result}
+    />
+  );
+}
 
   return (
     <div className="space-y-8 max-w-6xl mx-auto px-4 sm:px-0">
@@ -682,17 +714,7 @@ export default function AdvancedTools() {
         />
 
         {/* IP Reputation */}
-        <ToolCard
-          category="Reputación"
-          icon={<Globe className="w-5 h-5" />}
-          title="IP Blacklist Check"
-          description="¿Tu conexión está marcada como spam? Comprueba si tu IP aparece en listas de bloqueo globales."
-          actionLabel="Comprobar mi IP"
-          onRun={runReputationCheck}
-          running={repStatus === 'running'}
-          status={repStatus}
-          result={repResult}
-        />
+        <IPReputation />
 
         {/* URL Scanner */}
         <URLScanner />
