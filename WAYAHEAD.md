@@ -1613,3 +1613,67 @@ pago cobrado sin isPremium activado que motivo originalmente esta tarea.
 - [ ] Considerar añadir mas eventos al webhook si hacen falta en el
       futuro (ej. `checkout.session.expired`, `charge.refunded`) —
       hoy solo checkout.session.completed esta manejado
+
+## Sesión 2026-07-07 (madrugada) — Webhook Stripe: codigo cerrado, falta 1 prueba con pago real
+
+### Lo que YA esta confirmado y funcionando (no repetir)
+- Endpoint /api/webhooks/stripe implementado, deployado en local Y produccion.
+- Verificado con `stripe trigger checkout.session.completed`: firma OK,
+  respuesta 200, logica correcta (ignora evento sin metadata, como se
+  espera de un trigger simulado).
+- Verificado en produccion real con curl sin firma: 400 (rechazo correcto).
+- Webhook de produccion creado en Stripe (modo live), whsec_ guardado en
+  .env del servidor Hetzner. Commit bb16f70 + 9585092.
+- CONCLUSION: el codigo del webhook esta completo y correcto. Lo unico
+  que falta es la ultima milla: un pago real end-to-end con tarjeta de
+  test para confirmar que `isPremium` se activa en la SQLite real.
+
+### Pendiente exacto para retomar (bloqueo fue de logistica de terminales, NO de codigo)
+Intento de hoy fallo por gestion de multiples terminales (tmux resulto
+incomodo para copiar/pegar, procesos se perdieron entre ventanas). El
+plan es correcto, solo hace falta ejecutarlo con calma:
+
+1. Terminal 1 (dejar corriendo, NO tocar mas):
+   cd ~/myip
+   STRIPE_SECRET_KEY="$(grep '^STRIPE_SECRET_KEY_TEST=' .env | cut -d= -f2)" APP_URL="https://myip.viajeinteligencia.com" npm run dev
+   Esperar a ver "MyIP server running on http://0.0.0.0:3000" y que NO
+   crashee tras unos segundos.
+
+2. Terminal 2 (dejar corriendo, NO tocar mas):
+   cd ~/myip
+   stripe listen --forward-to http://localhost:3000/api/webhooks/stripe --api-key "$(grep '^STRIPE_SECRET_KEY_TEST=' .env | cut -d= -f2)"
+   Esperar a ver "Ready!".
+
+3. Terminal 3 (aqui se trabaja):
+   curl -X POST http://localhost:3000/api/premium/create-checkout-session \
+     -H "Content-Type: application/json" \
+     -d '{"email":"test-checkout3@example.com","tier":"lifetime"}'
+   Copiar checkoutUrl, abrir en navegador, pagar con 4242 4242 4242 4242,
+   fecha 12/30, CVC 123.
+
+4. Tras pagar, revisar Terminal 1 y 2 (deberian mostrar
+   "[WEBHOOK] Premium activado..." y evento 200 respectivamente).
+
+5. Confirmar en SQLite:
+   node -e "
+   const Database = require('better-sqlite3');
+   const db = new Database('myip.sqlite3');
+   console.log(JSON.stringify(db.prepare('SELECT email, is_premium, tier FROM users WHERE email = ?').get('test-checkout3@example.com')));
+   "
+
+### Hallazgo colateral IMPORTANTE encontrado hoy, sin resolver
+`.env` local tiene `APP_URL="MY_APP_URL"` — placeholder de plantilla SIN
+RELLENAR, no una URL real ni siquiera localhost. Esto rompe cualquier
+flujo que dependa de APP_URL en local (creacion de checkout session da
+error url_invalid de Stripe, botones de email con URL de vuelta, etc).
+PENDIENTE URGENTE: verificar si el .env del SERVIDOR (Hetzner,
+/home/deploy/myip/.env) tiene el mismo problema o esta bien configurado
+- si esta mal en produccion, es un bug activo ahora mismo afectando
+  usuarios reales, no solo dev local.
+Comando para verificar manana:
+  ssh deploy@178.105.80.193 "grep '^APP_URL=' /home/deploy/myip/.env"
+
+### Limpieza pendiente menor
+- [ ] Borrar linea #otro_stripe= del .env local (ya migrada a STRIPE_SECRET_KEY_TEST)
+- [ ] Matar cualquier proceso node/curl huerfano en puerto 3000 antes de la proxima sesion:
+      fuser -k 3000/tcp
