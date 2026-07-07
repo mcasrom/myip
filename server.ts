@@ -1405,11 +1405,7 @@ app.get('/api/tools/ssl-check', (req, res) => {
   
   const cleanDomain = domain.replace(/^https?:\/\//, '').split('/')[0];
   
-  const socket = tls.connect({ port: 443, host: cleanDomain }, () => {
-    if (!socket.authorized) {
-      socket.end();
-      return res.json({ error: 'Certificado no autorizado o autofirmado.' });
-    }
+  const socket = tls.connect({ port: 443, host: cleanDomain, rejectUnauthorized: false }, () => {
     const cert = socket.getPeerCertificate();
     const cipher = socket.getCipher();
     const now = new Date();
@@ -1417,6 +1413,18 @@ app.get('/api/tools/ssl-check', (req, res) => {
     const daysLeft = Math.round((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
     
     socket.end();
+
+    // Si no está autorizado (ej. autofirmado), devolvemos warning en vez de error
+    if (!socket.authorized) {
+      return res.json({
+        valid: false,
+        issuer: cert.issuer?.O || cert.issuer?.CN || 'Desconocido',
+        daysLeft,
+        cipher: cipher?.name || 'Unknown',
+        reason: socket.authorizationError || 'Certificado no válido'
+      });
+    }
+    
     res.json({
       valid: true,
       issuer: cert.issuer?.O || cert.issuer?.CN || 'Desconocido',

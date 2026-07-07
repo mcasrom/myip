@@ -137,11 +137,15 @@ export default function AdvancedTools() {
       if (data.error) throw new Error(data.error);
       
       const isExpiringSoon = data.daysLeft < 30;
-      setSslStatus(isExpiringSoon ? 'warning' : 'success');
+      const isInvalid = !data.valid;
+      
+      setSslStatus(isInvalid ? 'warning' : (isExpiringSoon ? 'warning' : 'success'));
       setSslResult({
-        message: isExpiringSoon 
-          ? `Certificado válido pero expira en ${data.daysLeft} días.`
-          : `Certificado seguro y válido (${data.daysLeft} días restantes).`,
+        message: isInvalid 
+          ? `Certificado no confiable: ${data.reason || 'Autofirmado o caducado'}.`
+          : isExpiringSoon 
+            ? `Certificado válido pero expira en ${data.daysLeft} días.`
+            : `Certificado seguro y válido (${data.daysLeft} días restantes).`,
         details: `Emisor: ${data.issuer} | Cifrado: ${data.cipher}`
       });
     } catch (e: any) {
