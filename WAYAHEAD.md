@@ -1512,3 +1512,104 @@ Patch aplicado siguiendo el plan documentado en la entrada anterior
       mantener el diff de este commit legible
 - [ ] Decidir si se añade UPnP/1900 con -sU (coste real de escaneo UDP,
       medir antes de decidir)
+
+## Sesión 2026-07-07 (noche) — Webhook Stripe CERRADO (bloqueado desde 2026-07-03)
+
+### Desbloqueo de la clave
+La clave test estándar correcta (`sk_test_51...`) llevaba semanas ya
+generada, guardada en `.env` bajo el nombre `#otro_stripe=` (comentada,
+sin usar) desde la sesión 2026-07-05. Nunca se relacionó con el bloqueo
+de `STRIPE_SECRET_KEY_TEST` (que seguia siendo una `rk_test_` restringida)
+hasta revisar el .env a fondo hoy. Activada copiando su valor a
+STRIPE_SECRET_KEY_TEST.
+
+### stripe listen — confirmado funcionando
+`stripe listen --forward-to http://localhost:3000/api/webhooks/stripe
+--api-key sk_test_...` -> "Ready! ... webhook signing secret is whsec_..."
+sin error 403. La restriccion de scopes de la key vieja (rk_test_,
+sin permiso "Debugging Tools Write") ya no aplica.
+
+### Endpoint /api/webhooks/stripe implementado
+- server.ts: nuevo endpoint montado con `express.raw({type:
+  'application/json'})`, ANTES de `app.use(express.json())` global (linea
+  358), imprescindible para que Stripe pueda verificar la firma HMAC
+  sobre el body sin parsear.
+- Verifica firma via `stripe.webhooks.constructEvent(req.body, sig,
+  webhookSecret)`, usando STRIPE_WEBHOOK_SECRET (variable nueva).
+- Maneja `checkout.session.completed`: misma logica que
+  `/api/premium/verify-session` ya validada (normaliza email, resuelve
+  tier desde metadata, actualiza usersDb en memoria + authDb.
+  updateUserFields en SQLite) — ambos caminos quedan sincronizados como
+  estaba planeado.
+- Otros tipos de evento: logueados como "sin manejar", sin error, para
+  visibilidad futura sin bloquear nada.
+- tsc --noEmit limpio. Commit `bb16f70`.
+
+### Incidente de patch — anchor no encontrado, resuelto sin perdida
+Primer intento (script Python con heredoc + comillas triples anidadas)
+fallo con "anchor encontrado 0 veces" — probablemente el heredoc se
+corrompio al pegarse en terminal (multiples comandos mezclados en el
+output). Backup intacto confirmado por `diff` antes de reintentar.
+Metodo alternativo usado con exito: snippet en archivo de texto aparte
+(`cat > archivo.txt << 'EOF'`, verificado con `wc -l`/`head`/`tail` antes
+de tocar server.ts) + insercion via `sed -i '358r archivo.txt' server.ts`
+por numero de linea exacto. Mas robusto que heredoc con comillas
+anidadas para bloques de codigo largos — considerar como metodo
+preferido para patches grandes en el futuro.
+
+### Pruebas end-to-end (test mode local)
+- `stripe trigger checkout.session.completed` -> stripe listen reenvio
+  el evento, servidor respondio 200, log
+  "[WEBHOOK] checkout.session.completed recibido pero sin email/pago
+  confirmado, ignorado." — correcto, `stripe trigger` genera evento
+  generico sin la metadata custom (email/tier) que solo existe en
+  sesiones reales creadas por server.ts. Firma verificada correctamente
+  (si fallara, response seria 400, no 200).
+- Otros eventos de la cascada de fixtures de Stripe (product.created,
+  price.created, charge.succeeded, payment_intent.*, charge.updated)
+  logueados correctamente como "sin manejar", sin crash.
+
+### Webhook de PRODUCCION creado (live mode)
+- Bug encontrado al crear el webhook de produccion: comando usaba
+  `grep STRIPE_SECRET_KEY .env` (sin anclaje `^` ni `=`) — matcheaba
+  TANTO `STRIPE_SECRET_KEY=` como `STRIPE_SECRET_KEY_TEST=`, devolviendo
+  dos valores separados por salto de linea. Ese `\n` interno rompia la
+  cabecera HTTP Authorization (`net/http: invalid header field value`).
+  Fix: `grep '^STRIPE_SECRET_KEY='` (anclado + con el `=`) — mismo tipo
+  de bug de anclaje que ya habiamos evitado en sesiones anteriores con
+  `cut -c1-8`, pero esta vez colado en un comando distinto. Leccion:
+  SIEMPRE anclar `^` y incluir el `=` al hacer grep sobre variables de
+  .env que puedan ser prefijo de otras (ej. STRIPE_SECRET_KEY vs
+  STRIPE_SECRET_KEY_TEST).
+- Webhook creado con exito via API (`stripe webhook_endpoints create`),
+  modo live, URL https://myip.viajeinteligencia.com/api/webhooks/stripe,
+  evento checkout.session.completed. ID: we_1TqPbZ1yXjIoL1LjhfjP1MA6.
+  Secret de produccion: whsec_3UoLfjGnP9upr3iUZAVmsa74nolD3rKa (distinto
+  al de test local, correcto segun el plan original).
+- STRIPE_WEBHOOK_SECRET añadido al .env del servidor Hetzner (no existia
+  antes, confirmado con grep vacio previo).
+- Deploy de server.ts al servidor (rsync + docker compose up -d --build),
+  contenedor recreado sin errores.
+- Verificacion final end-to-end en produccion real: `curl -X POST
+  https://myip.viajeinteligencia.com/api/webhooks/stripe` sin firma
+  valida -> 400 (rechazo correcto). Confirma cadena completa: DNS ->
+  Cloudflare -> Nginx -> Docker -> Express -> verificacion HMAC, todo
+  operativo.
+
+### Estado: CERRADO
+Webhook de Stripe, pendiente desde 2026-07-03, funcional en test y
+produccion. Unico camino de confirmacion de pago ahora es doble:
+`/api/premium/verify-session` (frontend, tras redireccion) +
+`/api/webhooks/stripe` (server-to-server, no depende de que el
+navegador del cliente complete la redireccion) — resuelve el riesgo de
+pago cobrado sin isPremium activado que motivo originalmente esta tarea.
+
+### Pendiente (limpieza menor, no bloqueante)
+- [ ] Borrar la linea `#otro_stripe=...` del .env local, ya migrada a
+      STRIPE_SECRET_KEY_TEST (sed -i '/^#otro_stripe=/d' .env)
+- [ ] Confirmar un pago real de prueba con tarjeta 4242 4242 4242 4242
+      contra el checkout real (no solo `stripe trigger`) para validar
+      el camino completo con metadata.email/tier real, no simulado
+- [ ] Considerar añadir mas eventos al webhook si hacen falta en el
+      futuro (ej. `checkout.session.expired`, `charge.refunded`) —
+      hoy solo checkout.session.completed esta manejado
