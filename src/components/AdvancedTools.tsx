@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, Eye, Lock, Globe, Search, CheckCircle, AlertTriangle, Play, Network, Router, Monitor, Printer, Server, ArrowRight, Copy, ExternalLink, Info, Link, Mail, Fingerprint, Terminal, Code } from 'lucide-react';
+import { Shield, Eye, Lock, Globe, Search, CheckCircle, AlertTriangle, Play, Network, Router, Monitor, Printer, Server, ArrowRight, Copy, ExternalLink, Info, Link, Mail, Fingerprint, Terminal, Code, Wifi, ShieldOff, ShieldCheck } from 'lucide-react';
 
 // --- Reusable Tool Card ---
 interface ToolCardProps {
@@ -307,6 +307,84 @@ function URLScanner() {
   );
 }
 
+function VpnDetector() {
+  const [status, setStatus] = useState<'idle' | 'running' | 'success' | 'warning' | 'error'>('idle');
+  const [result, setResult] = useState<{ message: string; details?: string } | null>(null);
+  const [info, setInfo] = useState<any>(null);
+
+  const runCheck = async () => {
+    setStatus('running');
+    setResult(null);
+    
+    try {
+      // 1. Get Public IP Info
+      const res = await fetch('/api/tools/ip-info');
+      const data = await res.json();
+      setInfo(data);
+
+      // 2. WebRTC Local IP Check
+      const localIps: string[] = [];
+      const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+      pc.createDataChannel('');
+      await pc.createOffer().then(o => pc.setLocalDescription(o));
+      
+      await new Promise<void>(resolve => {
+        pc.onicecandidate = (evt) => {
+          if (evt.candidate) {
+            const match = evt.candidate.candidate.match(/([0-9]{1,3}\.){3}[0-9]{1,3}/);
+            if (match && !localIps.includes(match[0])) localIps.push(match[0]);
+          } else {
+            resolve();
+          }
+        };
+        setTimeout(resolve, 3000);
+      });
+      pc.close();
+
+      // Analysis
+      let verdict = 'success';
+      let msg = 'Conexión limpia. No se detectaron fugas ni proxies.';
+      let details = `IP Pública: ${data.ip}`;
+
+      if (data.isLikelyVpn) {
+        verdict = 'warning';
+        msg = 'Posible VPN o Proxy detectada (IP de Datacenter).';
+        details += ` | Host: ${data.hostnames[0] || 'Desconocido'}`;
+      }
+
+      if (localIps.length > 0) {
+        const hasLeak = localIps.some(ip => ip.startsWith('192.168.') || ip.startsWith('10.'));
+        if (hasLeak) {
+          verdict = 'error';
+          msg = '¡Fuga WebRTC! Tu IP local está visible para las webs.';
+          details += ` | IPs Locales: ${localIps.join(', ')}`;
+        }
+      }
+
+      setStatus(verdict as any);
+      setResult({ message: msg, details });
+
+    } catch (e: any) {
+      setStatus('error');
+      setResult({ message: e.message || 'Error al verificar conexión.' });
+    }
+  };
+
+  return (
+    <ToolCard
+      category="Privacidad"
+      icon={status === 'error' ? <ShieldOff className="w-5 h-5" /> : <ShieldCheck className="w-5 h-5" />}
+      title="VPN & Proxy Detector"
+      description="¿Estás realmente anonimizado? Detecta si usas una VPN, si tu IP es de un datacenter o si WebRTC filtra tu identidad."
+      actionLabel="Verificar Anonimato"
+      onRun={runCheck}
+      running={status === 'running'}
+      status={status}
+      result={result}
+    />
+  );
+}
+
 // --- Main Component ---
 
 export default function AdvancedTools() {
@@ -426,6 +504,9 @@ export default function AdvancedTools() {
 
       {/* Tools Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* VPN & Proxy Detector */}
+        <VpnDetector />
+
         {/* DNS Leak Test */}
         <ToolCard
           category="Privacidad"

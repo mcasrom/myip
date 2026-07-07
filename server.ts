@@ -1495,6 +1495,22 @@ app.post('/api/tools/url-scan', async (req, res) => {
   }
 });
 
+// Advanced Tools: IP Info & VPN Check
+app.get('/api/tools/ip-info', (req, res) => {
+  const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress) as string;
+  
+  // Reverse DNS para ver si es un datacenter/VPN conocido
+  dns.reverse(ip, (err, hostnames) => {
+    const isSuspicious = hostnames?.some(h => /vpn|proxy|cloud|aws|azure|digitalocean|hetzner|ovh|server/i.test(h)) || false;
+    
+    res.json({
+      ip,
+      hostnames: hostnames || [],
+      isLikelyVpn: isSuspicious
+    });
+  });
+});
+
 app.get('/api/scan/history', optionalAuth, async (req: any, res) => {
   const email = req.authUser || req.query.email;
   if (!email) return res.status(401).json({ error: 'No autenticado.' });
