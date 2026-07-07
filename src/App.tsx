@@ -35,6 +35,7 @@ import { tosContent, faqContent } from './data/legal';
 import PWAInstallBanner from './components/PWAInstallBanner';
 import ChangesPopup from './components/ChangesPopup';
 import WelcomeModal from './components/WelcomeModal';
+import CommunityKPIs from './components/CommunityKPIs';
 import LocalNetworkDiagnostic from './components/LocalNetworkDiagnostic';
 import TerminalSecurityCheck from './components/TerminalSecurityCheck';
 import { ScanResult, UserSession } from './types';
@@ -676,6 +677,9 @@ export default function App() {
                 {/* Radar scanner visual widget */}
                 <div className="bg-white border border-slate-200 rounded-3xl p-6 md:p-8 shadow-sm max-w-2xl mx-auto">
                   <RadarScanner scanning={scanning} ip={detectedIp} />
+
+                  {/* Community KPIs */}
+                  <CommunityKPIs />
 
                   {/* Legal and Compliance Consent Checkbox Card */}
                   <div className="mt-8 bg-slate-50 border border-slate-200 rounded-2xl p-4.5 text-left max-w-lg mx-auto space-y-3 shadow-inner">
