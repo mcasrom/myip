@@ -428,7 +428,7 @@ function PortTester() {
         setResult({ message: `Puerto ${port} CERRADO.`, details: 'No se detectó servicio escuchando.' });
       } else {
         setStatus('warning');
-        setResult({ message: `Puerto ${port} FILTRADO/TIMEOUT.`, details: 'Posible firewall bloqueando la petición.' });
+        setResult({ message: `Puerto ${port} FILTRADO (No accesible).`, details: 'Tu Router/Firewall bloquea el acceso externo. El servicio puede estar activo localmente, pero no está expuesto a Internet.' });
       }
     } catch (e: any) {
       setStatus('error');
