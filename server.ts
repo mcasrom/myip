@@ -1405,7 +1405,13 @@ app.get('/api/tools/ssl-check', (req, res) => {
   
   const cleanDomain = domain.replace(/^https?:\/\//, '').split('/')[0];
   
-  const socket = tls.connect({ port: 443, host: cleanDomain, rejectUnauthorized: false }, () => {
+  // Configuración explícita de SNI para evitar falsos positivos en subdominios
+  const socket = tls.connect({ 
+    port: 443, 
+    host: cleanDomain, 
+    servername: cleanDomain, 
+    rejectUnauthorized: false 
+  }, () => {
     const cert = socket.getPeerCertificate();
     const cipher = socket.getCipher();
     const now = new Date();
@@ -1414,23 +1420,17 @@ app.get('/api/tools/ssl-check', (req, res) => {
     
     socket.end();
 
-    // Si no está autorizado (ej. autofirmado), devolvemos warning en vez de error
-    if (!socket.authorized) {
-      return res.json({
-        valid: false,
-        issuer: cert.issuer?.O || cert.issuer?.CN || 'Desconocido',
-        daysLeft,
-        cipher: cipher?.name || 'Unknown',
-        reason: socket.authorizationError || 'Certificado no válido'
-      });
-    }
-    
+    // Si hay error de autorización, lo reportamos como advertencia, no como fallo de conexión
+    const isValid = socket.authorized;
+    const reason = socket.authorizationError;
+
     res.json({
-      valid: true,
+      valid: isValid,
       issuer: cert.issuer?.O || cert.issuer?.CN || 'Desconocido',
       daysLeft,
       cipher: cipher?.name || 'Unknown',
-      validTo: cert.valid_to
+      validTo: cert.valid_to,
+      reason: isValid ? undefined : reason
     });
   });
   
@@ -1442,6 +1442,57 @@ app.get('/api/tools/ssl-check', (req, res) => {
     socket.destroy();
     res.json({ error: 'Tiempo de espera agotado.' });
   });
+});
+
+// Advanced Tools: URL Threat Scanner (VirusTotal)
+app.post('/api/tools/url-scan', async (req, res) => {
+  const { url } = req.body;
+  if (!url) return res.status(400).json({ error: 'URL requerida.' });
+  
+  const vtApiKey = process.env.VIRUSTOTAL_API_KEY;
+  if (!vtApiKey) return res.status(500).json({ error: 'Servicio no configurado.' });
+
+  try {
+    // 1. Calcular ID de la URL (SHA256 sin el path, según docs de VT)
+    // Nota: VT v3 usa el hash de la URL completa codificada en base64 sin padding para el ID
+    const urlId = Buffer.from(url).toString('base64url');
+
+    // 2. Intentar obtener reporte
+    const vtRes = await fetch(`https://www.virustotal.com/api/v3/urls/${urlId}`, {
+      headers: { 'x-apikey': vtApiKey }
+    });
+
+    if (vtRes.status === 404) {
+      // 3. Si no existe, enviar para análisis
+      const submitRes = await fetch('https://www.virustotal.com/api/v3/urls', {
+        method: 'POST',
+        headers: { 'x-apikey': vtApiKey, 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `url=${encodeURIComponent(url)}`
+      });
+      
+      if (!submitRes.ok) throw new Error('Error al enviar URL a VirusTotal');
+      return res.json({ status: 'submitted', message: 'URL enviada para análisis. Resultados en unos minutos.' });
+    }
+
+    if (!vtRes.ok) throw new Error('Error consultando VirusTotal');
+
+    const data = await vtRes.json();
+    const stats = data.data.attributes.last_analysis_stats;
+    const malicious = stats.malicious || 0;
+    const suspicious = stats.suspicious || 0;
+
+    res.json({
+      status: 'analyzed',
+      malicious,
+      suspicious,
+      harmless: stats.harmless || 0,
+      undetected: stats.undetected || 0,
+      lastAnalysisDate: new Date(data.data.attributes.last_analysis_date * 1000).toLocaleDateString()
+    });
+
+  } catch (e: any) {
+    res.json({ error: e.message || 'Error escaneando URL.' });
+  }
 });
 
 app.get('/api/scan/history', optionalAuth, async (req: any, res) => {
