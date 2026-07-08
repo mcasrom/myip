@@ -38,6 +38,7 @@ import ChangesPopup from './components/ChangesPopup';
 import WelcomeModal from './components/WelcomeModal';
 import CommunityKPIs from './components/CommunityKPIs';
 import AdvancedTools from './components/AdvancedTools';
+import ThreatMap from './components/ThreatMap';
 import LocalNetworkDiagnostic from './components/LocalNetworkDiagnostic';
 import TerminalSecurityCheck from './components/TerminalSecurityCheck';
 import { ScanResult, UserSession } from './types';
@@ -46,7 +47,7 @@ import socialPreviewImg from './assets/images/myip_preview.jpg';
 import socialIconImg from './assets/images/myip_icon.jpg';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'home' | 'dashboard' | 'guides' | 'about' | 'profile' | 'legal' | 'methodology' | 'tos' | 'faq' | 'advanced'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'dashboard' | 'guides' | 'about' | 'profile' | 'legal' | 'methodology' | 'tos' | 'faq' | 'advanced' | 'radar'>('home');
   const [homeSubTab, setHomeSubTab] = useState<'public' | 'local'>('public');
   const [detectedIp, setDetectedIp] = useState<string>('');
   const [isSimulatedIp, setIsSimulatedIp] = useState<boolean>(false);
@@ -463,7 +464,15 @@ export default function App() {
                 activeTab === 'advanced' ? 'bg-amber-600 text-white shadow-sm' : 'text-amber-300 hover:text-amber-200'
               }`}
             >
-              <Terminal className="w-3 h-3" /> Herramientas Avanzadas
+              <Terminal className="w-3 h-3" /> Herramientas
+            </button>
+            <button
+              onClick={() => setActiveTab('radar')}
+              className={`px-4 py-2 rounded-lg text-xs font-semibold tracking-wide transition-all flex items-center gap-1.5 ${
+                activeTab === 'radar' ? 'bg-red-600 text-white shadow-sm' : 'text-red-300 hover:text-red-200'
+              }`}
+            >
+              <Shield className="w-3 h-3" /> Radar
             </button>
             <button
               onClick={() => setActiveTab('about')}
@@ -1691,6 +1700,8 @@ export default function App() {
             </div>
           )
         )}
+        
+        {activeTab === 'radar' && <ThreatMap />}
         {/* TAB 5: PROFILE / UPGRADE */}
         {activeTab === 'profile' && (
           <div className="space-y-10">
