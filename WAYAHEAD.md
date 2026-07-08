@@ -1786,6 +1786,12 @@ Comando para verificar manana:
 - Separación conceptual mantenida: educar (How-To) vs ejecutar (Tools)
 
 ### Sincronización
-- GitHub: `mcasrom/myip` → main `1463a3d` ✅
+- GitHub: `mcasrom/myip` → main `4e240d5` ✅
 - Server: `/home/deploy/myip` → pulled, rebuilt, running healthy ✅
 - Laptop: working tree clean, up to date ✅
+
+### UpgradePanel: Bloque de activación corregido ✅
+- Eliminado claim falso "cifrado extremo a extremo HTTPS/TLS" → reemplazado por "Stripe PCI-DSS Level 1, datos de tarjeta nunca tocan nuestro servidor"
+- Eliminado claim no verificable "servidores neutrales en carbono"
+- Añadido bloque "Impacto Social Real" con link a [Fundación Roble y Machete](https://boinasverdes.es) — integración laboral de veteranos OE, apoyo a familias, becas
+- Iconos: ShieldCheck (seguridad) + Award (impacto social)
