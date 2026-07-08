@@ -357,6 +357,7 @@ async function sendEmail({ to, subject, text, html }: { to: string; subject: str
 // Express App
 // ============================================================================
 const app = express();
+app.disable('x-powered-by'); // Fix: evita fuga "X-Powered-By: Express" (detectado por testssl.sh 08 Jul 2026)
 
 // Webhook de Stripe: DEBE ir antes de express.json() global, porque Stripe
 // necesita el body RAW (sin parsear) para verificar la firma HMAC.
@@ -406,7 +407,8 @@ const PORT = parseInt(process.env.PORT || '3000', 10);
 app.use(express.json());
 app.use(cookieParser());
 app.use((req, res, next) => {
-  res.setHeader('X-Content-Type-Options', 'nosniff');
+  // X-Content-Type-Options se fija en Nginx (borde); duplicarlo aquí generaba
+  // "misconfiguration: X-Content-Type-Options 2x" en testssl.sh (08 Jul 2026)
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   next();
