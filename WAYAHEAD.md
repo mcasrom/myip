@@ -1720,6 +1720,21 @@ Comando para verificar manana:
 - Verificado: contenedor healthy, HTTP 200 en `https://myip.viajeinteligencia.com`
 
 ### Sincronización
-- GitHub: `mcasrom/myip` → main `7235674` ✅
+- GitHub: `mcasrom/myip` → main `98ef62d` ✅
 - Server: `/home/deploy/myip` → pulled, rebuilt, running healthy ✅
 - Laptop: working tree clean, up to date ✅
+
+## Sesión 2026-07-08 (tarde) — Founder manifesto + mobile nav fix
+
+### Founder Manifesto: ACTUALIZADO ✅
+- `author`: "Creador de MyIP y Fundador de SIEG" → "M.Castillo"
+- `role`: "Experto en Privacidad..." → "Fundador y mente detrás de MyIP / SIEG"
+- Filosofía: "Nuestra filosofía...previene que nuestro motor" → "Con una filosofía...se previene que el motor"
+- Firma añadida: `signature: 'M.Castillo @2026 Australia'`
+- Signature block añadido en App.tsx (About page)
+
+### Mobile Navigation: ACTUALIZADO ✅
+- Problema: barra móvil solo tenía 5 botones, faltaban Radar y Herramientas Avanzadas
+- Solución: añadidos botones Radar (Globe icon, rojo) y Tools (Terminal icon, ámbar)
+- 7 botones totales en móvil con iconos/texto más compactos (w-4 h-4, text-[9px])
+- Deploy: commit `98ef62d` → push → server rebuilt → healthy
