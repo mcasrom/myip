@@ -1737,4 +1737,33 @@ Comando para verificar manana:
 - Problema: barra móvil solo tenía 5 botones, faltaban Radar y Herramientas Avanzadas
 - Solución: añadidos botones Radar (Globe icon, rojo) y Tools (Terminal icon, ámbar)
 - 7 botones totales en móvil con iconos/texto más compactos (w-4 h-4, text-[9px])
-- Deploy: commit `98ef62d` → push → server rebuilt → healthy
+- Deploy: commit `f071318` → push → server rebuilt → healthy
+
+### Sincronización final
+- GitHub: `mcasrom/myip` → main `f071318` ✅
+- Server: `/home/deploy/myip` → pulled, rebuilt, running healthy ✅
+- Laptop: working tree clean, up to date ✅
+
+---
+
+## Cierre de sesión 2026-07-08
+
+### Resumen de cambios desplegados hoy
+1. **Nginx fix** (`status.viajeinteligencia.com`) — JSON público + dashboard protegido
+2. **ThreatMap Radar** — altura explícita + `invalidateSize()` para Leaflet
+3. **Founder Manifesto** — autor M.Castillo, firma @2026 Australia, filosofía corregida
+4. **Mobile Nav** — 7 botones (añadidos Radar + Tools)
+
+### Estado del proyecto
+- Producción: `https://myip.viajeinteligencia.com` — healthy ✅
+- Status map: `https://status.viajeinteligencia.com` — healthy ✅
+- Radar tab: funcionando con datos fail2ban en tiempo real ✅
+- Base de datos: 6 usuarios, 42 escaneos, 2 premium
+- Docker container: healthy, puerto 3004 → 3000
+
+### Pendientes para próxima sesión
+- [ ] Probar checkout Stripe real con tarjeta 4242 en producción
+- [ ] Mejorar plantilla HTML de emails de alerta (branding + link app)
+- [ ] Limpiar scan_history sintético de usuarios test
+- [ ] Revisar APP_URL placeholder en .env local
+- [ ] Auditoría completa de seguridad frontend (console.log, localStorage de sesión)
