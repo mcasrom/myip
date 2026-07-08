@@ -78,15 +78,16 @@ export const guides: SecurityGuide[] = [
 ];
 
 export const founderManifesto = {
-  author: 'Creador de MyIP y Fundador de SIEG',
-  role: 'Experto en Privacidad y Seguridad Digital',
+  author: 'M.Castillo',
+  role: 'Fundador y mente detrás de MyIP / SIEG',
   title: 'La Ciberseguridad es un Derecho, no un Privilegio',
   paragraphs: [
     'En la era de la hiperconectividad, cada usuario final es el guardián de su propia frontera digital. Sin embargo, la industria de la seguridad informática a menudo utiliza un lenguaje críptico, alarmista y plagado de tecnicismos para vender soluciones costosas, asustando al usuario común en lugar de empoderarlo.',
     'MyIP nació con una misión transparente: democratizar el conocimiento de la infraestructura de red. Creemos firmemente que comprender qué es una dirección IP, por qué un puerto SSH expuesto es un riesgo o qué significa que un certificado SSL esté por vencer, debe ser de acceso libre, comprensible y amigable.',
-    'La seguridad no se logra comprando la caja de herramientas más compleja, sino entendiendo cómo cerrar las puertas de tu casa digital. Nuestra filosofía de "baja fricción" y diagnóstico local estricto previene que nuestro motor sea abusado como vector de ataque hacia terceros, reforzando un ecosistema de internet ético, seguro y centrado en la privacidad.',
+    'La seguridad no se logra comprando la caja de herramientas más compleja, sino entendiendo cómo cerrar las puertas de tu casa digital. Con una filosofía de "baja fricción" y diagnóstico local estricto se previene que el motor sea abusado como vector de ataque hacia terceros, reforzando un ecosistema de internet ético, seguro y centrado en la privacidad.',
     'Educar es proteger. Cada puerto que aprendes a cerrar es un paso firme hacia una soberanía digital plena, libre de fraudes y vigilancias no autorizadas. ¡Gracias por ser parte de este viaje por una red más segura!'
   ],
-  quote: '“La verdadera seguridad no reside en la oscuridad tecnológica, sino en el faro del conocimiento compartido.”',
-  contact: 'threatradar-myip@viajeinteligencia.com'
+  quote: '"La verdadera seguridad no reside en la oscuridad tecnológica, sino en el faro del conocimiento compartido."',
+  contact: 'threatradar-myip@viajeinteligencia.com',
+  signature: 'M.Castillo @2026 Australia'
 };
