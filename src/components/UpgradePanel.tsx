@@ -411,16 +411,20 @@ export default function UpgradePanel({
               <Radio className="w-4 h-4 text-indigo-500" /> ¿Cómo Funciona la Activación?
             </h3>
             <p className="text-xs text-slate-500 leading-relaxed">
-              Al confirmar el pago con el simulador de Stripe o pasarela real, la cuenta de correo que introduzcas se marcará como <strong>Premium Permanente</strong> en nuestra base de datos.
+              Al completar el pago a través de Stripe, tu cuenta se marca como <strong>Premium Permanente</strong> (o Premium 30 días según el plan). El proceso es automático e instantáneo.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
               <div className="p-3 bg-slate-50 rounded-xl space-y-1 border border-slate-100">
-                <h4 className="font-bold text-slate-700">🔐 Canales Seguros</h4>
-                <p className="text-slate-500">Cifrado de datos de extremo a extremo a través de HTTPS/TLS.</p>
+                <h4 className="font-bold text-slate-700 flex items-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" /> Pago Seguro con Stripe
+                </h4>
+                <p className="text-slate-500">Transacción procesada por Stripe (PCI-DSS Level 1). Tus datos de tarjeta nunca tocan nuestro servidor.</p>
               </div>
               <div className="p-3 bg-slate-50 rounded-xl space-y-1 border border-slate-100">
-                <h4 className="font-bold text-slate-700">🌱 Cuidado Energético</h4>
-                <p className="text-slate-500">Parte de lo recaudado financia servidores neutrales en emisiones de carbono.</p>
+                <h4 className="font-bold text-slate-700 flex items-center gap-1.5">
+                  <Award className="w-3.5 h-3.5 text-amber-600" /> Impacto Social Real
+                </h4>
+                <p className="text-slate-500">Parte de lo recaudado se destina a la <a href="https://boinasverdes.es" target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline font-semibold">Fundación Roble y Machete</a> — integración laboral de veteranos de Operaciones Especiales, apoyo a familias y becas.</p>
               </div>
             </div>
           </div>
