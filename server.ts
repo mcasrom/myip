@@ -1514,11 +1514,13 @@ app.get('/api/tools/ip-info', (req, res) => {
 
 // Advanced Tools: External Port Tester
 app.post('/api/tools/port-test', (req, res) => {
-  const { port, targetIp } = req.body;
+  const { port } = req.body;
   if (!port) return res.status(400).json({ error: 'Puerto requerido.' });
   
+  // SECURITY: nunca aceptar un target IP externo del body (patron canyouseeme.org).
+  // Solo se permite auto-escaneo del propio solicitante.
   const clientIp = (req.headers['x-forwarded-for'] || req.socket.remoteAddress) as string;
-  const ipToTest = targetIp || clientIp;
+  const ipToTest = clientIp;
   
   const socket = net.connect({ host: ipToTest, port: parseInt(port), timeout: 5000 }, () => {
     socket.end();
