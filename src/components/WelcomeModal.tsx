@@ -1,15 +1,53 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, Zap, Eye, Bell, Lock, ArrowRight, X, Sparkles, Globe, Wifi } from 'lucide-react';
+import { Shield, Eye, Bell, Lock, ArrowRight, X, Sparkles, Globe } from 'lucide-react';
 
 interface WelcomeModalProps {
   onRegister: () => void;
   onDismiss: () => void;
 }
 
+const translations = {
+  es: {
+    welcome: 'Bienvenido a MyIP',
+    title: 'Protege tu red en <highlight>3 pasos</highlight>',
+    subtitle: 'Escanea tu IP, detecta puertos abiertos y recibe alertas de seguridad — todo gratis.',
+    features: [
+      { title: 'Escaneo IP', desc: 'Pública y privada' },
+      { title: 'Puertos abiertos', desc: 'Detección en vivo' },
+      { title: 'Alertas email', desc: 'Monitoreo 24/7' },
+      { title: 'Privacidad', desc: 'Sin rastreo' }
+    ],
+    cta: 'Empezar gratis',
+    secondary: 'Ya tengo cuenta · Explorar ahora',
+    footer: 'Gratis para uso personal · Sin tarjeta de crédito'
+  },
+  en: {
+    welcome: 'Welcome to MyIP',
+    title: 'Protect your network in <highlight>3 steps</highlight>',
+    subtitle: 'Scan your IP, detect open ports and receive security alerts — all for free.',
+    features: [
+      { title: 'IP Scan', desc: 'Public & private' },
+      { title: 'Open Ports', desc: 'Live detection' },
+      { title: 'Email Alerts', desc: '24/7 monitoring' },
+      { title: 'Privacy', desc: 'Zero tracking' }
+    ],
+    cta: 'Get started free',
+    secondary: 'Already have an account · Explore now',
+    footer: 'Free for personal use · No credit card required'
+  }
+};
+
+function detectLanguage(): 'es' | 'en' {
+  const lang = navigator.language || (navigator.languages && navigator.languages[0]) || 'es';
+  return lang.startsWith('en') ? 'en' : 'es';
+}
+
 export default function WelcomeModal({ onRegister, onDismiss }: WelcomeModalProps) {
   const [visible, setVisible] = useState(false);
+  const [lang, setLang] = useState<'es' | 'en'>('es');
 
   useEffect(() => {
+    setLang(detectLanguage());
     const dismissed = localStorage.getItem('myip_welcome_dismissed');
     if (!dismissed) {
       const timer = setTimeout(() => setVisible(true), 800);
@@ -29,6 +67,9 @@ export default function WelcomeModal({ onRegister, onDismiss }: WelcomeModalProp
   };
 
   if (!visible) return null;
+
+  const t = translations[lang];
+  const titleParts = t.title.split(/(<highlight>.*?<\/highlight>)/);
 
   return (
     <div
@@ -57,15 +98,21 @@ export default function WelcomeModal({ onRegister, onDismiss }: WelcomeModalProp
               <Shield className="w-6 h-6 text-indigo-400" />
             </div>
             <span className="text-[10px] font-mono tracking-widest text-indigo-300 uppercase font-bold">
-              Bienvenido a MyIP
+              {t.welcome}
             </span>
           </div>
 
           <h2 className="text-2xl sm:text-3xl font-bold text-white font-sans leading-tight">
-            Protege tu red en <span className="text-indigo-400">3 pasos</span>
+            {titleParts.map((part, i) =>
+              part.startsWith('<highlight>') ? (
+                <span key={i} className="text-indigo-400">{part.replace(/<\/?highlight>/g, '')}</span>
+              ) : (
+                part
+              )
+            )}
           </h2>
           <p className="text-sm text-slate-300 mt-3 leading-relaxed">
-            Escanea tu IP, detecta puertos abiertos y recibe alertas de seguridad — todo gratis.
+            {t.subtitle}
           </p>
 
           {/* Floating icon decoration */}
@@ -77,10 +124,10 @@ export default function WelcomeModal({ onRegister, onDismiss }: WelcomeModalProp
         {/* Features */}
         <div className="px-8 -mt-4 pb-8">
           <div className="grid grid-cols-2 gap-4">
-            <Feature icon={<Globe className="w-4 h-4" />} title="Escaneo IP" desc="Pública y privada" />
-            <Feature icon={<Eye className="w-4 h-4" />} title="Puertos abiertos" desc="Detección en vivo" />
-            <Feature icon={<Bell className="w-4 h-4" />} title="Alertas email" desc="Monitoreo 24/7" />
-            <Feature icon={<Lock className="w-4 h-4" />} title="Privacidad" desc="Sin rastreo" />
+            <Feature icon={<Globe className="w-4 h-4" />} title={t.features[0].title} desc={t.features[0].desc} />
+            <Feature icon={<Eye className="w-4 h-4" />} title={t.features[1].title} desc={t.features[1].desc} />
+            <Feature icon={<Bell className="w-4 h-4" />} title={t.features[2].title} desc={t.features[2].desc} />
+            <Feature icon={<Lock className="w-4 h-4" />} title={t.features[3].title} desc={t.features[3].desc} />
           </div>
 
           {/* CTA */}
@@ -89,18 +136,18 @@ export default function WelcomeModal({ onRegister, onDismiss }: WelcomeModalProp
               onClick={handleCTA}
               className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 px-6 rounded-xl text-sm transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20 hover:shadow-indigo-600/30"
             >
-              Empezar gratis <ArrowRight className="w-4 h-4" />
+              {t.cta} <ArrowRight className="w-4 h-4" />
             </button>
             <button
               onClick={handleDismiss}
               className="w-full text-slate-400 hover:text-slate-600 text-xs font-medium py-2 transition-colors"
             >
-              Ya tengo cuenta · Explorar ahora
+              {t.secondary}
             </button>
           </div>
 
           <p className="text-[10px] text-slate-400 text-center mt-4">
-            Gratis para uso personal · Sin tarjeta de crédito
+            {t.footer}
           </p>
         </div>
       </div>
