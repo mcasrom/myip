@@ -73,6 +73,11 @@ export default function ThreatMap() {
       });
     }
 
+    // Force Leaflet to recalculate container size
+    setTimeout(() => {
+      leafletMapRef.current?.invalidateSize();
+    }, 100);
+
     const getColor = (bans: number) => bans > 10 ? '#ff0000' : bans > 5 ? '#ff4400' : bans > 2 ? '#ff8800' : '#ffaa00';
 
     data.attackers.forEach((a: Attacker) => {
@@ -96,7 +101,7 @@ export default function ThreatMap() {
   }, [data]);
 
   return (
-    <div className="space-y-4 h-full flex flex-col">
+    <div className="space-y-4">
       {/* Header */}
       <div className="bg-slate-900 text-white p-4 rounded-xl shadow-lg flex flex-col sm:flex-row justify-between items-center gap-4">
         <div className="flex items-center gap-3">
@@ -122,7 +127,7 @@ export default function ThreatMap() {
       </div>
 
       {/* Map Container */}
-      <div className="flex-1 relative bg-slate-950 rounded-xl overflow-hidden border border-slate-800 min-h-[400px]">
+      <div className="relative bg-slate-950 rounded-xl overflow-hidden border border-slate-800" style={{ height: '500px' }}>
         {loading && !data && (
           <div className="absolute inset-0 flex items-center justify-center bg-slate-900 z-50">
             <div className="text-center">
