@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mail, CheckCircle2, RefreshCw, ShieldCheck, AlertCircle, Info, Fingerprint } from 'lucide-react';
+import { Mail, CheckCircle2, RefreshCw, ShieldCheck, AlertCircle, Info, Fingerprint, Key } from 'lucide-react';
 
 // Simple password strength checker (no external dependencies)
 function getPasswordStrength(pw: string): { score: number; label: string; color: string; feedback: string } {
@@ -58,6 +58,12 @@ export default function AuthSection({ user, onLoginSuccess, onLogout }: AuthSect
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  
+  // Premium code redemption
+  const [redeemCode, setRedeemCode] = useState('');
+  const [redeemLoading, setRedeemLoading] = useState(false);
+  const [redeemMsg, setRedeemMsg] = useState<string | null>(null);
+  const [redeemMsgType, setRedeemMsgType] = useState<'success' | 'error'>('error');
 
   // Password strength calculation
   const pwStrength = getPasswordStrength(password);
@@ -162,6 +168,47 @@ export default function AuthSection({ user, onLoginSuccess, onLogout }: AuthSect
       setError(err.message || 'Error al conectar con el servidor.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Redeem premium code
+  const handleRedeemCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!redeemCode.trim()) { 
+      setRedeemMsg('Introduce un código.'); 
+      setRedeemMsgType('error'); 
+      return; 
+    }
+    if (!user?.email) {
+      setRedeemMsg('Debes iniciar sesión primero.'); 
+      setRedeemMsgType('error'); 
+      return;
+    }
+    
+    setRedeemLoading(true);
+    setRedeemMsg(null);
+    
+    try {
+      const res = await fetch('/api/premium/redeem-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: user.email, code: redeemCode })
+      });
+      const data = await res.json();
+      if (!res.ok) { 
+        setRedeemMsg(data.error); 
+        setRedeemMsgType('error'); 
+        return; 
+      }
+      setRedeemMsg(data.message); 
+      setRedeemMsgType('success');
+      onLoginSuccess(data.user);
+      setRedeemCode('');
+    } catch { 
+      setRedeemMsg('Error de conexión.'); 
+      setRedeemMsgType('error'); 
+    } finally {
+      setRedeemLoading(false);
     }
   };
 
@@ -371,6 +418,36 @@ export default function AuthSection({ user, onLoginSuccess, onLogout }: AuthSect
                 </div>
               )}
             </div>
+
+            {/* Redeem Code Section - Only show if not premium */}
+            {!user.isPremium && (
+              <div className="bg-indigo-50/50 border border-indigo-100 rounded-xl p-4 space-y-3">
+                <h4 className="text-xs font-bold text-indigo-800 flex items-center gap-1.5">
+                  <Key className="w-3.5 h-3.5" /> ¿Tienes un código Premium?
+                </h4>
+                <form onSubmit={handleRedeemCode} className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Introduce tu código"
+                    value={redeemCode}
+                    onChange={(e) => setRedeemCode(e.target.value.toUpperCase())}
+                    className="flex-1 bg-white border border-indigo-200 rounded-lg px-3 py-2 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  />
+                  <button
+                    type="submit"
+                    disabled={redeemLoading}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-3 rounded-lg text-xs transition disabled:opacity-50"
+                  >
+                    {redeemLoading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : 'Activar'}
+                  </button>
+                </form>
+                {redeemMsg && (
+                  <p className={`text-[10px] font-mono ${redeemMsgType === 'success' ? 'text-emerald-600' : 'text-rose-500'}`}>
+                    {redeemMsg}
+                  </p>
+                )}
+              </div>
+            )}
 
             <button
               onClick={onLogout}
