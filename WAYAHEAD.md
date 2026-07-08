@@ -1827,9 +1827,15 @@ Comando para verificar manana:
 - Refuerza valor de suscripción: "Mira tu historial de seguridad personal"
 
 ### Sincronización
-- GitHub: `mcasrom/myip` → main `0a43509` ✅
+- GitHub: `mcasrom/myip` → main `9e8f556` ✅
 - Server: `/home/deploy/myip` → pulled, rebuilt, running healthy ✅
 - Laptop: working tree clean, up to date ✅
+
+### UX Mejora: Código Premium en AuthSection ✅
+- Campo de canjeo añadido directamente en `AuthSection.tsx` (pestaña Perfil)
+- Visible justo debajo de los datos de la cuenta para usuarios no-Premium
+- Elimina la fricción de tener que buscar el campo en la sección de pago
+- Usuario `joaquinfromtheearth@gmail.com` activado manualmente (30 días) como invitación
 
 ---
 
