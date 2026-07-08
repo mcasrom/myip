@@ -1795,3 +1795,26 @@ Comando para verificar manana:
 - Eliminado claim no verificable "servidores neutrales en carbono"
 - Añadido bloque "Impacto Social Real" con link a [Fundación Roble y Machete](https://boinasverdes.es) — integración laboral de veteranos OE, apoyo a familias, becas
 - Iconos: ShieldCheck (seguridad) + Award (impacto social)
+
+## Sesión 2026-07-08 (noche 2) — Community Health KPI + WelcomeModal bilingual
+
+### Community Health KPI: ACTUALIZADO ✅
+- `db.ts`: nueva función `getScoreDistribution()` — COUNT de scans por rango (≥70 green, 40-69 yellow, <40 red)
+- `server.ts`: endpoint `/api/stats/community` ahora incluye `distribution: { green, yellow, red }`
+- `CommunityKPIs.tsx`:
+  - Donut chart SVG animado con 3 segmentos (verde/amarillo/rojo)
+  - Score promedio centrado con label dinámico (Saludable/Moderado/En Riesgo)
+  - 3 barras de progreso con porcentaje y count absoluto
+  - Fondo gradiente oscuro con glow effect
+  - Mantiene las 4 KPI cards originales arriba
+
+### WelcomeModal: BILINGUAL ES/EN ✅
+- Detección automática via `navigator.language`
+- Si empieza con `en` → inglés, si no → español (default)
+- Objeto `translations` con keys ES/EN para todos los textos
+- Zero coste, 100% client-side
+
+### Sincronización
+- GitHub: `mcasrom/myip` → main `6cf90e5` ✅
+- Server: `/home/deploy/myip` → pulled, rebuilt, running healthy ✅
+- Laptop: working tree clean, up to date ✅
