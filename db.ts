@@ -187,6 +187,21 @@ export function getCommunityStats(): { avgScore: number | null; totalScored: num
     totalScored: row?.total || 0,
   };
 }
+
+export function getScoreDistribution(): { green: number; yellow: number; red: number } {
+  const row = db.prepare(`
+    SELECT 
+      SUM(CASE WHEN score_numeric >= 70 THEN 1 ELSE 0 END) as green,
+      SUM(CASE WHEN score_numeric >= 40 AND score_numeric < 70 THEN 1 ELSE 0 END) as yellow,
+      SUM(CASE WHEN score_numeric < 40 THEN 1 ELSE 0 END) as red
+    FROM scan_history WHERE score_numeric IS NOT NULL
+  `).get() as any;
+  return {
+    green: row?.green || 0,
+    yellow: row?.yellow || 0,
+    red: row?.red || 0,
+  };
+}
 const serverStartTimestamp = Date.now();
 
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 dias

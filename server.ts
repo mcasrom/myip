@@ -1379,12 +1379,14 @@ ${score === 'green' ? '- **Mantenimiento**: Realiza escaneos periódicos para ve
 app.get('/api/stats/community', (req, res) => {
   const stats = authDb.getSystemStats();
   const community = authDb.getCommunityStats();
+  const distribution = authDb.getScoreDistribution();
   res.json({
     totalScans: stats.totalScans,
     totalUsers: stats.totalUsers,
     premiumUsers: stats.premiumUsers,
     avgScore: community.avgScore,
     totalScored: community.totalScored,
+    distribution,
   });
 });
 
