@@ -1825,3 +1825,36 @@ Comando para verificar manana:
 - Mismo diseño visual que Community KPI (donut + barras) pero con datos **solo del usuario**
 - Muestra: Score promedio, % conexiones seguras, riesgos, vulnerabilidades
 - Refuerza valor de suscripción: "Mira tu historial de seguridad personal"
+
+### Sincronización
+- GitHub: `mcasrom/myip` → main `0a43509` ✅
+- Server: `/home/deploy/myip` → pulled, rebuilt, running healthy ✅
+- Laptop: working tree clean, up to date ✅
+
+---
+
+## Cierre de sesión 2026-07-08 (Noche)
+
+### Resumen de cambios desplegados hoy
+1. **Nginx restored** (`status.viajeinteligencia.com`) — JSON público + dashboard protegido
+2. **ThreatMap Radar** — altura explícita + `invalidateSize()` para Leaflet + mobile nav fix
+3. **Founder Manifesto** — autor M.Castillo, firma @2026 Australia, filosofía corregida
+4. **How-To expandido** — 4 nuevas guías (Router, DNS, IP Rep, Passwords) + Premium teaser bridge
+5. **UpgradePanel veraz** — Stripe PCI-DSS + link Fundación RyM (Roble y Machete)
+6. **WelcomeModal bilingual** — ES/EN automático via `navigator.language`
+7. **Community Health KPI** — Donut chart global + score distribution en Home
+8. **User Health Chart** — Panel personalizado de salud digital para usuarios Premium
+
+### Estado del proyecto
+- Producción: `https://myip.viajeinteligencia.com` — healthy ✅
+- Status map: `https://status.viajeinteligencia.com` — healthy ✅
+- Radar tab: funcionando con datos fail2ban en tiempo real ✅
+- Base de datos: 6 usuarios, 42 escaneos, 2 premium
+- Docker container: healthy, puerto 3004 → 3000
+
+### Pendientes para próxima sesión
+- [ ] Telegram Bot MVP (alertas + escaneo on-demand)
+- [ ] Probar checkout Stripe real con tarjeta 4242 en producción
+- [ ] Mejorar plantilla HTML de emails de alerta (branding + link app)
+- [ ] Limpiar scan_history sintético de usuarios test
+- [ ] Revisar APP_URL placeholder en .env local
