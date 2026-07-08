@@ -1767,3 +1767,25 @@ Comando para verificar manana:
 - [ ] Limpiar scan_history sintético de usuarios test
 - [ ] Revisar APP_URL placeholder en .env local
 - [ ] Auditoría completa de seguridad frontend (console.log, localStorage de sesión)
+
+## Sesión 2026-07-08 (noche) — How-To educativo expandido + Premium teaser bridge
+
+### How-To Educational Expansion: ACTUALIZADO ✅
+- 4 nuevas guías educativas añadidas (de 5 a 9 guías totales):
+  1. **Router/WiFi Security** — WPS, WPA3, firmware, SSID (Hogar)
+  2. **DNS Security (DoH/DoT)** — Cloudflare 1.1.1.1, cifrado DNS, privacidad (Red)
+  3. **IP Reputation** — DNSBL, listas negras, delisting, IPs dinámicas (Conceptos)
+  4. **Password Basics** — longitud > complejidad, gestores, 2FA, Have I Been Pwned (Higiene)
+- Cobertura ampliada: de solo servidores a hogar, red, conceptos e higiene digital
+
+### Premium Tools Teaser Bridge: ACTUALIZADO ✅
+- Bloque teaser al final de How-ToGuides (después del Manifiesto)
+- Gradiente oscuro con 3 cards: VirusTotal URL Scanner, SSL Audit, Email Forensics
+- CTA "Acceder con Premium" → navega a tab Profile vía CustomEvent `myip-navigate`
+- App.tsx: añadido listener `myip-navigate` para cross-component navigation
+- Separación conceptual mantenida: educar (How-To) vs ejecutar (Tools)
+
+### Sincronización
+- GitHub: `mcasrom/myip` → main `1463a3d` ✅
+- Server: `/home/deploy/myip` → pulled, rebuilt, running healthy ✅
+- Laptop: working tree clean, up to date ✅
