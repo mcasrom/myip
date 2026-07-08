@@ -1234,6 +1234,13 @@ export default function App() {
                 </div>
               </div>
 
+              {/* Signature */}
+              {founderManifesto.signature && (
+                <div className="text-right text-xs font-mono text-slate-400 border-t border-slate-100 pt-4">
+                  {founderManifesto.signature}
+                </div>
+              )}
+
             </div>
 
             {/* NEW: Brand & Social Media Kit (Preview & Icon) */}
@@ -1766,15 +1773,15 @@ export default function App() {
 
       {/* Bottom Navigation Bar for Mobile and Tablet (Smartphones) */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 shadow-xl pb-safe">
-        <div className="flex justify-around items-center h-16 px-2">
+        <div className="flex justify-around items-center h-16 px-1">
           <button
             onClick={() => setActiveTab('home')}
-            className={`flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-xl transition-all ${
+            className={`flex flex-col items-center justify-center flex-1 py-1 px-0.5 rounded-xl transition-all ${
               activeTab === 'home' ? 'text-indigo-400 font-bold scale-105' : 'text-slate-400'
             }`}
           >
-            <Shield className="w-5 h-5 mb-0.5" />
-            <span className="text-[10px] tracking-tight">Analizar</span>
+            <Shield className="w-4 h-4 mb-0.5" />
+            <span className="text-[9px] tracking-tight">Analizar</span>
           </button>
           
           <button
@@ -1785,45 +1792,65 @@ export default function App() {
               }
               setActiveTab('dashboard');
             }}
-            className={`flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-xl transition-all ${
+            className={`flex flex-col items-center justify-center flex-1 py-1 px-0.5 rounded-xl transition-all ${
               !scanResult ? 'opacity-40 cursor-not-allowed' : ''
             } ${activeTab === 'dashboard' ? 'text-indigo-400 font-bold scale-105' : 'text-slate-400'}`}
           >
             <div className="relative">
-              <Activity className="w-5 h-5 mb-0.5" />
-              {scanResult && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-emerald-500 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.8)]" />}
+              <Activity className="w-4 h-4 mb-0.5" />
+              {scanResult && <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-emerald-500 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.8)]" />}
             </div>
-            <span className="text-[10px] tracking-tight">Salud IP</span>
+            <span className="text-[9px] tracking-tight">Salud IP</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('radar')}
+            className={`flex flex-col items-center justify-center flex-1 py-1 px-0.5 rounded-xl transition-all ${
+              activeTab === 'radar' ? 'text-red-400 font-bold scale-105' : 'text-red-300'
+            }`}
+          >
+            <Globe className="w-4 h-4 mb-0.5" />
+            <span className="text-[9px] tracking-tight">Radar</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('advanced')}
+            className={`flex flex-col items-center justify-center flex-1 py-1 px-0.5 rounded-xl transition-all ${
+              activeTab === 'advanced' ? 'text-amber-400 font-bold scale-105' : 'text-amber-300'
+            }`}
+          >
+            <Terminal className="w-4 h-4 mb-0.5" />
+            <span className="text-[9px] tracking-tight">Tools</span>
           </button>
 
           <button
             onClick={() => setActiveTab('guides')}
-            className={`flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-xl transition-all ${
+            className={`flex flex-col items-center justify-center flex-1 py-1 px-0.5 rounded-xl transition-all ${
               activeTab === 'guides' ? 'text-indigo-400 font-bold scale-105' : 'text-slate-400'
             }`}
           >
-            <BookOpen className="w-5 h-5 mb-0.5" />
-            <span className="text-[10px] tracking-tight">How-To</span>
+            <BookOpen className="w-4 h-4 mb-0.5" />
+            <span className="text-[9px] tracking-tight">How-To</span>
           </button>
 
           <button
             onClick={() => setActiveTab('about')}
-            className={`flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-xl transition-all ${
+            className={`flex flex-col items-center justify-center flex-1 py-1 px-0.5 rounded-xl transition-all ${
               activeTab === 'about' ? 'text-indigo-400 font-bold scale-105' : 'text-slate-400'
             }`}
           >
-            <Info className="w-5 h-5 mb-0.5" />
-            <span className="text-[10px] tracking-tight">About</span>
+            <Info className="w-4 h-4 mb-0.5" />
+            <span className="text-[9px] tracking-tight">About</span>
           </button>
 
           <button
             onClick={() => setActiveTab('profile')}
-            className={`flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-xl transition-all ${
+            className={`flex flex-col items-center justify-center flex-1 py-1 px-0.5 rounded-xl transition-all ${
               activeTab === 'profile' ? 'text-indigo-400 font-bold scale-105' : 'text-slate-400'
             }`}
           >
-            <User className="w-5 h-5 mb-0.5" />
-            <span className="text-[10px] tracking-tight truncate max-w-[55px]">
+            <User className="w-4 h-4 mb-0.5" />
+            <span className="text-[9px] tracking-tight truncate max-w-[45px]">
               {user ? 'Perfil' : 'Entrar'}
             </span>
           </button>
