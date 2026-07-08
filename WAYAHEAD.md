@@ -1696,3 +1696,30 @@ Comando para verificar manana:
 ### Estadísticas actuales (BD producción)
 - Usuarios: 6 | Escaneos: 42 | IPs únicas: 8 | Premium: 2
 - Top IP: 1.146.110.90 (16 escaneos)
+
+## Sesión 2026-07-08 — Nginx status.viajeinteligencia.com restaurado + ThreatMap Radar fix
+
+### Nginx status.viajeinteligencia.com: CERRADO ✅
+- Problema: config con syntax errors (`proxy_set_header` sin `$http_upgrade`, `try_files` sin `$uri`, `add_header` con params invalidos). Sitio caido.
+- Solución: reescrita completa de `/etc/nginx/sites-enabled/status.viajeinteligencia.com`:
+  - `location = /fail2ban-data.json` → acceso público sin auth, CORS `Access-Control-Allow-Origin: *`
+  - `location /dashboard`, `/socket.io/`, `/assets/` → protegidos con `auth_basic` + `.htpasswd`
+  - `location /` → `root /var/www/html`, `try_files $uri $uri/ =404`
+  - SSL certs LetsEncrypt correctos
+- Verificado: `curl -s -o /dev/null -w '%{http_code}' https://status.viajeinteligencia.com/fail2ban-data.json` → **200 OK**
+- Mapa original en `https://status.viajeinteligencia.com/` funcionando.
+
+### ThreatMap Radar (MyIP): CERRADO ✅
+- Problema: mapa y hotspots no se mostraban en la pestaña Radar de MyIP.
+- Causa: contenedor del mapa sin altura explícita (Leaflet necesita dimensiones) + falta de `invalidateSize()`.
+- Solución en `src/components/ThreatMap.tsx`:
+  - Altura explícita `style={{ height: '500px' }}` en contenedor del mapa
+  - `leafletMapRef.current?.invalidateSize()` tras inicialización
+  - Eliminado `flex-1` y `min-h-[400px]` que no funcionaban
+- Deploy: commit `7235674` → push → server `git pull` → `docker compose build && up -d`
+- Verificado: contenedor healthy, HTTP 200 en `https://myip.viajeinteligencia.com`
+
+### Sincronización
+- GitHub: `mcasrom/myip` → main `7235674` ✅
+- Server: `/home/deploy/myip` → pulled, rebuilt, running healthy ✅
+- Laptop: working tree clean, up to date ✅
