@@ -1766,8 +1766,46 @@ export default function App() {
 
       </main>
 
+      {/* Security Audit Verified Section */}
+      <section className="bg-slate-900 text-slate-300 py-8 border-t border-slate-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-6">
+            <h3 className="text-sm font-bold text-white uppercase tracking-widest flex items-center justify-center gap-2">
+              <Shield className="w-4 h-4 text-emerald-400" /> Seguridad Verificada
+            </h3>
+            <p className="text-xs text-slate-500 mt-1">Auditoría externa independiente realizada el <strong className="text-slate-300">08 Jul 2026</strong></p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* SSL Labs */}
+            <a href="https://www.ssllabs.com/ssltest/analyze.html?d=myip.viajeinteligencia.com" target="_blank" rel="noopener noreferrer" className="bg-slate-800 border border-slate-700 rounded-xl p-4 flex items-center gap-4 hover:border-emerald-500/50 transition-colors group">
+              <div className="w-12 h-12 bg-emerald-500/10 rounded-lg flex items-center justify-center text-emerald-400 font-bold text-xl border border-emerald-500/30">A+</div>
+              <div>
+                <p className="text-sm font-bold text-white group-hover:text-emerald-400 transition-colors">SSL Labs (Qualys)</p>
+                <p className="text-xs text-slate-500">Certificado & TLS 1.3</p>
+              </div>
+            </a>
+            {/* Mozilla Observatory */}
+            <a href="https://developer.mozilla.org/en-US/observatory/analyze?host=myip.viajeinteligencia.com" target="_blank" rel="noopener noreferrer" className="bg-slate-800 border border-slate-700 rounded-xl p-4 flex items-center gap-4 hover:border-blue-500/50 transition-colors group">
+              <div className="w-12 h-12 bg-blue-500/10 rounded-lg flex items-center justify-center text-blue-400 font-bold text-lg border border-blue-500/30">A+</div>
+              <div>
+                <p className="text-sm font-bold text-white group-hover:text-blue-400 transition-colors">Mozilla Observatory</p>
+                <p className="text-xs text-slate-500">Cabeceras HTTP (105/100)</p>
+              </div>
+            </a>
+            {/* Security Headers */}
+            <a href="https://securityheaders.com/?q=myip.viajeinteligencia.com&hide=on" target="_blank" rel="noopener noreferrer" className="bg-slate-800 border border-slate-700 rounded-xl p-4 flex items-center gap-4 hover:border-purple-500/50 transition-colors group">
+              <div className="w-12 h-12 bg-purple-500/10 rounded-lg flex items-center justify-center text-purple-400 font-bold text-lg border border-purple-500/30">A</div>
+              <div>
+                <p className="text-sm font-bold text-white group-hover:text-purple-400 transition-colors">Security Headers</p>
+                <p className="text-xs text-slate-500">Hardening & CSP</p>
+              </div>
+            </a>
+          </div>
+        </div>
+      </section>
+
       {/* Footer copyright block */}
-      <footer className="border-t border-slate-200 bg-white py-8 pb-24 md:pb-8 mt-12 text-xs text-slate-400">
+      <footer className="border-t border-slate-200 bg-white py-8 pb-24 md:pb-8 mt-0 text-xs text-slate-400">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-4 text-center md:text-left">
           <div className="space-y-1">
             <p className="font-bold text-slate-600">MyIP &copy; 2026 SIEG | Privacy Tools</p>
