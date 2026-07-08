@@ -108,6 +108,19 @@ export default function App() {
     }
   }, []);
 
+  // Listen for cross-component navigation events (e.g. from HowToGuides teaser)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { tab: string };
+      if (detail?.tab) {
+        setActiveTab(detail.tab as any);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    };
+    window.addEventListener('myip-navigate', handler);
+    return () => window.removeEventListener('myip-navigate', handler);
+  }, []);
+
   // Auto-detect IP on load
   useEffect(() => {
     async function detectIp() {

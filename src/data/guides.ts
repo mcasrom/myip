@@ -74,6 +74,67 @@ export const guides: SecurityGuide[] = [
     ],
     recommendation: 'Instalar la PWA te permite llevar tus herramientas de diagnóstico siempre contigo, ideal para cuando realizas auditorías rápidas en la red Wi-Fi de tu oficina o de un café.',
     difficulty: 'Fácil'
+  },
+  {
+    id: 'router-security-guide',
+    title: '¿Cómo asegurar tu Router Doméstico y tu Red WiFi?',
+    category: 'Seguridad del Hogar',
+    description: 'El router es la puerta de entrada de tu red doméstica. Si sus credenciales siguen siendo las de fábrica o usa WPS, cualquier vecino o atacante cercano puede acceder a todos tus dispositivos conectados.',
+    steps: [
+      '**Accede al panel de administración:** Abre tu navegador y escribe la IP de tu router (comúnmente `192.168.1.1` o `192.168.0.1`). Usa las credenciales que vienen en la etiqueta del equipo.',
+      '**Cambia la contraseña de administrador:** Ve a la sección de administración o sistema y modifica la contraseña por defecto. Usa una combinación de al menos 12 caracteres con letras, números y símbolos.',
+      '**Desactiva WPS (Wi-Fi Protected Setup):** WPS es vulnerable a ataques de fuerza bruta. Desactívalo en la configuración WiFi de tu router. Es la vulnerabilidad doméstica más común.',
+      '**Usa encriptación WPA2/WPA3:** Asegúrate de que tu red WiFi use WPA2-PSK (AES) o WPA3. Nunca uses WEP ni WPA-TKIP, que están obsoletos y se rompen en minutos.',
+      '**Actualiza el firmware del router:** Los fabricantes publican parches de seguridad. Busca la sección de "Actualización de Firmware" o "Firmware Update" y aplica la última versión disponible.',
+      '**Cambia el nombre de tu red (SSID):** No uses nombres que revelen tu identidad o dirección (ej. "Casa de María en Calle 5"). Usa un nombre genérico que no te identifique.'
+    ],
+    recommendation: 'Un router con credenciales de fábrica es como dejar la llave puesta en la puerta de tu casa. Cambiar la contraseña de administración y desactivar WPS elimina el 90% de los riesgos domésticos.',
+    difficulty: 'Fácil'
+  },
+  {
+    id: 'dns-security-guide',
+    title: '¿Qué es DNS y Cómo Proteger tu Navegación con DNS Seguro?',
+    category: 'Privacidad de Red',
+    description: 'Cada vez que escribes una dirección web (ej. google.com), tu dispositivo consulta a un servidor DNS para traducir ese nombre a una dirección IP. Si usas el DNS por defecto de tu ISP, este puede registrar y vender tu historial de navegación.',
+    steps: [
+      '**Entiende el problema:** Tu proveedor de internet (ISP) ve cada dominio que visitas a través de su DNS. Sin cifrado DNS, cualquiera en tu red puede interceptar estas consultas.',
+      '**Elige un DNS privado y seguro:** Opciones gratuitas recomendadas: Cloudflare (`1.1.1.1` / `1.0.0.1`), Google (`8.8.8.8` / `8.8.4.4`), o Quad9 (`9.9.9.9`). Todos ofrecen DoH (DNS over HTTPS) que cifra tus consultas.',
+      '**Configura DoH en tu navegador:** En Firefox: Configuración → Privacidad → DNS sobre HTTPS → "Protección aumentada". En Chrome: Configuración → Privacidad → Seguridad → "Usar DNS seguro" → Elige Cloudflare o Google.',
+      '**Configura DoH en tu sistema operativo:** En Windows 11: Configuración → Red e Internet → WiFi/Ethernet → Propiedades → Asignación de servidores DNS → Manual → activa "DNS sobre HTTPS". En macOS: Preferencias del Sistema → Red → Avanzado → DNS → añade `1.1.1.1` y `1.0.0.1`.',
+      '**Verifica que funciona:** Visita https://1.1.1.1/help para confirmar que tu navegador está usando DNS cifrado.'
+    ],
+    recommendation: 'DNS cifrado (DoH/DoT) es la mejora de privacidad más subestimada que puedes hacer en 5 minutos. Tu ISP deja de ver qué webs visitas y se bloquean muchos intentos de phishing y malware a nivel DNS.',
+    difficulty: 'Fácil'
+  },
+  {
+    id: 'ip-reputation-guide',
+    title: '¿Qué es la Reputación de IP y Por Qué Importa?',
+    category: 'Conceptos de Seguridad',
+    description: 'Tu dirección IP pública tiene una "reputación" digital, similar a un historial crediticio. Si tu IP aparece en listas negras (DNSBL), tus emails pueden ir a spam y algunos servicios pueden bloquearte automáticamente.',
+    steps: [
+      '**¿Cómo se "ensucia" una IP?** Malware en tu red que envía spam sin que lo sepas, un dispositivo IoT comprometido que participa en ataques DDoS, o haber tenido una IP dinámica que antes usó un spammer.',
+      '**Verifica tu reputación:** Usa herramientas como MXToolbox (mxtoolbox.com/blacklists.aspx), AbuseIPDB, o el propio escaneo de MyIP para consultar si tu IP está en listas negras.',
+      '**Si tu IP está en una lista negra:** Primero, escanea todos tus dispositivos con un antivirus actualizado. Luego, solicita la eliminación (delisting) en cada lista negra donde aparezcas. La mayoría tiene un formulario web gratuito.',
+      '**Prevención:** Mantén tu router actualizado, usa contraseñas fuertes en todos los dispositivos conectados, y evita descargar software de fuentes desconocidas. Un firewall activo bloquea intentos de infección antes de que ocurran.',
+      '**IPs dinámicas:** Si tu ISP te asigna IPs dinámicas y la tuya está "sucia", simplemente reiniciar el router puede darte una IP nueva. Pero si la causa es malware en tu red, volverá a ensuciarse.'
+    ],
+    recommendation: 'Una IP con mala reputación no solo afecta tu capacidad de enviar emails. Algunos bancos, servicios de streaming y plataformas de trabajo remoto bloquean automáticamente IPs listadas. Revisar tu reputación periódicamente es como revisar tu historial crediticio digital.',
+    difficulty: 'Fácil'
+  },
+  {
+    id: 'password-basics-guide',
+    title: '¿Cómo Crear Contraseñas Seguras y Gestionarlas sin Perder la Cordura?',
+    category: 'Higiene Digital',
+    description: 'El 81% de las brechas de seguridad involucran contraseñas débiles o robadas. Una contraseña como "MiGato2024" se descifra en menos de 1 segundo con herramientas modernas. Aquí aprendes a crear contraseñas que realmente protegen.',
+    steps: [
+      '**La regla de oro: longitud > complejidad.** Una contraseña de 16 caracteres es exponencialmente más segura que una de 8 con símbolos. "caballo-grapa-correcto-batería" es más fuerte que "P@ssw0rd!".',
+      '**Nunca reutilices contraseñas.** Si un servicio sufre una filtración y usas la misma contraseña en tu email, banco y redes sociales, un atacante tiene acceso a todo. Usa una contraseña única por servicio.',
+      '**Usa un gestor de contraseñas:** Herramientas gratuitas como Bitwarden o KeePass generan y almacenan contraseñas únicas por sitio. Solo necesitas recordar una contraseña maestra.',
+      '**Activa la verificación en dos pasos (2FA):** Incluso si alguien roba tu contraseña, necesita un segundo factor (código SMS, app autenticadora, llave física) para entrar. Actívalo en email, banco y redes sociales.',
+      '**Verifica si tus contraseñas fueron filtradas:** MyIP incluye un comprobador que consulta Have I Been Pwned (k-anonymity) sin enviar tu contraseña completa. También puedes visitar haveibeenpwned.com/Passwords.'
+    ],
+    recommendation: 'El paso más impactante que puedes hacer hoy: activa 2FA en tu cuenta de email principal. Es la llave maestra de tu vida digital — si la pierdes, pierdes acceso a todo lo vinculado a ese correo.',
+    difficulty: 'Fácil'
   }
 ];
 

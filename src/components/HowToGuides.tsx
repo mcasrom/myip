@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { guides, founderManifesto } from '../data/guides';
-import { BookOpen, Search, ShieldAlert, CheckCircle2, ChevronRight, ChevronDown, User, ShieldCheck } from 'lucide-react';
+import { BookOpen, Search, ShieldAlert, CheckCircle2, ChevronRight, ChevronDown, User, ShieldCheck, Terminal, ArrowRight, Lock } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 export default function HowToGuides() {
@@ -221,6 +221,68 @@ export default function HowToGuides() {
           <a href={`mailto:${founderManifesto.contact}`} className="text-indigo-600 hover:underline font-bold font-mono">
             Contacto: {founderManifesto.contact}
           </a>
+        </div>
+      </div>
+
+      {/* Premium Tools Teaser Bridge */}
+      <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 rounded-2xl p-6 md:p-8 text-white relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-[100px] pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-amber-500/5 rounded-full blur-[80px] pointer-events-none" />
+        
+        <div className="relative space-y-5">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center border border-white/10">
+              <Terminal className="w-5 h-5 text-amber-400" />
+            </div>
+            <div>
+              <span className="text-[10px] font-mono tracking-widest text-amber-400 uppercase font-bold">Siguiente Nivel</span>
+              <h3 className="text-lg font-bold">Herramientas Avanzadas de Diagnóstico</h3>
+            </div>
+          </div>
+
+          <p className="text-sm text-slate-300 leading-relaxed max-w-2xl">
+            Ahora que sabes <strong>cómo</strong> proteger tus puertos y tu red, las <strong>Herramientas Avanzadas</strong> te permiten ejecutar diagnósticos profesionales en tiempo real: escáner de URLs con VirusTotal, auditoría SSL/TLS, detección de VPN/proxy, análisis forense de emails y más.
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="bg-white/5 border border-white/10 rounded-xl p-3 flex items-start gap-2.5">
+              <ShieldAlert className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-xs font-bold text-slate-200">Escáner URL con VirusTotal</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">Analiza cualquier enlace contra 80+ motores de seguridad</p>
+              </div>
+            </div>
+            <div className="bg-white/5 border border-white/10 rounded-xl p-3 flex items-start gap-2.5">
+              <Lock className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-xs font-bold text-slate-200">Auditoría SSL/TLS</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">Verifica certificados, cifrados y vulnerabilidades</p>
+              </div>
+            </div>
+            <div className="bg-white/5 border border-white/10 rounded-xl p-3 flex items-start gap-2.5">
+              <Search className="w-4 h-4 text-indigo-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-xs font-bold text-slate-200">Análisis Forense de Emails</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">Detecta phishing, SPF/DKIM/DMARC y cabeceras sospechosas</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 border-t border-white/10">
+            <p className="text-xs text-slate-400">
+              <span className="text-amber-400 font-bold">Premium</span> — Acceso ilimitado a todas las herramientas
+            </p>
+            <button
+              onClick={() => {
+                // Navigate to profile/upgrade section
+                const event = new CustomEvent('myip-navigate', { detail: { tab: 'profile' } });
+                window.dispatchEvent(event);
+              }}
+              className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-lg transition-all flex items-center gap-2"
+            >
+              Acceder con Premium <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
       </div>
     </div>
