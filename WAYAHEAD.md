@@ -1815,6 +1815,13 @@ Comando para verificar manana:
 - Zero coste, 100% client-side
 
 ### Sincronización
-- GitHub: `mcasrom/myip` → main `6cf90e5` ✅
+- GitHub: `mcasrom/myip` → main `e8dce01` ✅
 - Server: `/home/deploy/myip` → pulled, rebuilt, running healthy ✅
 - Laptop: working tree clean, up to date ✅
+
+### User Health Chart (Premium): ACTUALIZADO ✅
+- Componente `UserHealthChart.tsx` añadido al Panel Premium (`UpgradePanel.tsx`)
+- Backend: `db.ts` `getUserScoreDistribution(email)` + endpoint `/api/stats/user`
+- Mismo diseño visual que Community KPI (donut + barras) pero con datos **solo del usuario**
+- Muestra: Score promedio, % conexiones seguras, riesgos, vulnerabilidades
+- Refuerza valor de suscripción: "Mira tu historial de seguridad personal"
