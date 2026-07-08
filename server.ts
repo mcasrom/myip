@@ -1390,6 +1390,14 @@ app.get('/api/stats/community', (req, res) => {
   });
 });
 
+// User Specific Stats (Premium)
+app.get('/api/stats/user', (req, res) => {
+  const email = req.query.email as string;
+  if (!email) return res.status(400).json({ error: 'Email requerido.' });
+  const userStats = authDb.getUserScoreDistribution(email.toLowerCase().trim());
+  res.json(userStats);
+});
+
 // Advanced Tools: DNS Leak Test
 app.get('/api/tools/dns-leak', (req, res) => {
   const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'Unknown';

@@ -202,6 +202,25 @@ export function getScoreDistribution(): { green: number; yellow: number; red: nu
     red: row?.red || 0,
   };
 }
+export function getUserScoreDistribution(email: string): { green: number; yellow: number; red: number; avgScore: number | null; total: number } {
+  const row = db.prepare(`
+    SELECT 
+      AVG(score_numeric) as avg,
+      COUNT(*) as total,
+      SUM(CASE WHEN score_numeric >= 70 THEN 1 ELSE 0 END) as green,
+      SUM(CASE WHEN score_numeric >= 40 AND score_numeric < 70 THEN 1 ELSE 0 END) as yellow,
+      SUM(CASE WHEN score_numeric < 40 THEN 1 ELSE 0 END) as red
+    FROM scan_history WHERE email = ? AND score_numeric IS NOT NULL
+  `).get(email) as any;
+  return {
+    green: row?.green || 0,
+    yellow: row?.yellow || 0,
+    red: row?.red || 0,
+    avgScore: row?.avg !== null && row?.avg !== undefined ? Math.round(row.avg) : null,
+    total: row?.total || 0,
+  };
+}
+
 const serverStartTimestamp = Date.now();
 
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 dias

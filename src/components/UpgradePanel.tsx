@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { CreditCard, ShieldCheck, Mail, RefreshCw, Radio, BellRing, Sparkles, Check, Server, Building, Award, Clock, ChevronDown } from 'lucide-react';
 import MarkdownRenderer from './MarkdownRenderer';
 import ScanTimeline from './ScanTimeline';
+import UserHealthChart from './UserHealthChart';
 
 interface UpgradePanelProps {
   email: string;
@@ -660,6 +661,9 @@ export default function UpgradePanel({
                   <span className="text-indigo-600 font-bold">Prioritario</span>
                 </div>
               </div>
+
+              {/* User Specific Health Chart */}
+              <UserHealthChart email={email} />
 
               {/* Historial de Escaneos (Premium) */}
               <div className="bg-white border border-slate-200 rounded-2xl p-5 text-left space-y-3">
