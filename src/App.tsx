@@ -1775,7 +1775,7 @@ export default function App() {
             </h3>
             <p className="text-xs text-slate-500 mt-1">Auditoría externa independiente realizada el <strong className="text-slate-300">08 Jul 2026</strong></p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
             {/* SSL Labs */}
             <a href="https://www.ssllabs.com/ssltest/analyze.html?d=myip.viajeinteligencia.com" target="_blank" rel="noopener noreferrer" className="bg-slate-800 border border-slate-700 rounded-xl p-4 flex items-center gap-4 hover:border-emerald-500/50 transition-colors group">
               <div className="w-12 h-12 bg-emerald-500/10 rounded-lg flex items-center justify-center text-emerald-400 font-bold text-xl border border-emerald-500/30">A+</div>
@@ -1798,6 +1798,29 @@ export default function App() {
               <div>
                 <p className="text-sm font-bold text-white group-hover:text-purple-400 transition-colors">Security Headers</p>
                 <p className="text-xs text-slate-500">Hardening & CSP</p>
+              </div>
+            </a>
+          </div>
+          {/* Second Row: Reputation & Transparency */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* VirusTotal */}
+            <a href="https://www.virustotal.com/gui/domain/myip.viajeinteligencia.com" target="_blank" rel="noopener noreferrer" className="bg-slate-800 border border-slate-700 rounded-xl p-4 flex items-center gap-4 hover:border-blue-400/50 transition-colors group">
+              <div className="w-12 h-12 bg-blue-400/10 rounded-lg flex items-center justify-center text-blue-400 font-bold text-lg border border-blue-400/30">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+              </div>
+              <div>
+                <p className="text-sm font-bold text-white group-hover:text-blue-400 transition-colors">VirusTotal</p>
+                <p className="text-xs text-slate-500">0 Detecciones (Dominio Limpio)</p>
+              </div>
+            </a>
+            {/* URLScan.io */}
+            <a href="https://urlscan.io/result/live/#task=https%3A%2F%2Fmyip.viajeinteligencia.com" target="_blank" rel="noopener noreferrer" className="bg-slate-800 border border-slate-700 rounded-xl p-4 flex items-center gap-4 hover:border-orange-400/50 transition-colors group">
+              <div className="w-12 h-12 bg-orange-400/10 rounded-lg flex items-center justify-center text-orange-400 font-bold text-lg border border-orange-400/30">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
+              </div>
+              <div>
+                <p className="text-sm font-bold text-white group-hover:text-orange-400 transition-colors">URLScan.io</p>
+                <p className="text-xs text-slate-500">Escaneo de Carga en Vivo</p>
               </div>
             </a>
           </div>
