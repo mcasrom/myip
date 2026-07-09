@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { guides, founderManifesto } from '../data/guides';
 import { BookOpen, Search, ShieldAlert, CheckCircle2, ChevronRight, ChevronDown, User, ShieldCheck, Terminal, ArrowRight, Lock } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -7,6 +7,20 @@ export default function HowToGuides() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('Todos');
   const [expandedGuideId, setExpandedGuideId] = useState<string | null>(null);
+
+  // Intercept clicks on install links
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const link = target.closest('a');
+      if (link && link.getAttribute('href') === '#install-pwa') {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent('trigger-pwa-install'));
+      }
+    };
+    document.addEventListener('click', handleClick, true);
+    return () => document.removeEventListener('click', handleClick, true);
+  }, []);
 
   const filteredGuides = guides.filter(guide => {
     const matchesSearch = guide.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -147,8 +161,10 @@ export default function HowToGuides() {
                           </h4>
                           <ol className="space-y-3 pl-1">
                             {guide.steps.map((step, idx) => {
-                              // Replace bold markdown with html bold representation
-                              const formattedStep = step.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                              // Replace bold markdown and links with HTML
+                              const formattedStep = step
+                                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                                .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" class="text-indigo-600 font-bold underline hover:text-indigo-800 cursor-pointer">$1</a>');
                               return (
                                 <li key={idx} className="flex gap-3">
                                   <span className="flex-shrink-0 flex items-center justify-center w-5 h-5 rounded-full bg-white border border-slate-200 text-xs text-slate-600 font-mono font-bold shadow-sm">

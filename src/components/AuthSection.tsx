@@ -49,9 +49,11 @@ interface AuthSectionProps {
   user: any | null;
   onLoginSuccess: (user: any) => void;
   onLogout: () => void;
+  canInstallPwa?: boolean;
+  onInstallPwa?: () => void;
 }
 
-export default function AuthSection({ user, onLoginSuccess, onLogout }: AuthSectionProps) {
+export default function AuthSection({ user, onLoginSuccess, onLogout, canInstallPwa, onInstallPwa }: AuthSectionProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [mode, setMode] = useState<'register' | 'login'>('register');
@@ -418,6 +420,29 @@ export default function AuthSection({ user, onLoginSuccess, onLogout }: AuthSect
                 </div>
               )}
             </div>
+
+            {/* PWA Install Button */}
+            {canInstallPwa && onInstallPwa && (
+              <button
+                onClick={onInstallPwa}
+                className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 animate-pulse"
+              >
+                📲 Instalar App en este dispositivo
+              </button>
+            )}
+            
+            {/* Fallback if browser doesn't support auto-install prompt */}
+            {!canInstallPwa && onInstallPwa && (
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center">
+                <p className="text-xs text-slate-500 mb-2">¿Quieres instalar la app?</p>
+                <button
+                  onClick={() => alert('Por favor, usa el menú de tu navegador (⋮) y selecciona "Instalar aplicación" o "Añadir a pantalla de inicio".')}
+                  className="text-xs text-indigo-600 font-bold underline"
+                >
+                  Ver instrucciones manuales
+                </button>
+              </div>
+            )}
 
             {/* Redeem Code Section - Only show if not premium */}
             {!user.isPremium && (

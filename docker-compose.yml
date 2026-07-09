@@ -21,9 +21,10 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3000
-    # Persistent volume for SQLite database
+    # Persistent volume for SQLite database + hot-reload dist
     volumes:
       - ./data:/app/data
+      - ./dist:/app/dist
     # Security: Limit resources
     deploy:
       resources:

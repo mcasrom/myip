@@ -57,7 +57,13 @@ export default function App() {
   const [scanning, setScanning] = useState<boolean>(false);
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
   const [showChangesPopup, setShowChangesPopup] = useState<boolean>(false);
-  const [showWelcomeModal, setShowWelcomeModal] = useState<boolean>(true);
+  const [showWelcomeModal, setShowWelcomeModal] = useState<boolean>(() => {
+    // Solo mostrar si no ha sido descartado previamente por el usuario
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('myip_welcome_dismissed') !== '1';
+    }
+    return true;
+  });
   const [rateLimitError, setRateLimitError] = useState<string | null>(null);
   const [legalConsentAccepted, setLegalConsentAccepted] = useState<boolean>(true);
   const [shareCopied, setShareCopied] = useState<boolean>(false);
@@ -69,6 +75,40 @@ export default function App() {
 
   // Notifications banner
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'warning' | 'info' } | null>(null);
+
+  // PWA Installation
+  const [installPrompt, setInstallPrompt] = useState<any>(null);
+  const [isInstalled, setIsInstalled] = useState<boolean>(window.matchMedia('(display-mode: standalone)').matches);
+
+  useEffect(() => {
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+    });
+    window.addEventListener('appinstalled', () => {
+      setIsInstalled(true);
+      setInstallPrompt(null);
+      triggerToast('¡App instalada correctamente!', 'success');
+    });
+    // Listen for install triggers from How-To guides or other components
+    window.addEventListener('trigger-pwa-install', () => {
+      if (installPrompt) {
+        handleInstallApp();
+      } else {
+        triggerToast('La instalación automática no está disponible en este navegador. Usa el menú "Añadir a pantalla de inicio".', 'info');
+      }
+    });
+  }, [installPrompt]);
+
+  const handleInstallApp = async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    const { outcome } = await installPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setInstallPrompt(null);
+      setIsInstalled(true);
+    }
+  };
 
   // Dev auto-login (only in local development, stripped in production build)
   useEffect(() => {
@@ -1745,7 +1785,9 @@ export default function App() {
             <AuthSection 
               user={user} 
               onLoginSuccess={handleLoginSuccess} 
-              onLogout={handleLogout} 
+              onLogout={handleLogout}
+              canInstallPwa={!isInstalled && !!installPrompt}
+              onInstallPwa={handleInstallApp}
             />
 
             {/* Upgrade Panel Segment — always visible, dev code first */}
@@ -1846,85 +1888,46 @@ export default function App() {
       </footer>
 
       {/* Bottom Navigation Bar for Mobile and Tablet (Smartphones) */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 shadow-xl pb-safe">
-        <div className="flex justify-around items-center h-16 px-1">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-[10000] bg-slate-900/95 backdrop-blur-md border-t border-slate-800 shadow-xl pb-2">
+        <div className="grid grid-cols-4 h-16">
           <button
-            onClick={() => setActiveTab('home')}
-            className={`flex flex-col items-center justify-center flex-1 py-1 px-0.5 rounded-xl transition-all ${
+            onClick={() => { setActiveTab('home'); setShowWelcomeModal(false); }}
+            className={`flex flex-col items-center justify-center py-1 transition-all ${
               activeTab === 'home' ? 'text-indigo-400 font-bold scale-105' : 'text-slate-400'
             }`}
           >
-            <Shield className="w-4 h-4 mb-0.5" />
-            <span className="text-[9px] tracking-tight">Analizar</span>
+            <Shield className="w-5 h-5 mb-0.5" />
+            <span className="text-[10px] tracking-tight">Analizar</span>
           </button>
           
           <button
-            onClick={() => {
-              if (!scanResult) {
-                triggerToast('Realiza un análisis primero para ver tus resultados.', 'info');
-                return;
-              }
-              setActiveTab('dashboard');
-            }}
-            className={`flex flex-col items-center justify-center flex-1 py-1 px-0.5 rounded-xl transition-all ${
-              !scanResult ? 'opacity-40 cursor-not-allowed' : ''
-            } ${activeTab === 'dashboard' ? 'text-indigo-400 font-bold scale-105' : 'text-slate-400'}`}
-          >
-            <div className="relative">
-              <Activity className="w-4 h-4 mb-0.5" />
-              {scanResult && <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-emerald-500 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.8)]" />}
-            </div>
-            <span className="text-[9px] tracking-tight">Salud IP</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('radar')}
-            className={`flex flex-col items-center justify-center flex-1 py-1 px-0.5 rounded-xl transition-all ${
+            onClick={() => { setActiveTab('radar'); setShowWelcomeModal(false); }}
+            className={`flex flex-col items-center justify-center py-1 transition-all ${
               activeTab === 'radar' ? 'text-red-400 font-bold scale-105' : 'text-red-300'
             }`}
           >
-            <Globe className="w-4 h-4 mb-0.5" />
-            <span className="text-[9px] tracking-tight">Radar</span>
+            <Globe className="w-5 h-5 mb-0.5" />
+            <span className="text-[10px] tracking-tight">Radar</span>
           </button>
 
           <button
-            onClick={() => setActiveTab('advanced')}
-            className={`flex flex-col items-center justify-center flex-1 py-1 px-0.5 rounded-xl transition-all ${
+            onClick={() => { setActiveTab('advanced'); setShowWelcomeModal(false); }}
+            className={`flex flex-col items-center justify-center py-1 transition-all ${
               activeTab === 'advanced' ? 'text-amber-400 font-bold scale-105' : 'text-amber-300'
             }`}
           >
-            <Terminal className="w-4 h-4 mb-0.5" />
-            <span className="text-[9px] tracking-tight">Tools</span>
+            <Terminal className="w-5 h-5 mb-0.5" />
+            <span className="text-[10px] tracking-tight">Tools</span>
           </button>
 
           <button
-            onClick={() => setActiveTab('guides')}
-            className={`flex flex-col items-center justify-center flex-1 py-1 px-0.5 rounded-xl transition-all ${
-              activeTab === 'guides' ? 'text-indigo-400 font-bold scale-105' : 'text-slate-400'
-            }`}
-          >
-            <BookOpen className="w-4 h-4 mb-0.5" />
-            <span className="text-[9px] tracking-tight">How-To</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('about')}
-            className={`flex flex-col items-center justify-center flex-1 py-1 px-0.5 rounded-xl transition-all ${
-              activeTab === 'about' ? 'text-indigo-400 font-bold scale-105' : 'text-slate-400'
-            }`}
-          >
-            <Info className="w-4 h-4 mb-0.5" />
-            <span className="text-[9px] tracking-tight">About</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('profile')}
-            className={`flex flex-col items-center justify-center flex-1 py-1 px-0.5 rounded-xl transition-all ${
+            onClick={() => { setActiveTab('profile'); setShowWelcomeModal(false); }}
+            className={`flex flex-col items-center justify-center py-1 transition-all ${
               activeTab === 'profile' ? 'text-indigo-400 font-bold scale-105' : 'text-slate-400'
             }`}
           >
-            <User className="w-4 h-4 mb-0.5" />
-            <span className="text-[9px] tracking-tight truncate max-w-[45px]">
+            <User className="w-5 h-5 mb-0.5" />
+            <span className="text-[10px] tracking-tight truncate max-w-[50px]">
               {user ? 'Perfil' : 'Entrar'}
             </span>
           </button>

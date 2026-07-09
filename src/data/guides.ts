@@ -2,6 +2,20 @@ import { SecurityGuide } from '../types';
 
 export const guides: SecurityGuide[] = [
   {
+    id: 'pwa-guide',
+    title: '¿Cómo instalar MyIP como App (PWA) en tu Smartphone o Tablet?',
+    category: 'Soberanía y Portabilidad',
+    description: 'Instala MyIP en tu pantalla de inicio sin usar tiendas de aplicaciones (App Store o Google Play). Se ejecuta en un contenedor ligero, consume menos datos y te da acceso de un solo toque.',
+    steps: [
+      '**En Dispositivos Android (Chrome, Edge):** Cuando entres a la web, aparecerá un banner sugiriendo "Instalar App". Haz clic en él o presiona el menú de tres puntos arriba a la derecha en Chrome y selecciona **"Instalar aplicación"** o **"Añadir a la pantalla de inicio"**.',
+      '**En iPhone o iPad (Safari):** Abre la página en Safari. Pulsa el botón **"Compartir"** (el icono del cuadrado con una flecha hacia arriba) en la barra de navegación inferior, desplázate por el menú y selecciona **"Añadir a la pantalla de inicio"**.',
+      '**Acceso Directo Sin Fricción:** Aparecerá un icono de alta definición con el escudo de MyIP en tu escritorio o cajón de aplicaciones. Ábrela desde ahí para disfrutar del modo Standalone a pantalla completa.',
+      '**Ahorro de Memoria y Batería:** A diferencia de las pesadas aplicaciones tradicionales de 100MB, esta PWA pesa menos de 1MB, no ejecuta procesos en segundo plano innecesarios y respeta la vida útil de tu batería.'
+    ],
+    recommendation: 'Instalar la PWA te permite llevar tus herramientas de diagnóstico siempre contigo, ideal para cuando realizas auditorías rápidas en la red Wi-Fi de tu oficina o de un café.',
+    difficulty: 'Fácil'
+  },
+  {
     id: 'ssh-guide',
     title: '¿Cómo proteger o cerrar tu puerto SSH (22)?',
     category: 'Administración de Servidores',
@@ -70,7 +84,8 @@ export const guides: SecurityGuide[] = [
       '**En Dispositivos Android (Chrome, Edge):** Cuando entres a la web, aparecerá un banner sugiriendo "Instalar App". Haz clic en él o presiona el menú de tres puntos arriba a la derecha en Chrome y selecciona **"Instalar aplicación"** o **"Añadir a la pantalla de inicio"**.',
       '**En iPhone o iPad (Safari):** Abre la página en Safari. Pulsa el botón **"Compartir"** (el icono del cuadrado con una flecha hacia arriba) en la barra de navegación inferior, desplázate por el menú y selecciona **"Añadir a la pantalla de inicio"**.',
       '**Acceso Directo Sin Fricción:** Aparecerá un icono de alta definición con el escudo de MyIP en tu escritorio o cajón de aplicaciones. Ábrela desde ahí para disfrutar del modo Standalone a pantalla completa.',
-      '**Ahorro de Memoria y Batería:** A diferencia de las pesadas aplicaciones tradicionales de 100MB, esta PWA pesa menos de 1MB, no ejecuta procesos en segundo plano innecesarios y respeta la vida útil de tu batería.'
+      '**Ahorro de Memoria y Batería:** A diferencia de las pesadas aplicaciones tradicionales de 100MB, esta PWA pesa menos de 1MB, no ejecuta procesos en segundo plano innecesarios y respeta la vida útil de tu batería.',
+      '**[Instalar App Ahora](#install-pwa):** Haz clic en este enlace para intentar la instalación automática en tu dispositivo.'
     ],
     recommendation: 'Instalar la PWA te permite llevar tus herramientas de diagnóstico siempre contigo, ideal para cuando realizas auditorías rápidas en la red Wi-Fi de tu oficina o de un café.',
     difficulty: 'Fácil'

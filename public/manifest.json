@@ -3,21 +3,15 @@
   "name": "MyIP - Monitor & Diagnóstico de Red",
   "icons": [
     {
+      "src": "/icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any maskable"
+    },
+    {
       "src": "/icon.jpg",
       "type": "image/jpeg",
       "sizes": "1024x1024",
-      "purpose": "any"
-    },
-    {
-      "src": "/icon.jpg",
-      "type": "image/jpeg",
-      "sizes": "192x192",
-      "purpose": "maskable"
-    },
-    {
-      "src": "/icon.jpg",
-      "type": "image/jpeg",
-      "sizes": "512x512",
       "purpose": "any"
     }
   ],
