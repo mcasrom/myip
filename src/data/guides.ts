@@ -140,7 +140,7 @@ export const guides: SecurityGuide[] = [
 
 export const founderManifesto = {
   author: 'M.Castillo',
-  role: 'Fundador y mente detrás de MyIP / SIEG',
+  role: 'Founder & Lead Developer',
   title: 'La Ciberseguridad es un Derecho, no un Privilegio',
   paragraphs: [
     'En la era de la hiperconectividad, cada usuario final es el guardián de su propia frontera digital. Sin embargo, la industria de la seguridad informática a menudo utiliza un lenguaje críptico, alarmista y plagado de tecnicismos para vender soluciones costosas, asustando al usuario común en lugar de empoderarlo.',
