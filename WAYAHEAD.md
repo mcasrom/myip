@@ -1885,3 +1885,55 @@ Comando para verificar manana:
 ### Estado del proyecto
 - Producción: `https://myip.viajeinteligencia.com` — healthy ✅
 - Commit: `9ec9a17`
+
+---
+
+## Sesión 2026-07-10 — Offline UX, Stripe Cleanup & Webhook Fix
+
+### Offline Detection (Airport Scenario)
+- **Hook `useOnlineStatus`**: detecta `navigator.onLine` + eventos `online/offline`
+- **OfflineBanner**: banner rojo fijo "Sin conexion a internet..."
+- **Scan bloqueado offline**: mensaje explicativo, boton deshabilitado
+- **Speed Test fix**: si todas las mediciones = 0 → score 0, "Sin Conexion" (antes decia "Conexion Basica" con todo a 0 — falso positivo)
+- **Community KPIs fix**: muestra aviso amber en vez de ceros silentes
+- **User Health Chart fix**: muestra placeholder con estado en vez de desaparecer
+- Herramientas cliente (Terminal, Huella Digital, Forense Email) → siguen funcionando offline
+
+### Stripe Cleanup
+- **4 productos huerfanos archivados**: API Starter, API Pro, Premium Anual, Premium Mensual (antiguos)
+- **2 productos nuevos creados** para ViajeInteligencia:
+  - Premium Mensual: €4.99/mes (`price_1Trc1x1yXjIoL1LjVuklaM73`)
+  - Premium Anual: €19.99/año (`price_1Trc2J1yXjIoL1Lj2VjCZizF`)
+- **Test mode**: 5 productos `myproduct` basura eliminados
+- **Webhook test mode**: URL actualizada de Vercel → Hetzner
+- **Cloudflare WAF**: regla modificada para excluir `/api/webhooks/stripe` del challenge (antes 403)
+- **Webhook live**: ambos funcionales (`myip` + `viajeinteligencia`)
+- **PDF manual**: ruta `/api/manual/download` movida antes del catch-all, funciona correctamente
+
+### Stripe — Resumen Final de Productos
+| Proyecto | Producto | Precio | Intervalo | Price ID |
+|---|---|---|---|---|
+| ViajeInteligencia | Premium Mensual | €4.99 | mes | `price_1Trc1x1yXjIoL1LjVuklaM73` |
+| ViajeInteligencia | Premium Anual | €19.99 | año | `price_1Trc2J1yXjIoL1Lj2VjCZizF` |
+
+### MyIP — Precios (inline en server.ts, sin productos Stripe)
+| Servicio | Precio | Modo |
+|---|---|---|
+| Premium de por vida | €9.99 | pago unico |
+| SysAdmin Pro | €4.99 | mensual |
+| Consultores Marca Blanca | €24.99 | pago unico (proximamente) |
+
+### Estado del proyecto
+- Producción: `https://myip.viajeinteligencia.com` — healthy ✅
+- Commit: `ff3084d`
+- Stripe: limpio, 2 productos activos (ViajeInteligencia), webhooks OK
+
+---
+
+## Opciones para proxima sesion (presentar al reiniciar)
+
+1. **Telegram Bot MVP** — alertas + escaneo on-demand
+2. **Probar checkout Stripe real** — tarjeta `4242` en produccion, verificar flujo completo + webhook
+3. **Mejorar templates HTML de emails** — branding + link a la app
+
+---
