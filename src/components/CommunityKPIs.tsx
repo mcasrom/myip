@@ -7,21 +7,27 @@ interface Distribution {
   red: number;
 }
 
-export default function CommunityKPIs() {
+export default function CommunityKPIs({ isOnline = true }: { isOnline?: boolean }) {
   const [data, setData] = useState({ totalScans: 0, totalUsers: 0, premiumUsers: 0, avgScore: 0, totalScored: 0 });
   const [counts, setCounts] = useState({ scans: 0, users: 0, threats: 0, premium: 0 });
   const [distribution, setDistribution] = useState<Distribution>({ green: 0, yellow: 0, red: 0 });
+  const [fetchError, setFetchError] = useState(false);
 
   useEffect(() => {
+    if (!isOnline) {
+      setFetchError(true);
+      return;
+    }
     fetch('/api/stats/community')
       .then(r => r.json())
       .then(d => {
         setData(d);
         if (d.distribution) setDistribution(d.distribution);
         animateCounts(d.totalScans, d.totalUsers, d.totalScored, d.premiumUsers);
+        setFetchError(false);
       })
-      .catch(() => {});
-  }, []);
+      .catch(() => setFetchError(true));
+  }, [isOnline]);
 
   const animateCounts = (scans: number, users: number, threats: number, premium: number) => {
     const duration = 1500;
@@ -67,6 +73,14 @@ export default function CommunityKPIs() {
 
   return (
     <div className="space-y-6 max-w-3xl mx-auto mt-8">
+      {/* Offline/Error State */}
+      {fetchError && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-center">
+          <AlertTriangle className="w-5 h-5 text-amber-500 mx-auto mb-2" />
+          <p className="text-sm text-amber-700 font-medium">Sin conexion a internet. Los datos de la comunidad no estan disponibles.</p>
+        </div>
+      )}
+
       {/* Original KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
         <KPICard

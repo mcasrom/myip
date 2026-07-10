@@ -8,19 +8,40 @@ interface UserHealthChartProps {
 export default function UserHealthChart({ email }: UserHealthChartProps) {
   const [data, setData] = useState({ green: 0, yellow: 0, red: 0, avgScore: 0, total: 0 });
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
 
   useEffect(() => {
     if (!email) return;
+    if (!navigator.onLine) {
+      setFetchError(true);
+      setLoading(false);
+      return;
+    }
     fetch(`/api/stats/user?email=${encodeURIComponent(email)}`)
       .then(r => r.json())
       .then(d => {
         setData(d);
         setLoading(false);
+        setFetchError(false);
       })
-      .catch(() => setLoading(false));
+      .catch(() => {
+        setLoading(false);
+        setFetchError(true);
+      });
   }, [email]);
 
-  if (loading || data.total === 0) return null;
+  if (loading) return null;
+
+  if (fetchError || data.total === 0) {
+    return (
+      <div className="bg-slate-800 rounded-2xl p-5 text-center border border-indigo-900/50">
+        <Activity className="w-6 h-6 text-slate-500 mx-auto mb-2" />
+        <p className="text-xs text-slate-400">
+          {fetchError ? 'Sin conexion. Tu historial no esta disponible.' : 'Aun no hay escaneos registrados.'}
+        </p>
+      </div>
+    );
+  }
 
   const total = data.green + data.yellow + data.red;
   const greenPct = total > 0 ? Math.round((data.green / total) * 100) : 0;

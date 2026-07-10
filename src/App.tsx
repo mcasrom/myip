@@ -41,13 +41,16 @@ import AdvancedTools from './components/AdvancedTools';
 import ThreatMap from './components/ThreatMap';
 import LocalNetworkDiagnostic from './components/LocalNetworkDiagnostic';
 import TerminalSecurityCheck from './components/TerminalSecurityCheck';
+import CyberManual from './components/CyberManual';
+import OfflineBanner from './components/OfflineBanner';
+import { useOnlineStatus } from './hooks/useOnlineStatus';
 import { ScanResult, UserSession } from './types';
 import { founderManifesto } from './data/guides';
 import socialPreviewImg from './assets/images/myip_preview.jpg';
 import socialIconImg from './assets/images/myip_icon.jpg';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'home' | 'dashboard' | 'guides' | 'about' | 'profile' | 'legal' | 'methodology' | 'tos' | 'faq' | 'advanced' | 'radar'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'dashboard' | 'guides' | 'about' | 'profile' | 'legal' | 'methodology' | 'tos' | 'faq' | 'advanced' | 'radar' | 'manual'>('home');
   const [homeSubTab, setHomeSubTab] = useState<'public' | 'local'>('public');
   const [detectedIp, setDetectedIp] = useState<string>('');
   const [isSimulatedIp, setIsSimulatedIp] = useState<boolean>(false);
@@ -79,6 +82,9 @@ export default function App() {
   // PWA Installation
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   const [isInstalled, setIsInstalled] = useState<boolean>(window.matchMedia('(display-mode: standalone)').matches);
+
+  // Online/Offline detection
+  const isOnline = useOnlineStatus();
 
   useEffect(() => {
     window.addEventListener('beforeinstallprompt', (e) => {
@@ -427,6 +433,9 @@ export default function App() {
         </div>
       )}
 
+      {/* Offline Banner */}
+      {!isOnline && <OfflineBanner />}
+
       {/* Main Top Header Navigation */}
       <header className="sticky top-0 z-40 bg-slate-900 text-white shadow-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
@@ -534,6 +543,14 @@ export default function App() {
               }`}
             >
               About / Filosofía
+            </button>
+            <button
+              onClick={() => setActiveTab('manual')}
+              className={`px-4 py-2 rounded-lg text-xs font-semibold tracking-wide transition-all flex items-center gap-1.5 ${
+                activeTab === 'manual' ? 'bg-emerald-600 text-white shadow-sm' : 'text-emerald-300 hover:text-emerald-200'
+              }`}
+            >
+              <BookOpen className="w-3 h-3" /> Manual
             </button>
             <button
               onClick={() => setActiveTab('profile')}
@@ -751,7 +768,7 @@ export default function App() {
                   <RadarScanner scanning={scanning} ip={detectedIp} />
 
                   {/* Community KPIs */}
-                  <CommunityKPIs />
+                  <CommunityKPIs isOnline={isOnline} />
 
                   {/* Legal and Compliance Consent Checkbox Card */}
                   <div className="mt-8 bg-slate-50 border border-slate-200 rounded-2xl p-4.5 text-left max-w-lg mx-auto space-y-3 shadow-inner">
@@ -817,6 +834,15 @@ export default function App() {
                           Recargar página →
                         </button>
                       </div>
+                    ) : !isOnline ? (
+                      <div className="text-center space-y-3 max-w-sm mx-auto">
+                        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 px-4 py-3 rounded-xl">
+                          ⚠️ Sin conexión a internet. El análisis de red requiere una conexión activa para comunicarse con los servidores de diagnóstico.
+                        </p>
+                        <p className="text-[10px] text-slate-500">
+                          Las herramientas del navegador (Terminal, Huella Digital, Forense Email) siguen disponibles.
+                        </p>
+                      </div>
                     ) : (
                       <button
                         type="button"
@@ -863,7 +889,7 @@ export default function App() {
               </>
             ) : (
               <div className="animate-fade-in">
-                <LocalNetworkDiagnostic onToast={triggerToast} />
+                <LocalNetworkDiagnostic onToast={triggerToast} isOnline={isOnline} />
               </div>
             )}
 
@@ -1762,6 +1788,7 @@ export default function App() {
         )}
         
         {activeTab === 'radar' && <ThreatMap />}
+        {activeTab === 'manual' && <CyberManual />}
         {/* TAB 5: PROFILE / UPGRADE */}
         {activeTab === 'profile' && (
           <div className="space-y-10">
@@ -1879,6 +1906,7 @@ export default function App() {
           <div className="flex flex-wrap justify-center gap-x-6 gap-y-2">
             <a href="#manifesto-section" onClick={() => setActiveTab('about')} className="hover:text-slate-600 font-semibold text-slate-500">Sobre Misión</a>
             <a href="#how-to" onClick={() => setActiveTab('guides')} className="hover:text-slate-600 font-semibold text-slate-500">Biblioteca How-To</a>
+            <a href="#manual" onClick={() => setActiveTab('manual')} className="hover:text-emerald-600 font-semibold text-emerald-600">Manual Ciberseguridad</a>
             <a href="#legal-compliance" onClick={() => setActiveTab('legal')} className="hover:text-indigo-600 font-semibold text-indigo-600">Marco Legal & Cumplimiento</a>
             <a href="#tos" onClick={() => setActiveTab('tos')} className="hover:text-slate-600 font-semibold text-slate-500">Términos de Servicio</a>
             <a href="#faq" onClick={() => setActiveTab('faq')} className="hover:text-slate-600 font-semibold text-slate-500">FAQ</a>

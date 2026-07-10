@@ -105,6 +105,11 @@ function classifyConnection(
   jitter: number,
   speed: number
 ): { context: string; icon: string } {
+  // Detectar si todas las mediciones fallaron (posible offline)
+  if (latency === 0 && jitter === 0 && speed === 0) {
+    return { context: 'Sin Conexion - No se pudo medir', icon: '🔴' };
+  }
+
   // Excelente: baja latencia, bajo jitter, alta velocidad
   if (latency < 50 && jitter < 15 && speed > 20) {
     return { context: 'Conexión de Alta Calidad', icon: '🟢' };
@@ -134,9 +139,11 @@ function classifyConnection(
 }
 
 export default function LocalNetworkDiagnostic({ 
-  onToast 
+  onToast,
+  isOnline = true
 }: { 
-  onToast: (msg: string, type: 'success' | 'warning' | 'info') => void 
+  onToast: (msg: string, type: 'success' | 'warning' | 'info') => void;
+  isOnline?: boolean;
 }) {
   const [running, setRunning] = useState(false);
   const [currentStep, setCurrentStep] = useState<number>(0);
@@ -145,6 +152,12 @@ export default function LocalNetworkDiagnostic({
   const [error, setError] = useState<string | null>(null);
 
   const runDiagnostic = async () => {
+    if (!isOnline) {
+      setError('Sin conexion a internet. Este test requiere una conexion activa para medir latencia, velocidad y DNS.');
+      onToast('Sin conexion. Verifica tu red WiFi o datos moviles.', 'warning');
+      return;
+    }
+
     setRunning(true);
     setResult(null);
     setError(null);
@@ -207,6 +220,12 @@ export default function LocalNetworkDiagnostic({
       // Scoring basado en métricas reales
       let score = 100;
       const issues: string[] = [];
+
+      // Detectar si todas las mediciones fallaron (offline o servidor inaccesible)
+      if (measuredLatency === 0 && measuredJitter === 0 && measuredSpeed === 0 && dnsLatency === 0) {
+        score = 0;
+        issues.push('No se pudo establecer conexion con el servidor de medicion. Verifica tu conexion a internet.');
+      } else {
       
       // Latencia
       if (measuredLatency > 200) {
@@ -250,10 +269,11 @@ export default function LocalNetworkDiagnostic({
       // Save Data
       if (saveData) {
         score -= 5;
-        issues.push('Modo ahorro de datos activado. Tu navegador está limitando el consumo.');
+        issues.push('Modo ahorro de datos activado. Tu navegador esta limitando el consumo.');
       }
-      
-      score = Math.max(5, score);
+      }
+
+      score = Math.max(0, score);
       
       let rating = 'Excelente';
       if (score >= 90) rating = 'Excelente';

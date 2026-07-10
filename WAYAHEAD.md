@@ -1863,44 +1863,25 @@ Comando para verificar manana:
 - [ ] Probar checkout Stripe real con tarjeta 4242 en producción
 - [ ] Mejorar plantilla HTML de emails de alerta (branding + link app)
 - [ ] Limpiar scan_history sintético de usuarios test
-- [ ] Revisar APP_URL placeholder en .env local
 
 ---
 
-## Sesión 2026-07-09 — Cierre: Auditoría completa, Badges, Stripe Webhook y Email fix
+## Sesión 2026-07-09 (Tarde) — PWA Fix, Mobile Nav & Install Link
 
-### Seguridad y Auditoría
-- **SSL Labs (Qualys):** A+ (TLS 1.3, HSTS con preload)
-- **Mozilla Observatory:** 105/100 (A+) — Cabeceras HTTP perfectas
-- **Security Headers:** 105/100 (A) — Hardening y CSP
-- **VirusTotal:** 0 detecciones (Dominio limpio) — Badge añadido
-- **URLScan.io:** Escaneo de carga en vivo — Badge añadido
-- **Shodan:** Puertos limpios (80, 443, 3000 Next.js) — Sin alertas
-- **SecurityTrails:** DNS correcto, sin registros huérfanos
-- **CSP Implementada:** `default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com; style-src 'self' https://cdnjs.cloudflare.com https://fonts.googleapis.com;`
+### PWA & Mobile UX
+- **Fix Iconos:** Actualizado `manifest.json` para usar iconos **SVG** vectoriales (mejor detección en Android).
+- **Botón de Instalación:** Añadido botón explícito en la pestaña **Perfil** con fallback de instrucciones manuales.
+- **Enlace en How-To:** Añadido el paso **"[Instalar App Ahora](#install-pwa)"** en la guía de instalación PWA. Intercepta el clic y lanza el diálogo nativo de instalación.
+- **Barra Móvil:** Simplificada a **4 botones fijos** (Analizar, Radar, Tools, Perfil) para evitar scroll y toques accidentales.
+- **Modal de Bienvenida:** Ahora recuerda si fue cerrado (`localStorage`) y no bloquea la navegación al recargar.
 
-### Badges de Auditoría (En vivo)
-- Sección **"Seguridad Verificada"** añadida al footer (`App.tsx`).
-- Muestra fecha de auditoría (**09 Jul 2026**) y enlaces directos a reportes públicos.
-- 5 badges: SSL Labs, Mozilla, Security Headers, VirusTotal, URLScan.io.
-
-### Stripe Webhook
-- **Test exitoso:** Simulación de `checkout.session.completed` con firma HMAC-SHA256.
-- **Resultado:** Premium activado para `mcasrom@gmail.com` (tier: lifetime).
-- **Decisión:** No instalar Stripe CLI en producción; usar script Node.js seguro.
-
-### Email Fix
-- **APP_URL:** Corregido de `"MY_APP_URL"` a `"https://myip.viajeinteligencia.com"`.
-- **Remitente:** Actualizado a `MyIP <alertas@viajeinteligencia.com>`.
-- **Template:** Verificado con email de prueba a `mcasrom@gmail.com`.
+### Bug Fixes Críticos
+- **Perfil Invisible:** Corregido error en `AuthSection.tsx` (variable `isInstalled` no definida) que causaba un crash silencioso en la pestaña Perfil.
+- **Navegación:** Reforzada la prioridad (`z-index`) de la barra inferior sobre el modal de bienvenida.
 
 ### Infraestructura
-- **Nginx:** CSP, HSTS preload, X-Frame-Options, Referrer-Policy aplicados.
-- **Disco:** Limpieza de 6.6GB (build cache, logs antiguos).
-- **Docker:** Contenedor healthy, estructura `dist/` corregida.
+- **Docker:** Configurado volumen `./dist:/app/dist` para hot-reload sin necesidad de `docker cp`.
 
 ### Estado del proyecto
 - Producción: `https://myip.viajeinteligencia.com` — healthy ✅
-- Status map: `https://status.viajeinteligencia.com` — healthy ✅
-- Base de datos: 8 usuarios, 42+ escaneos, 3 premium (1 manual, 2 por código)
-- Commit: `b0549fd`
+- Commit: `9ec9a17`

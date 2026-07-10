@@ -15,6 +15,7 @@ import cookieParser from 'cookie-parser';
 import * as authDb from './db';
 import { startAlertsCron, compareScans } from './alerts';
 import { isCommonPassword } from './src/utils/passwordBloom.js';
+import PDFDocument from 'pdfkit';
 dotenv.config();
 
 // ============================================================================
@@ -1794,6 +1795,100 @@ app.post('/api/premium/send-report', async (req, res) => {
 // Vite / Production
 // ============================================================================
 async function startServer() {
+  // API: Download Cybersecurity Manual as PDF (must be before catch-all)
+  app.get('/api/manual/download', (req, res) => {
+    const doc = new PDFDocument({ margin: 50, size: 'A4' });
+    const date = new Date().toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
+    
+    res.setHeader('Content-Disposition', 'attachment; filename="Manual_Ciberseguridad_MyIP.pdf"');
+    res.setHeader('Content-Type', 'application/pdf');
+    doc.pipe(res);
+
+    const primaryColor = '#4338ca';
+    const darkColor = '#0f172a';
+    const textColor = '#334155';
+    const lightBg = '#f8fafc';
+
+    const drawHeader = () => {
+      doc.fontSize(24).font('Helvetica-Bold').fillColor(darkColor).text('Manual de Ciberseguridad', { align: 'center' });
+      doc.fontSize(12).fillColor(primaryColor).text('SIEG · MyIP Platform', { align: 'center' });
+      doc.moveDown(0.5);
+      doc.fontSize(9).fillColor('#64748b').text(`Fecha: ${date} | Versión: 1.0.0 | myip.viajeinteligencia.com`, { align: 'center' });
+      doc.moveDown(1);
+      doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor(primaryColor).lineWidth(2).stroke();
+      doc.moveDown(1);
+    };
+
+    const drawSection = (title: string) => {
+      doc.moveDown(1.5);
+      doc.fontSize(14).font('Helvetica-Bold').fillColor(primaryColor).text(title);
+      doc.moveDown(0.5);
+      doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#e2e8f0').lineWidth(1).stroke();
+      doc.moveDown(0.5);
+    };
+
+    const drawCard = (title: string, body: string) => {
+      const startY = doc.y;
+      doc.rect(50, startY, 495, 60).fillAndStroke(lightBg, '#e2e8f0');
+      doc.fillColor(darkColor).fontSize(11).font('Helvetica-Bold').text(title, 60, startY + 10, { width: 475 });
+      doc.fillColor(textColor).fontSize(10).font('Helvetica').text(body, 60, startY + 28, { width: 475 });
+      doc.moveDown(4);
+    };
+
+    const drawBullet = (text: string) => {
+      const x = 60;
+      doc.fillColor(primaryColor).circle(x, doc.y + 4, 3).fill();
+      doc.fillColor(textColor).fontSize(10).font('Helvetica').text(text, x + 10, doc.y - 2, { width: 475 });
+      doc.moveDown(0.8);
+    };
+
+    drawHeader();
+    
+    doc.fontSize(11).font('Helvetica').fillColor(textColor).text(
+      'Este manual ha sido diseñado para empoderar al usuario final en la protección de su red doméstica y profesional. ' +
+      'En un mundo donde la hiperconectividad expone constantemente nuestros datos, MyIP ofrece una suite de herramientas ' +
+      'de diagnóstico y monitoreo que democratizan el acceso a la seguridad informática.',
+      { width: 495, lineGap: 4 }
+    );
+    doc.moveDown(0.5);
+    doc.fillColor(primaryColor).fontSize(9).font('Helvetica-Oblique').text(
+      '"La verdadera seguridad no reside en la oscuridad tecnológica, sino en el faro del conocimiento compartido." — M.Castillo',
+      { width: 495, align: 'right' }
+    );
+
+    drawSection('1. Los 3 Pilares de la Soberanía Digital');
+    drawCard('Visibilidad', 'No puedes proteger lo que no ves. Conocer tu IP pública, tus puertos abiertos y tu reputación en internet es el primer paso.');
+    drawCard('Control', 'Cerrar puertas innecesarias. Desactivar servicios obsoletos y asegurar que solo tú tienes la llave de tu red.');
+    drawCard('Monitorización', 'La seguridad es un proceso. Vigilar cambios en tu red y recibir alertas ante nuevas amenazas es vital.');
+
+    drawSection('2. Herramientas de la Plataforma MyIP');
+    drawCard('Escaneo de IP Pública', 'Detecta tu IP externa y analiza los puertos TCP expuestos en tiempo real. Identifica vulnerabilidades antes que los atacantes.');
+    drawCard('Radar de Amenazas', 'Visualización global de ataques bloqueados y hotspots de actividad maliciosa. Datos OSINT en tiempo real.');
+    drawCard('Reputación de IP', 'Consulta si tu dirección aparece en listas negras (DNSBL) que podrían estar bloqueando tus correos o servicios.');
+    drawCard('Análisis WiFi', 'Diagnóstico de la calidad y seguridad de tu conexión inalámbrica actual.');
+
+    drawSection('3. Protocolos de Respuesta a Incidentes');
+    drawCard('Puerto 22 (SSH) Abierto', 'Riesgo: Fuerza bruta. Solución: Cambia el puerto, usa llaves SSH y desactiva el login por contraseña.');
+    drawCard('IP en Lista Negra', 'Riesgo: Emails a Spam. Solución: Escanea malware, reinicia router para nueva IP y solicita delisting.');
+    drawCard('Intrusos en Red WiFi', 'Riesgo: Robo de ancho de banda. Solución: Cambia a WPA2/WPA3, desactiva WPS y oculta el SSID.');
+
+    drawSection('4. Buenas Prácticas de Seguridad');
+    drawBullet('Actualiza el firmware de tu Router periódicamente.');
+    drawBullet('Desactiva WPS (vulnerable a fuerza bruta rápida).');
+    drawBullet('Usa DNS Seguro (DoH/DoT) para cifrar tu historial.');
+    drawBullet('Contraseñas únicas y 2FA en todos los servicios críticos.');
+    drawBullet('Realiza un escaneo MyIP mensual para verificar tu postura.');
+    drawBullet('Nunca expongas el puerto 3389 (RDP) a internet.');
+
+    doc.moveDown(2);
+    doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#e2e8f0').lineWidth(1).stroke();
+    doc.moveDown(0.5);
+    doc.fontSize(9).fillColor('#64748b').text('MyIP © 2026 SIEG | Privacy Tools', { align: 'center' });
+    doc.fontSize(8).text('https://myip.viajeinteligencia.com', { align: 'center' });
+
+    doc.end();
+  });
+
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({ server: { middlewareMode: true }, appType: 'spa' });
     app.use(vite.middlewares);
