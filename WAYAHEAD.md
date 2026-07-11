@@ -2049,7 +2049,19 @@ Auditoria externa recibida con criticas sobre GDPR/LOPDGDD parcial, falta de pol
 
 ### Estado del proyecto
 - Producción: `https://myip.viajeinteligencia.com` — healthy ✅
-- Commit: `bd531c5`
+- Commit: `79eaf8d`
 - Legal & Compliance: Sprint 1 CERRADO
+
+### Pendiente para HOY (sesion tarde/noche)
+- [ ] **Sprint 2: CVE/NIST Integration** — 1 semana de trabajo
+  - Endpoint `/api/tools/cve-lookup` con fallback NVD → Vulners API
+  - Parseo de banners de puertos abiertos (SSH version, HTTP server, etc)
+  - Match contra CVEs conocidos por version de software detectada
+  - UI: badge "X vulnerabilidades conocidas" en resultados de escaneo
+  - Cache de resultados CVE (no reconsultar en cada escaneo)
+- [ ] **Sprint 3: Blog Tecnico SEO** — continuo
+  - Estructura de blog en `myip.viajeinteligencia.com/blog`
+  - Primeros 5 articulos técnicos
+  - Metadatos OpenGraph + schema.org + sitemap.xml
 
 ---
