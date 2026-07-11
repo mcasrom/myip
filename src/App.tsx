@@ -32,7 +32,7 @@ import HowToGuides from './components/HowToGuides';
 import AuthSection from './components/AuthSection';
 import UpgradePanel from './components/UpgradePanel';
 import MarkdownRenderer from './components/MarkdownRenderer';
-import { tosContent, faqContent } from './data/legal';
+import { tosContent, faqContent, privacyContent, cookieContent } from './data/legal';
 import PWAInstallBanner from './components/PWAInstallBanner';
 import ChangesPopup from './components/ChangesPopup';
 import WelcomeModal from './components/WelcomeModal';
@@ -50,7 +50,7 @@ import socialPreviewImg from './assets/images/myip_preview.jpg';
 import socialIconImg from './assets/images/myip_icon.jpg';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'home' | 'dashboard' | 'guides' | 'about' | 'profile' | 'legal' | 'methodology' | 'tos' | 'faq' | 'advanced' | 'radar' | 'manual'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'dashboard' | 'guides' | 'about' | 'profile' | 'legal' | 'methodology' | 'tos' | 'faq' | 'advanced' | 'radar' | 'manual' | 'privacy' | 'cookies'>('home');
   const [homeSubTab, setHomeSubTab] = useState<'public' | 'local'>('public');
   const [detectedIp, setDetectedIp] = useState<string>('');
   const [isSimulatedIp, setIsSimulatedIp] = useState<boolean>(false);
@@ -85,6 +85,14 @@ export default function App() {
 
   // Online/Offline detection
   const isOnline = useOnlineStatus();
+
+  // Cookie banner
+  const [showCookieBanner, setShowCookieBanner] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('myip_cookies_accepted') !== '1';
+    }
+    return true;
+  });
 
   useEffect(() => {
     window.addEventListener('beforeinstallprompt', (e) => {
@@ -1762,6 +1770,22 @@ export default function App() {
             </div>
           </div>
         )}
+        {/* TAB: PRIVACY */}
+        {activeTab === 'privacy' && (
+          <div className="max-w-4xl mx-auto space-y-6">
+            <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+              <MarkdownRenderer content={privacyContent} />
+            </div>
+          </div>
+        )}
+        {/* TAB: COOKIES */}
+        {activeTab === 'cookies' && (
+          <div className="max-w-4xl mx-auto space-y-6">
+            <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+              <MarkdownRenderer content={cookieContent} />
+            </div>
+          </div>
+        )}
         {/* TAB: ADVANCED TOOLS */}
         {activeTab === 'advanced' && (
           user?.isPremium ? (
@@ -1896,6 +1920,30 @@ export default function App() {
         </div>
       </section>
 
+      {/* Cookie Consent Banner */}
+      {showCookieBanner && (
+        <div className="fixed bottom-20 md:bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-96 z-[9999] bg-slate-900 text-white rounded-2xl shadow-2xl p-4 border border-slate-700">
+          <div className="flex items-start gap-3">
+            <div className="flex-1">
+              <p className="text-xs font-bold mb-1">Utilizamos cookies tecnicas necesarias</p>
+              <p className="text-[11px] text-slate-300 leading-relaxed">
+                Solo usamos cookies de sesion (login) y preferencias basicas. Sin tracking, sin analytics, sin publicidad. 
+                <button onClick={() => setActiveTab('cookies')} className="text-indigo-400 hover:underline ml-1">Ver politica de cookies</button>
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                localStorage.setItem('myip_cookies_accepted', '1');
+                setShowCookieBanner(false);
+              }}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2 rounded-xl flex-shrink-0 transition-colors"
+            >
+              Entendido
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Footer copyright block */}
       <footer className="border-t border-slate-200 bg-white py-8 pb-24 md:pb-8 mt-0 text-xs text-slate-400">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-4 text-center md:text-left">
@@ -1907,8 +1955,10 @@ export default function App() {
             <a href="#manifesto-section" onClick={() => setActiveTab('about')} className="hover:text-slate-600 font-semibold text-slate-500">Sobre Misión</a>
             <a href="#how-to" onClick={() => setActiveTab('guides')} className="hover:text-slate-600 font-semibold text-slate-500">Biblioteca How-To</a>
             <a href="#manual" onClick={() => setActiveTab('manual')} className="hover:text-emerald-600 font-semibold text-emerald-600">Manual Ciberseguridad</a>
-            <a href="#legal-compliance" onClick={() => setActiveTab('legal')} className="hover:text-indigo-600 font-semibold text-indigo-600">Marco Legal & Cumplimiento</a>
-            <a href="#tos" onClick={() => setActiveTab('tos')} className="hover:text-slate-600 font-semibold text-slate-500">Términos de Servicio</a>
+            <a href="#legal-compliance" onClick={() => setActiveTab('legal')} className="hover:text-indigo-600 font-semibold text-indigo-600">Marco Legal</a>
+            <a href="#tos" onClick={() => setActiveTab('tos')} className="hover:text-slate-600 font-semibold text-slate-500">Términos</a>
+            <a href="#privacy" onClick={() => setActiveTab('privacy')} className="hover:text-slate-600 font-semibold text-slate-500">Privacidad</a>
+            <a href="#cookies" onClick={() => setActiveTab('cookies')} className="hover:text-slate-600 font-semibold text-slate-500">Cookies</a>
             <a href="#faq" onClick={() => setActiveTab('faq')} className="hover:text-slate-600 font-semibold text-slate-500">FAQ</a>
             <a href={`mailto:${founderManifesto.contact}`} className="hover:text-slate-600 font-mono font-bold text-indigo-600">{founderManifesto.contact}</a>
           </div>

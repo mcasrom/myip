@@ -98,3 +98,122 @@ No, myip funciona íntegramente desde el navegador.
 ### ¿Con qué frecuencia se ejecutan las alertas del plan Pro?
 Actualmente el sistema de alertas recurrentes se ejecuta según la configuración de producción (revisión diaria). El detalle exacto puede variar mientras seguimos afinando el servicio.
 `;
+
+export const privacyContent = `# Política de Privacidad — myip
+
+**Última actualización:** 10 de julio de 2026
+
+## 1. Responsable del tratamiento
+
+SIEG, con domicilio de contacto en Murcia, España. Email: [threatradar-myip@viajeinteligencia.com](mailto:threatradar-myip@viajeinteligencia.com). Delegado de Protección de Datos (DPO): mismo canal de contacto.
+
+## 2. Datos que recogemos
+
+### 2.1 Datos de registro
+- **Email**: necesario para crear tu cuenta y enviar alertas/reportes.
+- **Contraseña**: almacenada como hash bcrypt, nunca en texto plano.
+- **IP pública**: detectada automáticamente durante el escaneo, almacenada junto al historial.
+
+### 2.2 Datos de navegación
+- **Cookies de sesión**: token opaco generado al iniciar sesión, con expiración automática. No usamos cookies de tracking ni de terceros.
+- **Datos técnicos del navegador**: user-agent, resolución de pantalla (solo para mejorar la experiencia de usuario).
+
+### 2.3 Datos de escaneo
+- **Historial de escaneos**: resultados de auditorías de puertos, reputación de IP y análisis de red. Se almacenan exclusivamente para usuarios registrados.
+
+## 3. Finalidad del tratamiento
+
+- Prestación del servicio de diagnóstico de red.
+- Envío de alertas de seguridad (plan Pro).
+- Cumplimiento de obligaciones legales (consentimiento de escaneo).
+- Mejora continua del servicio (datos agregados y anónimos).
+
+## 4. Base legal
+
+- **Consentimiento explícito**: al marcar la casilla de consentimiento antes de escanear.
+- **Ejecución de contrato**: para usuarios registrados con plan activo.
+- **Interés legítimo**: para la seguridad y estabilidad del servicio.
+
+## 5. Conservación de datos
+
+- **Cuentas activas**: mientras la cuenta permanezca activa.
+- **Cuentas eliminadas**: los datos se borran en un plazo de 30 días tras la solicitud.
+- **Historial de escaneos**: se conserva mientras la cuenta esté activa.
+- **Logs de servidor**: 90 días máximo, luego se eliminan automáticamente.
+
+## 6. Destinatarios
+
+No compartimos datos personales con terceros, excepto:
+- **Stripe**: para procesamiento de pagos (sujeto a su propia política de privacidad).
+- **Resend**: para envío de emails de alerta (sujeto a su propia política de privacidad).
+- **Obligación legal**: si somos requeridos por autoridad competente.
+
+## 7. Derechos del usuario
+
+Conforme al RGPD y LOPDGDD, tienes derecho a:
+- **Acceso**: saber qué datos tenemos sobre ti.
+- **Rectificación**: corregir datos inexactos.
+- **Supresión**: solicitar el borrado de tus datos ("derecho al olvido").
+- **Portabilidad**: recibir tus datos en formato estructurado.
+- **Limitación**: restringir el tratamiento de tus datos.
+- **Oposición**: oponerte al tratamiento por motivos legítimos.
+
+Para ejercer estos derechos, escribe a [threatradar-myip@viajeinteligencia.com](mailto:threatradar-myip@viajeinteligencia.com).
+
+## 8. Seguridad
+
+- Contraseñas cifradas con bcrypt.
+- Sesiones con tokens opacos (no JWT), borradas al logout.
+- Conexiones HTTPS obligatorias.
+- Sin cookies de tracking ni analytics de terceros.
+
+## 9. Transferencias internacionales
+
+Todos los datos se almacenan en servidores ubicados en la Unión Europea (Hetzner, Alemania). No realizamos transferencias a terceros países fuera del EEE.
+
+## 10. Contacto
+
+Para cualquier consulta sobre privacidad o para ejercer tus derechos: [threatradar-myip@viajeinteligencia.com](mailto:threatradar-myip@viajeinteligencia.com)
+`;
+
+export const cookieContent = `# Política de Cookies — myip
+
+**Última actualización:** 10 de julio de 2026
+
+## 1. Qué son las cookies
+
+Las cookies son pequeños archivos de texto que se almacenan en tu dispositivo cuando visitas un sitio web.
+
+## 2. Cookies que usamos
+
+### 2.1 Cookies de sesión (técnicas, necesarias)
+- **Nombre**: \`session\`
+- **Finalidad**: mantener tu sesión iniciada de forma segura.
+- **Duración**: expira automáticamente tras 30 días de inactividad o al cerrar sesión.
+- **Tipo**: propia, técnica, necesaria.
+
+### 2.2 Cookies de preferencias (opcionales)
+- **Nombre**: \`myip_welcome_dismissed\`
+- **Finalidad**: recordar si has cerrado el modal de bienvenida.
+- **Duración**: persistente hasta que borres los datos del navegador.
+- **Tipo**: propia, funcional.
+
+## 3. Cookies que NO usamos
+
+- ❌ Cookies de tracking o analytics (Google Analytics, etc.)
+- ❌ Cookies de publicidad o remarketing
+- ❌ Cookies de terceros
+- ❌ Cookies de fingerprinting
+
+## 4. Cómo gestionar las cookies
+
+Puedes configurar tu navegador para bloquear o eliminar cookies. Ten en cuenta que bloquear las cookies de sesión impedirá que puedas iniciar sesión en MyIP.
+
+## 5. Base legal
+
+Las cookies técnicas y necesarias se instalan sin consentimiento previo (art. 6.1.f RGPD). Las cookies de preferencias se instalan con tu consentimiento implícito al usar el servicio.
+
+## 6. Contacto
+
+Para cualquier duda sobre cookies: [threatradar-myip@viajeinteligencia.com](mailto:threatradar-myip@viajeinteligencia.com)
+`;

@@ -59,6 +59,15 @@ CREATE TABLE IF NOT EXISTS scan_history (
   created_at INTEGER NOT NULL,
   FOREIGN KEY (email) REFERENCES users(email)
 );
+
+CREATE TABLE IF NOT EXISTS consent_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  email TEXT,
+  ip_address TEXT NOT NULL,
+  consent_given INTEGER NOT NULL DEFAULT 1,
+  timestamp INTEGER NOT NULL,
+  user_agent TEXT
+);
 `);
 
 // Migracion para bases de datos YA EXISTENTES (SQLite no soporta
@@ -357,6 +366,18 @@ export function getScanHistory(email: string, limit = 50): ScanRecord[] {
 export function getScanRecord(id: number, email: string): ScanRecord | undefined {
   const row = db.prepare('SELECT * FROM scan_history WHERE id = ? AND email = ?').get(id, email);
   return row as ScanRecord | undefined;
+}
+
+export function logConsent(email: string | undefined, ipAddress: string, userAgent: string | undefined): void {
+  db.prepare(
+    'INSERT INTO consent_log (email, ip_address, consent_given, timestamp, user_agent) VALUES (?, ?, 1, ?, ?)'
+  ).run(email || null, ipAddress, Date.now(), userAgent || null);
+}
+
+export function getConsentLog(email: string, limit = 10): Array<{ id: number; email: string | null; ip_address: string; timestamp: number }> {
+  return db.prepare(
+    'SELECT id, email, ip_address, timestamp FROM consent_log WHERE email = ? ORDER BY timestamp DESC LIMIT ?'
+  ).all(email, limit) as Array<{ id: number; email: string | null; ip_address: string; timestamp: number }>;
 }
 
 export default db;

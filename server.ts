@@ -961,6 +961,14 @@ app.post('/api/scan', optionalAuth, async (req: any, res) => {
     }
   }
 
+  // [Consent traceability] Log del consentimiento con timestamp + IP
+  const clientIpForConsent = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || 'unknown';
+  try {
+    authDb.logConsent(req.authUser || email || undefined, clientIpForConsent, req.headers['user-agent']);
+  } catch (e) {
+    console.error('[SCAN] No se pudo registrar consentimiento:', e);
+  }
+
   if (isGuest && user && user.scanCount >= 3) {
     return res.status(429).json({ error: 'Límite de invitado alcanzado (3/3). Crea una cuenta con email.', rateLimited: true, isGuestLimit: true });
   }
