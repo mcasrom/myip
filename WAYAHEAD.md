@@ -1937,3 +1937,46 @@ Comando para verificar manana:
 3. **Mejorar templates HTML de emails** — branding + link a la app
 
 ---
+
+## Sprints Planificados — Post Auditoria 2026-07-10
+
+### Sprint 1 — Legal & Compliance Visible (2h)
+**Objetivo:** Resolver criticas legales validas de la auditoria
+- [ ] Añadir link a Aviso Legal, Terminos y Privacidad en footer/landing
+- [ ] Crear pagina de cookies detallada (GDPR/LOPDGDD)
+- [ ] Añadir trazabilidad de consentimiento (timestamp + IP del consentidor)
+- [ ] Clausula de limitacion de responsabilidad (danos a router/red)
+- [ ] Revisar que ToS refleje 3 planes reales (Hogar, SysAdmin, Consultores)
+
+### Sprint 2 — CVE/NIST Integration (1 semana)
+**Objetivo:** Integrar bases de vulnerabilidades conocidas para reportar riesgos reales
+- [ ] Endpoint `/api/tools/cve-lookup?ip=X` con fallback NVD API → Vulners API
+- [ ] Parseo de banners de puertos abiertos (SSH version, HTTP server, etc)
+- [ ] Match contra CVEs conocidos por version de software detectada
+- [ ] UI: badge "X vulnerabilidades conocidas" en resultados de escaneo
+- [ ] Cache de resultados CVE (no reconsultar en cada escaneo)
+
+### Sprint 3 — Blog Tecnico SEO (Continuo)
+**Objetivo:** Captar trafico organico con guias de seguridad para usuarios finales
+- [ ] Estructura de blog en `myip.viajeinteligencia.com/blog` (Markdown → HTML)
+- [ ] Primeros 5 articulos: "Que es un puerto abierto", "Como proteger tu router", "Que es una blacklist", "DNS Leak explicado", "WPA3 vs WPA2"
+- [ ] Metadatos OpenGraph + schema.org para SEO tecnico
+- [ ] Sitemap.xml + robots.txt optimizado
+- [ ] Interlinking entre blog y features de MyIP (CTAs contextuales)
+
+### Sprint 4 — Escaneo Autenticado (3 semanas)
+**Objetivo:** Analisis profundo tras login del usuario (red interna, dispositivos)
+- [ ] Agente ligero opcional (Python) para escaneo de red local (LAN)
+- [ ] Inventario de dispositivos conectados (router, NAS, camaras, IoT)
+- [ ] Escaneo de puertos internos (no solo IP publica)
+- [ ] Dashboard de evolucion temporal (historial de escaneos con graficos)
+- [ ] Alertas por email cuando cambia la IP publica o se detecta dispositivo nuevo
+
+### Sprint 5 — SOC 2 / Enterprise (Descartado por ahora)
+**Estado:** Fuera de scope para MVP. Revisar cuando haya 100+ usuarios premium activos.
+- Integracion SIEM (Splunk, QRadar) via webhooks
+- Reportes PDF white-label para partners/MSPs
+- Monitorizacion continua 24/7 con agente
+- Cumplimiento SOC 2 Type II
+
+---
