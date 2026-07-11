@@ -1980,3 +1980,76 @@ Comando para verificar manana:
 - Cumplimiento SOC 2 Type II
 
 ---
+
+## Sesión 2026-07-11 — Sprint 1: Legal & Compliance (CERRADO)
+
+### Contexto
+Auditoria externa recibida con criticas sobre GDPR/LOPDGDD parcial, falta de politica de cookies, DPO, trazabilidad de consentimiento y clausula de responsabilidad. Sprint enfocado en resolver todas las criticas legales validas sin romper funcionalidad existente.
+
+### Cambios implementados
+
+#### 1. Politica de Privacidad (`privacyContent` en `legal.ts`)
+- Responsable del tratamiento (SIEG, Murcia, España)
+- Datos recogidos: registro, navegacion, escaneo
+- Finalidad del tratamiento (4 puntos)
+- Base legal: consentimiento explicito, ejecucion de contrato, interes legitimo
+- Conservacion de datos (cuentas activas, eliminadas, historial, logs)
+- Destinatarios: Stripe, Resend, obligacion legal
+- Derechos del usuario RGPD/LOPDGDD (acceso, rectificacion, supresion, portabilidad, limitacion, oposicion)
+- Seguridad: bcrypt, tokens opacos, HTTPS, sin tracking
+- Transferencias internacionales: servidores UE (Hetzner, Alemania)
+- DPO contact: `threatradar-myip@viajeinteligencia.com`
+
+#### 2. Politica de Cookies (`cookieContent` en `legal.ts`)
+- Cookies de sesion (tecnicas, necesarias): `session` token, 30 dias
+- Cookies de preferencias (opcionales): `myip_welcome_dismissed`
+- Cookies que NO usamos: tracking, analytics, publicidad, terceros, fingerprinting
+- Base legal: art. 6.1.f RGPD para tecnicas, consentimiento implicito para preferencias
+
+#### 3. Cookie Banner (`App.tsx`)
+- Banner fijo en bottom-right (desktop) / bottom-center (mobile)
+- Mensaje claro: "Solo cookies tecnicas necesarias. Sin tracking, sin analytics."
+- Boton "Entendido" → guarda `myip_cookies_accepted=1` en localStorage
+- Link a politica de cookies desde el banner
+- No bloquea la experiencia (solo informativo, cookies tecnicas ya aceptadas por uso)
+
+#### 4. Trazabilidad de Consentimiento (`db.ts` + `server.ts`)
+- Nueva tabla `consent_log` en SQLite:
+  - `id`, `email`, `ip_address`, `consent_given`, `timestamp`, `user_agent`
+- Funciones `logConsent()` y `getConsentLog()` exportadas desde `db.ts`
+- Cada escaneo registra: IP del consentidor, timestamp, user-agent, email (si logueado)
+- Integrado en `POST /api/scan` antes del rate limiting
+- Fail-open: si falla el log, se loguea error pero no bloquea el escaneo
+
+#### 5. Footer Actualizado (`App.tsx`)
+- Nuevos links visibles: "Privacidad", "Cookies"
+- Links existentes renombrados para brevedad: "Términos", "Marco Legal"
+- Todos los links funcionan como tabs dentro de la SPA (no recarga)
+
+### Auditoria GDPR/LOPDGDD — Estado tras Sprint 1
+
+| Requisito | Estado | Detalle |
+|---|---|---|
+| Politica de Privacidad | ✅ Completo | RGPD + LOPDGDD, 10 secciones |
+| Politica de Cookies | ✅ Completo | Tipos, duracion, gestion, base legal |
+| Banner de Cookies | ✅ Implementado | Informativo, persistente, no intrusivo |
+| DPO Contact | ✅ Completo | Email dedicado en politica de privacidad |
+| Trazabilidad de Consentimiento | ✅ Implementado | Tabla `consent_log` con timestamp + IP + UA |
+| Clausula de Responsabilidad | ✅ Existente | Seccion 8 de ToS ("Limitacion de responsabilidad") |
+| Derecho al Olvido | ✅ Existente | FAQ + Politica de Privacidad (30 dias borrado) |
+| Registro de Actividades | ✅ Parcial | `consent_log` + `scan_history` cubren lo esencial |
+
+### Verificacion
+- Build: `npm run build` → limpio (solo warning import.meta)
+- Deploy: Docker rebuilt + started → healthy
+- Server: 9 usuarios cargados, sin errores
+- Frontend: tabs Privacy + Cookies funcionales, cookie banner visible
+- Backend: `consent_log` table creada automaticamente (migration)
+- GitHub: commit `bd531c5` pushed
+
+### Estado del proyecto
+- Producción: `https://myip.viajeinteligencia.com` — healthy ✅
+- Commit: `bd531c5`
+- Legal & Compliance: Sprint 1 CERRADO
+
+---
