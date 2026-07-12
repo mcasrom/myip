@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
-import { Mail, CheckCircle2, RefreshCw, ShieldCheck, AlertCircle, Info, Fingerprint, Key } from 'lucide-react';
+import { Mail, CheckCircle2, RefreshCw, ShieldCheck, AlertCircle, Info, Fingerprint, Key, Check, X, ShieldAlert } from 'lucide-react';
 
-// Simple password strength checker (no external dependencies)
-function getPasswordStrength(pw: string): { score: number; label: string; color: string; feedback: string } {
-  if (pw.length === 0) return { score: 0, label: '', color: 'bg-slate-200', feedback: '' };
-  
-  let score = 0;
+// Enhanced password strength checker with detailed requirements
+function getPasswordStrength(pw: string): {
+  score: number;
+  label: string;
+  color: string;
+  feedback: string;
+  requirements: { label: string; met: boolean }[];
+} {
   const hasLower = /[a-z]/.test(pw);
   const hasUpper = /[A-Z]/.test(pw);
   const hasDigit = /\d/.test(pw);
@@ -13,36 +16,48 @@ function getPasswordStrength(pw: string): { score: number; label: string; color:
   const isLong = pw.length >= 12;
   const isVeryLong = pw.length >= 16;
   
-  // Length is the most important factor
+  const requirements = [
+    { label: 'Al menos 8 caracteres', met: pw.length >= 8 },
+    { label: 'Letras minusculas y mayusculas', met: hasLower && hasUpper },
+    { label: 'Al menos un numero', met: hasDigit },
+    { label: 'Al menos un simbolo (!@#$...)', met: hasSymbol },
+    { label: '12+ caracteres (recomendado)', met: isLong },
+  ];
+
+  if (pw.length === 0) return { score: 0, label: '', color: 'bg-slate-200', feedback: '', requirements };
+  
+  let score = 0;
   if (pw.length >= 8) score++;
   if (isLong) score++;
   if (isVeryLong) score++;
-  
-  // Character variety
   if ((hasLower && hasUpper) || (hasLower && hasDigit) || (hasLower && hasSymbol)) score++;
   if (hasLower && hasUpper && hasDigit && hasSymbol) score++;
   
   // Penalize common patterns
-  const commonPatterns = ['password', '123456', 'qwerty', 'admin', 'letmein', 'welcome'];
+  const commonPatterns = ['password', '123456', 'qwerty', 'admin', 'letmein', 'welcome', 'contrasena', 'abc123'];
   const isCommon = commonPatterns.some(p => pw.toLowerCase().includes(p));
   if (isCommon) score = Math.min(score, 1);
   
   // Repeated characters
   if (/(.)\1{2,}/.test(pw)) score = Math.max(0, score - 1);
   
-  // Maximo score real es 5 (3 por longitud + 2 por variedad), pero labels/
-  // colors solo tienen indices 0-4 -> acotar para evitar undefined en la
-  // contrasenya mas fuerte posible (bug detectado antes de comprometer).
   const cappedScore = Math.min(score, 4);
-  const labels = ['Muy débil', 'Débil', 'Aceptable', 'Fuerte', 'Muy fuerte'];
+  const labels = ['Muy debil', 'Debil', 'Aceptable', 'Fuerte', 'Muy fuerte'];
   const colors = ['bg-red-500', 'bg-orange-500', 'bg-yellow-500', 'bg-emerald-500', 'bg-emerald-600'];
   
   let feedback = '';
-  if (cappedScore <= 1) feedback = 'Usa al menos 8 caracteres con variedad';
-  else if (cappedScore === 2) feedback = 'Añade mayúsculas, números o símbolos';
-  else if (cappedScore === 3) feedback = 'Buena contraseña';
+  const unmet = requirements.filter(r => !r.met);
+  if (cappedScore <= 1) {
+    feedback = `Falta: ${unmet.slice(0, 2).map(r => r.label.toLowerCase()).join(', ')}`;
+  } else if (cappedScore === 2) {
+    feedback = 'Buena base. Anade ' + unmet.slice(0, 1).map(r => r.label.toLowerCase()).join('');
+  } else if (cappedScore === 3) {
+    feedback = 'Buena contrasena';
+  } else {
+    feedback = 'Contrasena excelente';
+  }
   
-  return { score: cappedScore, label: labels[cappedScore], color: colors[cappedScore], feedback };
+  return { score: cappedScore, label: labels[cappedScore], color: colors[cappedScore], feedback, requirements };
 }
 
 interface AuthSectionProps {
@@ -345,7 +360,7 @@ export default function AuthSection({ user, onLoginSuccess, onLogout, canInstall
                     className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
                   />
                   {mode === 'register' && password.length > 0 && (
-                    <div className="space-y-1.5">
+                    <div className="space-y-2">
                       <div className="flex gap-1 h-1.5">
                         {[0, 1, 2, 3].map((i) => (
                           <div key={i} className={`flex-1 rounded-full transition-colors ${i <= strengthScore ? strengthColor : 'bg-slate-100'}`} />
@@ -357,6 +372,23 @@ export default function AuthSection({ user, onLoginSuccess, onLogout, canInstall
                         </span>
                         {strengthFeedback && <span className="text-slate-400 italic">{strengthFeedback}</span>}
                       </div>
+                      {/* Requirements checklist */}
+                      {pwStrength.requirements.length > 0 && (
+                        <div className="grid grid-cols-1 gap-1 mt-2">
+                          {pwStrength.requirements.map((req, idx) => (
+                            <div key={idx} className="flex items-center gap-1.5 text-[10px]">
+                              {req.met ? (
+                                <Check className="w-3 h-3 text-emerald-500 flex-shrink-0" />
+                              ) : (
+                                <X className="w-3 h-3 text-slate-300 flex-shrink-0" />
+                              )}
+                              <span className={req.met ? 'text-emerald-600' : 'text-slate-400'}>
+                                {req.label}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
                   <p className="text-[10px] text-slate-450 italic">
