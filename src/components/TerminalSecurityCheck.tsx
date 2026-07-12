@@ -1,6 +1,63 @@
 import React, { useState } from 'react';
-import { Shield, ShieldCheck, ShieldAlert, Eye, EyeOff, Lock, Unlock, Key, AlertTriangle, CheckCircle, XCircle, Globe } from 'lucide-react';
+import { Shield, ShieldCheck, ShieldAlert, Eye, EyeOff, Lock, Unlock, Key, AlertTriangle, CheckCircle, XCircle, Globe, Check, X } from 'lucide-react';
 import { motion } from 'motion/react';
+
+// Password strength checker (same logic as AuthSection)
+function getPasswordStrength(pw: string): {
+  score: number;
+  label: string;
+  color: string;
+  feedback: string;
+  requirements: { label: string; met: boolean }[];
+} {
+  const hasLower = /[a-z]/.test(pw);
+  const hasUpper = /[A-Z]/.test(pw);
+  const hasDigit = /\d/.test(pw);
+  const hasSymbol = /[^a-zA-Z0-9]/.test(pw);
+  const isLong = pw.length >= 12;
+  const isVeryLong = pw.length >= 16;
+  
+  const requirements = [
+    { label: 'Al menos 8 caracteres', met: pw.length >= 8 },
+    { label: 'Letras minusculas y mayusculas', met: hasLower && hasUpper },
+    { label: 'Al menos un numero', met: hasDigit },
+    { label: 'Al menos un simbolo (!@#$...)', met: hasSymbol },
+    { label: '12+ caracteres (recomendado)', met: isLong },
+  ];
+
+  if (pw.length === 0) return { score: 0, label: '', color: 'bg-slate-200', feedback: '', requirements };
+  
+  let score = 0;
+  if (pw.length >= 8) score++;
+  if (isLong) score++;
+  if (isVeryLong) score++;
+  if ((hasLower && hasUpper) || (hasLower && hasDigit) || (hasLower && hasSymbol)) score++;
+  if (hasLower && hasUpper && hasDigit && hasSymbol) score++;
+  
+  const commonPatterns = ['password', '123456', 'qwerty', 'admin', 'letmein', 'welcome', 'contrasena', 'abc123'];
+  const isCommon = commonPatterns.some(p => pw.toLowerCase().includes(p));
+  if (isCommon) score = Math.min(score, 1);
+  
+  if (/(.)\1{2,}/.test(pw)) score = Math.max(0, score - 1);
+  
+  const cappedScore = Math.min(score, 4);
+  const labels = ['Muy debil', 'Debil', 'Aceptable', 'Fuerte', 'Muy fuerte'];
+  const colors = ['bg-red-500', 'bg-orange-500', 'bg-yellow-500', 'bg-emerald-500', 'bg-emerald-600'];
+  
+  let feedback = '';
+  const unmet = requirements.filter(r => !r.met);
+  if (cappedScore <= 1) {
+    feedback = `Falta: ${unmet.slice(0, 2).map(r => r.label.toLowerCase()).join(', ')}`;
+  } else if (cappedScore === 2) {
+    feedback = 'Buena base. Anade ' + unmet.slice(0, 1).map(r => r.label.toLowerCase()).join('');
+  } else if (cappedScore === 3) {
+    feedback = 'Buena contrasena';
+  } else {
+    feedback = 'Contrasena excelente';
+  }
+  
+  return { score: cappedScore, label: labels[cappedScore], color: colors[cappedScore], feedback, requirements };
+}
 
 interface SecurityCheck {
   id: string;
@@ -75,6 +132,9 @@ export default function TerminalSecurityCheck() {
   const [breachCount, setBreachCount] = useState<number | null>(null);
   const [breachError, setBreachError] = useState<string | null>(null);
   const [checkingBreach, setCheckingBreach] = useState(false);
+
+  // Password strength calculation
+  const pwStrength = getPasswordStrength(passwordTest);
 
   const runChecks = async () => {
     setRunning(true);
@@ -204,7 +264,7 @@ export default function TerminalSecurityCheck() {
           <input
             type="password"
             value={passwordTest}
-            onChange={(e) => setPasswordTest(e.target.value)}
+            onChange={(e) => { setPasswordTest(e.target.value); setBreachCount(null); setBreachError(null); }}
             placeholder="Escribe una contraseña para comprobar..."
             className="flex-1 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
@@ -216,6 +276,37 @@ export default function TerminalSecurityCheck() {
             {checkingBreach ? 'Comprobando...' : 'Comprobar'}
           </button>
         </div>
+
+        {/* Password Strength Indicator */}
+        {passwordTest.length > 0 && (
+          <div className="mt-3 space-y-2">
+            <div className="flex gap-1 h-1.5">
+              {[0, 1, 2, 3].map((i) => (
+                <div key={i} className={`flex-1 rounded-full transition-colors ${i <= pwStrength.score ? pwStrength.color : 'bg-slate-100'}`} />
+              ))}
+            </div>
+            <div className="flex justify-between items-center text-[10px]">
+              <span className={`font-bold ${pwStrength.score >= 3 ? 'text-emerald-600' : pwStrength.score >= 1 ? 'text-amber-600' : 'text-red-600'}`}>
+                {pwStrength.label}
+              </span>
+              {pwStrength.feedback && <span className="text-slate-400 italic">{pwStrength.feedback}</span>}
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 mt-1">
+              {pwStrength.requirements.map((req, idx) => (
+                <div key={idx} className="flex items-center gap-1.5 text-[10px]">
+                  {req.met ? (
+                    <Check className="w-3 h-3 text-emerald-500 flex-shrink-0" />
+                  ) : (
+                    <X className="w-3 h-3 text-slate-300 flex-shrink-0" />
+                  )}
+                  <span className={req.met ? 'text-emerald-600' : 'text-slate-400'}>
+                    {req.label}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         {breachCount !== null ? (
           <div className={`mt-4 p-4 rounded-xl border ${breachCount > 0 ? 'bg-red-50 border-red-200' : 'bg-emerald-50 border-emerald-200'}`}>
             <p className={`text-sm font-bold ${breachCount > 0 ? 'text-red-700' : 'text-emerald-700'}`}>
