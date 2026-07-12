@@ -2049,30 +2049,56 @@ Auditoria externa recibida con criticas sobre GDPR/LOPDGDD parcial, falta de pol
 
 ### Estado del proyecto
 - Producción: `https://myip.viajeinteligencia.com` — healthy ✅
-- PM2: `myip-server` online (puerto 3000)
+- Docker: `myip-server` online (puerto 3004:3000)
 - Nginx: active ✅
-- Commit: `c2bff76`
+- Commit: `83ff14a`
 - Legal & Compliance: Sprint 1 CERRADO ✅
 - CVE/NIST Integration: Sprint 2 CERRADO ✅
 - Dashboard Historial: Sprint B CERRADO ✅
 - UX Errors Graceful: Sprint D CERRADO ✅
+- Password Strength Indicator: CERRADO ✅
 
-### Sprint D: UX Errors Graceful — COMPLETADO ✅
-**Fecha:** 2026-07-12
+### LECCION APRENDIDA (2026-07-12) — IMPORTANTE
+**Problema:** El `docker-compose.yml` tenia `volumes: - ./dist:/app/dist` que sobreescribia el build nuevo de Docker con el `dist/` viejo del host. El código se commiteaba y pusheaba, el Docker build funcionaba, pero el mount del volumen lo reemplazaba con archivos antiguos.
 
-**Implementado:**
-- [x] Componente `ErrorBoundary.tsx` (funcional, captura errores de React)
-- [x] Integrado en `main.tsx` (envuelve toda la app)
-- [x] Mensajes de error amigables en scan (timeout, rate limit, unauthorized, 500)
-- [x] Global error handlers en server.ts (`unhandledRejection`, `uncaughtException`)
-- [x] 404 handler custom (no stack traces)
-- [x] 500 handler custom (oculta detalles en produccion)
+**Fix:** Eliminado el mount `./dist:/app/dist` del `docker-compose.yml`. Ahora el `dist/` se genera dentro del contenedor durante el build y se usa directamente.
 
-**Archivos modificados:**
-- `src/components/ErrorBoundary.tsx`: nuevo componente
-- `src/main.tsx`: envuelto con ErrorBoundary
-- `src/App.tsx`: mensajes de error mejorados en handlePerformScan
-- `server.ts`: handlers globales de error + 404/500 custom
+**Regla:** NUNCA montar `./dist` como volumen en producción. Solo `./data` para SQLite persistente.
+
+### Sprints realizados HOY (2026-07-12)
+
+#### Sprint A: CVE/NIST Integration ✅
+- Endpoint `/api/tools/cve-lookup` (NVD CPE API + Vulners fallback)
+- Parseo de banners nmap con regex para 20+ servicios
+- `VulnerabilityBadge.tsx` con CVSS scoring y colores por severidad
+- Perfil nmap cambiado a `standard` (activa `-sV` version detection)
+- Cache SQLite `cve_cache` con TTL 24h
+- Integrado en cards de puertos en `App.tsx`
+
+#### Sprint B: Dashboard Historial ✅
+- `ScanHistoryDashboard.tsx` con Recharts
+- Grafico de area: evolucion del score
+- 4 stat cards: score promedio, total escaneos, ultimo score, tendencia
+- Comparativa ultimo vs anterior escaneo
+- Tabla historial completo
+- Endpoint `/api/scan/dashboard` (todos los usuarios, no solo premium)
+
+#### Sprint D: UX Errors Graceful ✅
+- `ErrorBoundary.tsx` envuelve toda la app
+- Mensajes de error especificos (timeout, rate limit, auth, 500)
+- Handlers globales en server.ts (`unhandledRejection`, `uncaughtException`)
+- 404/500 custom JSON responses (sin stack traces en produccion)
+
+#### Password Strength Indicator ✅
+- `AuthSection.tsx`: checklist visual con 5 requisitos (✓/✗) en tiempo real
+- `TerminalSecurityCheck.tsx`: mismo indicador integrado en test de password
+- Feedback especifico: "Falta: al menos un simbolo, 12+ caracteres"
+- Patrones comunes ampliados (incluye "contrasena", "abc123")
+
+#### Docs: FAQ/HowTo actualizados ✅
+- Nuevas FAQ sobre CVEs y grafico de evolucion
+- Nueva guia "Que son los CVE y Como Interpretar Vulnerabilidades"
+- FAQ de planes actualizada con features nuevas
 
 ### Sprints pendientes para siguiente sesion
 
@@ -2091,7 +2117,7 @@ Auditoria externa recibida con criticas sobre GDPR/LOPDGDD parcial, falta de pol
 **Tiempo:** Continuo | **Riesgo:** Medio
 
 ### Decisiones pendientes
-- [ ] ¿Eliminar WelcomeModal? (propuesto ayer, sin decision)
-- [ ] ¿Docker o PM2 directo? (Docker build timeout, PM2 funciona)
+- [ ] ¿Eliminar WelcomeModal? (propuesto, sin decision)
+- [ ] ¿Docker o PM2 directo? (Docker funciona ahora, PM2 para dev local)
 
 ---
