@@ -115,6 +115,15 @@ CREATE TABLE IF NOT EXISTS cve_cache (
 );
 CREATE INDEX IF NOT EXISTS idx_cve_cache_service_version ON cve_cache(service, version);
 CREATE INDEX IF NOT EXISTS idx_cve_cache_expires ON cve_cache(expires_at);
+
+CREATE TABLE IF NOT EXISTS alert_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  email TEXT NOT NULL,
+  alert_type TEXT NOT NULL,
+  details TEXT,
+  sent_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_alert_log_email ON alert_log(email);
 `);
 
 export interface PremiumCodeRecord {
@@ -477,5 +486,25 @@ export function saveCveToCache(service: string, version: string, port: number, c
 
 export function cleanExpiredCveCache(): number {
   const result = db.prepare('DELETE FROM cve_cache WHERE expires_at < ?').run(Date.now());
+  return result.changes;
+}
+
+// Alert Log
+export function logAlert(email: string, alertType: string, details: string): void {
+  db.prepare(
+    'INSERT INTO alert_log (email, alert_type, details, sent_at) VALUES (?, ?, ?, ?)'
+  ).run(email, alertType, details, Date.now());
+}
+
+export function getLastAlertTime(email: string, alertType: string): number | null {
+  const row = db.prepare(
+    'SELECT sent_at FROM alert_log WHERE email = ? AND alert_type = ? ORDER BY sent_at DESC LIMIT 1'
+  ).get(email, alertType) as any;
+  return row ? row.sent_at : null;
+}
+
+export function cleanOldAlertLogs(): number {
+  const cutoff = Date.now() - (30 * 24 * 60 * 60 * 1000);
+  const result = db.prepare('DELETE FROM alert_log WHERE sent_at < ?').run(cutoff);
   return result.changes;
 }
