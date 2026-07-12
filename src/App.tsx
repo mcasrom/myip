@@ -42,7 +42,9 @@ import ThreatMap from './components/ThreatMap';
 import LocalNetworkDiagnostic from './components/LocalNetworkDiagnostic';
 import TerminalSecurityCheck from './components/TerminalSecurityCheck';
 import CyberManual from './components/CyberManual';
+import ScanHistoryDashboard from './components/ScanHistoryDashboard';
 import OfflineBanner from './components/OfflineBanner';
+import VulnerabilityBadge from './components/VulnerabilityBadge';
 import { useOnlineStatus } from './hooks/useOnlineStatus';
 import { ScanResult, UserSession } from './types';
 import { founderManifesto } from './data/guides';
@@ -1225,6 +1227,15 @@ export default function App() {
                           </div>
                         </div>
 
+                        {p.status === 'open' && (p as any).version && (
+                          <VulnerabilityBadge
+                            port={p.port}
+                            service={p.service}
+                            version={(p as any).version}
+                            cveService={(p as any).cveService}
+                          />
+                        )}
+
                         {!isUnknown && p.status === 'open' && (
                           <div className="flex justify-end pt-2">
                             <button
@@ -1266,6 +1277,11 @@ export default function App() {
 
               </div>
 
+            </div>
+
+            {/* Scan History Dashboard */}
+            <div className="mt-8">
+              <ScanHistoryDashboard />
             </div>
           </div>
         )}

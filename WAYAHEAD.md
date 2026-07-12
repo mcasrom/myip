@@ -2049,19 +2049,50 @@ Auditoria externa recibida con criticas sobre GDPR/LOPDGDD parcial, falta de pol
 
 ### Estado del proyecto
 - Producción: `https://myip.viajeinteligencia.com` — healthy ✅
+- PM2: `myip-server` online (puerto 3000)
+- Nginx: active ✅
 - Commit: `79eaf8d`
-- Legal & Compliance: Sprint 1 CERRADO
+- Legal & Compliance: Sprint 1 CERRADO ✅
+- CVE/NIST Integration: Sprint 2 CERRADO ✅
+- Dashboard Historial: Sprint B CERRADO ✅
 
-### Pendiente para HOY (sesion tarde/noche)
-- [ ] **Sprint 2: CVE/NIST Integration** — 1 semana de trabajo
-  - Endpoint `/api/tools/cve-lookup` con fallback NVD → Vulners API
-  - Parseo de banners de puertos abiertos (SSH version, HTTP server, etc)
-  - Match contra CVEs conocidos por version de software detectada
-  - UI: badge "X vulnerabilidades conocidas" en resultados de escaneo
-  - Cache de resultados CVE (no reconsultar en cada escaneo)
-- [ ] **Sprint 3: Blog Tecnico SEO** — continuo
-  - Estructura de blog en `myip.viajeinteligencia.com/blog`
-  - Primeros 5 articulos técnicos
-  - Metadatos OpenGraph + schema.org + sitemap.xml
+### Sprint B: Dashboard Historial — COMPLETADO ✅
+**Fecha:** 2026-07-12
+
+**Implementado:**
+- [x] Componente `ScanHistoryDashboard.tsx` con Recharts
+- [x] Grafico de area: evolucion del score a lo largo del tiempo
+- [x] 4 stat cards: score promedio, total escaneos, ultimo score, tendencia
+- [x] Comparativa ultimo vs anterior escaneo (score diff, port diff)
+- [x] Tabla historial completo: fecha, IP, score, puertos, fuente
+- [x] Endpoint `/api/scan/dashboard` (todos los usuarios autenticados, no solo premium)
+- [x] Integracion en App.tsx (tab dashboard, debajo de resultados de escaneo)
+
+**Archivos modificados:**
+- `src/components/ScanHistoryDashboard.tsx`: nuevo componente (250 lineas)
+- `server.ts`: nuevo endpoint `/api/scan/dashboard`
+- `src/App.tsx`: import + integracion ScanHistoryDashboard
+- `package.json`: añadido `recharts`
+
+### Sprints pendientes para siguiente sesion
+
+#### Sprint E: Exportar Reporte PDF (prioridad alta)
+**Objetivo:** Usuario puede guardar/compartir su analisis de seguridad en PDF.
+**Estado:** `PDFDocument` ya importado en server.ts
+**Tiempo:** 3-5 dias | **Riesgo:** Bajo
+
+#### Sprint F: Alertas en Tiempo Real (prioridad media)
+**Objetivo:** Notificacion cuando cambia algo en tu red.
+**Estado:** Ya existe cron de alertas en `alerts.ts`
+**Tiempo:** 1 semana | **Riesgo:** Medio
+
+#### Sprint C: Blog Tecnico SEO (continuo, paralelo)
+**Objetivo:** Trafico organico desde busquedas de seguridad.
+**Tiempo:** Continuo | **Riesgo:** Medio
+
+### Decisiones pendientes
+- [ ] ¿Eliminar WelcomeModal? (propuesto ayer, sin decision)
+- [ ] ¿Docker o PM2 directo? (Docker build timeout, PM2 funciona)
+- [ ] ¿Revisar logs de errores para UX errors graceful?
 
 ---

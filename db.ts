@@ -101,6 +101,20 @@ CREATE TABLE IF NOT EXISTS premium_codes (
   expires_at INTEGER NOT NULL,
   created_at INTEGER NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS cve_cache (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  service TEXT NOT NULL,
+  version TEXT NOT NULL,
+  port INTEGER,
+  cves_json TEXT NOT NULL,
+  cvss_max REAL,
+  cve_count INTEGER,
+  fetched_at INTEGER NOT NULL,
+  expires_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_cve_cache_service_version ON cve_cache(service, version);
+CREATE INDEX IF NOT EXISTS idx_cve_cache_expires ON cve_cache(expires_at);
 `);
 
 export interface PremiumCodeRecord {
@@ -402,4 +416,66 @@ export function saveGeoToCache(ip: string, data: { country: string; countryCode:
   db.prepare(
     'INSERT OR REPLACE INTO geo_cache (ip, country, countryCode, region, city, isp, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
   ).run(ip, data.country, data.countryCode, data.region, data.city, data.isp, Date.now());
+}
+
+// CVE Cache
+export interface CveEntry {
+  id: string;
+  sourceIdentifier?: string;
+  published: string;
+  modified: string;
+  description: string;
+  cvssScore: number;
+  cvssVector?: string;
+  severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  url: string;
+}
+
+export interface CveCacheRecord {
+  id: number;
+  service: string;
+  version: string;
+  port: number;
+  cves: CveEntry[];
+  cvssMax: number;
+  cveCount: number;
+  fetchedAt: number;
+  expiresAt: number;
+}
+
+const CVE_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 horas
+
+export function getCveFromCache(service: string, version: string): CveCacheRecord | undefined {
+  const row = db.prepare(
+    'SELECT * FROM cve_cache WHERE service = ? AND version = ? AND expires_at > ?'
+  ).get(service.toLowerCase(), version, Date.now()) as any;
+  if (!row) return undefined;
+  return {
+    id: row.id,
+    service: row.service,
+    version: row.version,
+    port: row.port,
+    cves: JSON.parse(row.cves_json),
+    cvssMax: row.cvss_max,
+    cveCount: row.cve_count,
+    fetchedAt: row.fetched_at,
+    expiresAt: row.expires_at,
+  };
+}
+
+export function saveCveToCache(service: string, version: string, port: number, cves: CveEntry[]): void {
+  const now = Date.now();
+  const expiresAt = now + CVE_CACHE_TTL_MS;
+  const cvssMax = cves.length > 0 ? Math.max(...cves.map(c => c.cvssScore)) : 0;
+  db.prepare(
+    'INSERT INTO cve_cache (service, version, port, cves_json, cvss_max, cve_count, fetched_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+  ).run(
+    service.toLowerCase(), version, port,
+    JSON.stringify(cves), cvssMax, cves.length, now, expiresAt
+  );
+}
+
+export function cleanExpiredCveCache(): number {
+  const result = db.prepare('DELETE FROM cve_cache WHERE expires_at < ?').run(Date.now());
+  return result.changes;
 }

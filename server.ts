@@ -175,7 +175,7 @@ async function getPortsFromCensys(ip: string): Promise<any[]> {
 // ============================================================================
 // Port Scanning: nmap via port_audit.py (PRIMARY method — real TCP scan)
 // ============================================================================
-async function getPortsFromNmap(ip: string, profile: string = 'quick'): Promise<any[]> {
+async function getPortsFromNmap(ip: string, profile: string = 'standard'): Promise<any[]> {
   const pythonPath = process.env.PYTHON_PATH || 'python3';
   const scriptsDir = process.env.SCRIPTS_DIR || './scripts';
   return new Promise((resolve) => {
@@ -193,13 +193,18 @@ async function getPortsFromNmap(ip: string, profile: string = 'quick'): Promise<
         try {
           const data = JSON.parse(output);
           if (data.ports && Array.isArray(data.ports)) {
-            resolve(data.ports.map((p: any) => ({
-              port: p.port,
-              protocol: 'tcp',
-              service: p.service || 'unknown',
-              status: p.state === 'open' ? 'open' : p.state === 'closed' ? 'closed' : p.state === 'filtered' ? 'closed' : 'unknown',
-              banner: p.banner || '',
-            })));
+            resolve(data.ports.map((p: any) => {
+              const parsed = parseBanner(p.banner || p.version || '', p.service || 'unknown');
+              return {
+                port: p.port,
+                protocol: 'tcp',
+                service: p.service || 'unknown',
+                status: p.state === 'open' ? 'open' : p.state === 'closed' ? 'closed' : p.state === 'filtered' ? 'closed' : 'unknown',
+                banner: p.banner || '',
+                version: parsed.version,
+                parsedService: parsed.service,
+              };
+            }));
             return;
           }
         } catch { /* fall through */ }
@@ -208,6 +213,49 @@ async function getPortsFromNmap(ip: string, profile: string = 'quick'): Promise<
     });
     proc.on('error', () => { clearTimeout(timer); resolve([]); });
   });
+}
+
+// Parse service version from nmap banner
+function parseBanner(banner: string, defaultService: string): { service: string; version: string } {
+  if (!banner || banner === 'unknown') return { service: defaultService, version: '' };
+
+  const patterns: Array<{ regex: RegExp; service: string }> = [
+    { regex: /OpenSSH[_\s]([\d.]+)/i, service: 'openssh' },
+    { regex: /Apache[/\s]([\d.]+)/i, service: 'apache' },
+    { regex: /nginx[/\s]?([\d.]+)/i, service: 'nginx' },
+    { regex: /MySQL\s([\d.]+)/i, service: 'mysql' },
+    { regex: /PostgreSQL\s([\d.]+)/i, service: 'postgresql' },
+    { regex: /Redis\s+v?([\d.]+)/i, service: 'redis' },
+    { regex: /MongoDB\s+v?([\d.]+)/i, service: 'mongodb' },
+    { regex: /FTP\s+\(.*?([\d.]+)\)/i, service: 'ftp' },
+    { regex: /vsftpd\s+([\d.]+)/i, service: 'vsftpd' },
+    { regex: /ProFTPD\s+([\d.]+)/i, service: 'proftpd' },
+    { regex: /Dovecot\s+([\d.]+)/i, service: 'dovecot' },
+    { regex: /Exim\s+([\d.]+)/i, service: 'exim' },
+    { regex: /Postfix\s+([\d.]+)/i, service: 'postfix' },
+    { regex: /SMB\s+([\d.]+)/i, service: 'smb' },
+    { regex: /Samba\s+([\d.]+)/i, service: 'samba' },
+    { regex: /OpenSSL\s+([\d.]+)/i, service: 'openssl' },
+    { regex: /PHP[/\s]?([\d.]+)/i, service: 'php' },
+    { regex: /Python[/\s]?([\d.]+)/i, service: 'python' },
+    { regex: /WordPress[/\s]?([\d.]+)/i, service: 'wordpress' },
+    { regex: /Joomla[/\s]?([\d.]+)/i, service: 'joomla' },
+  ];
+
+  for (const p of patterns) {
+    const match = banner.match(p.regex);
+    if (match) {
+      return { service: p.service, version: match[1] };
+    }
+  }
+
+  // Generic version extraction: try to find any version-like pattern
+  const genericMatch = banner.match(/v?([\d]+\.[\d]+(?:\.[\d]+)?)/);
+  if (genericMatch) {
+    return { service: defaultService.toLowerCase(), version: genericMatch[1] };
+  }
+
+  return { service: defaultService.toLowerCase(), version: '' };
 }
 
 // ============================================================================
@@ -1022,7 +1070,7 @@ app.post('/api/scan', optionalAuth, async (req: any, res) => {
   // Strategy 3: nmap direct scan (30s timeout)
   if (ports.length === 0) {
     let nmapPorts: any[] = [];
-    try { nmapPorts = await Promise.race([getPortsFromNmap(ip, 'quick'), new Promise<any[]>((r) => setTimeout(() => r([]), 30000))]); } catch { nmapPorts = []; }
+    try { nmapPorts = await Promise.race([getPortsFromNmap(ip, 'standard'), new Promise<any[]>((r) => setTimeout(() => r([]), 30000))]); } catch { nmapPorts = []; }
     if (nmapPorts.length > 0) { ports = nmapPorts; portScanSource = 'nmap (escaneo directo)'; }
   }
 
@@ -1206,7 +1254,7 @@ app.post('/api/scan', optionalAuth, async (req: any, res) => {
       }
     }
 
-    return { port: p.port, service, status: isUnknown ? 'unknown' : (isOpen ? 'open' : 'closed'), risk, explanation, recommendation };
+    return { port: p.port, service, status: isUnknown ? 'unknown' : (isOpen ? 'open' : 'closed'), risk, explanation, recommendation, banner: p.banner || null, version: p.version || p.parsedService?.version || null, cveService: p.parsedService?.service || null, protocol: p.protocol || 'tcp' };
   });
 
   console.log(`[SCAN] IP: ${ip} | Puertos: ${enrichedPorts.length} | Fuente: ${portScanSource || 'NINGUNA - sin verificación posible'}`);
@@ -1649,6 +1697,160 @@ app.get('/api/tools/header-check', async (req, res) => {
   }
 });
 
+// Advanced Tools: CVE Lookup (NVD API + Vulners fallback)
+app.post('/api/tools/cve-lookup', async (req, res) => {
+  const { service, version, port } = req.body;
+  if (!service || !version) return res.status(400).json({ error: 'Service y version requeridos.' });
+
+  try {
+    // Check cache first
+    const cached = authDb.getCveFromCache(service, version);
+    if (cached) {
+      return res.json({ source: 'cache', service: cached.service, version: cached.version, port: cached.port, cves: cached.cves, cvssMax: cached.cvssMax, cveCount: cached.cveCount, cachedAt: cached.fetchedAt });
+    }
+
+    // Try NVD API first
+    let cves: authDb.CveEntry[] = [];
+    let source = 'nvd';
+    try {
+      cves = await fetchFromNVD(service, version);
+    } catch (e) {
+      console.log(`[CVE] NVD failed for ${service} ${version}, trying Vulners...`);
+    }
+
+    // Fallback to Vulners if NVD returned nothing
+    if (cves.length === 0) {
+      try {
+        cves = await fetchFromVulners(service, version);
+        source = 'vulners';
+      } catch (e) {
+        console.log(`[CVE] Vulners also failed for ${service} ${version}`);
+      }
+    }
+
+    // Filter: only CVSS >= 5.0 (medium+)
+    cves = cves.filter(c => c.cvssScore >= 5.0);
+
+    // Sort by CVSS descending
+    cves.sort((a, b) => b.cvssScore - a.cvssScore);
+
+    // Cache results
+    authDb.saveCveToCache(service, version, port || 0, cves);
+
+    const cvssMax = cves.length > 0 ? Math.max(...cves.map(c => c.cvssScore)) : 0;
+
+    res.json({ source, service, version, port, cves, cvssMax, cveCount: cves.length });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message || 'Error buscando CVEs.' });
+  }
+});
+
+async function fetchFromNVD(service: string, version: string): Promise<authDb.CveEntry[]> {
+  // Map common service names to CPE product names
+  const cpeMap: Record<string, string> = {
+    'openssh': 'openbsd:openssh',
+    'ssh': 'openbsd:openssh',
+    'apache': 'apache:http_server',
+    'apache_http': 'apache:http_server',
+    'nginx': 'nginx:nginx',
+    'mysql': 'oracle:mysql',
+    'postgresql': 'postgresql:postgresql',
+    'redis': 'redis:redis',
+    'mongodb': 'mongodb:mongodb',
+    'ftp': 'proftpd:proftpd',
+    'vsftpd': 'vsftpd:vsftpd',
+    'proftpd': 'proftpd:proftpd',
+    'dovecot': 'dovecot:dovecot',
+    'exim': 'exim:exim',
+    'postfix': 'postfix:postfix',
+    'smb': 'microsoft:smb',
+    'samba': 'samba:samba',
+    'openssl': 'openssl:openssl',
+    'php': 'php:php',
+    'python': 'python:python',
+    'wordpress': 'wordpress:wordpress',
+    'joomla': 'joomla:joomla',
+    'tomcat': 'apache:tomcat',
+    'elasticsearch': 'elastic:elasticsearch',
+  };
+
+  const cpeProduct = cpeMap[service.toLowerCase()] || `${service}:${service}`;
+  const cpeName = `cpe:2.3:a:${cpeProduct}:${version}:*:*:*:*:*:*:*`;
+  const url = `https://services.nvd.nist.gov/rest/json/cves/2.0?cpeName=${encodeURIComponent(cpeName)}`;
+  
+  const headers: Record<string, string> = { 'User-Agent': 'MyIP-Security-Scanner/1.0' };
+  const nvdApiKey = process.env.NVD_API_KEY;
+  if (nvdApiKey) headers['apiKey'] = nvdApiKey;
+  
+  const res = await fetch(url, { headers });
+  
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    console.log(`[CVE] NVD HTTP ${res.status}: ${body.substring(0, 200)}`);
+    throw new Error(`NVD API error: ${res.status}`);
+  }
+  
+  const data = await res.json();
+  const vulnerabilities = data.vulnerabilities || [];
+  
+  console.log(`[CVE] NVD returned ${vulnerabilities.length} results for ${cpeName}`);
+  
+  return vulnerabilities.map((v: any) => {
+    const cve = v.cve;
+    const metrics = cve.metrics?.cvssMetricV31?.[0] || cve.metrics?.cvssMetricV30?.[0];
+    const cvss = metrics?.cvssData;
+    const desc = cve.descriptions?.find((d: any) => d.lang === 'en')?.value || cve.descriptions?.[0]?.value || '';
+    
+    return {
+      id: cve.id,
+      sourceIdentifier: cve.sourceIdentifier,
+      published: cve.published,
+      modified: cve.lastModified,
+      description: desc.substring(0, 300),
+      cvssScore: cvss?.baseScore || 0,
+      cvssVector: cvss?.versionString,
+      severity: cvss?.baseSeverity || 'UNKNOWN',
+      url: `https://nvd.nist.gov/vuln/detail/${cve.id}`,
+    };
+  });
+}
+
+async function fetchFromVulners(service: string, version: string): Promise<authDb.CveEntry[]> {
+  const url = 'https://vulners.com/api/v3/search/lucene/';
+  
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      query: `${service} ${version}`,
+      size: 50
+    })
+  });
+  
+  if (!res.ok) throw new Error(`Vulners API error: ${res.status}`);
+  
+  const data = await res.json();
+  if (!data.data?.search) return [];
+  
+  return data.data.search.map((item: any) => {
+    const cvss = item.cvss?.score || item.vulnersScore || 0;
+    let severity = 'LOW';
+    if (cvss >= 9.0) severity = 'CRITICAL';
+    else if (cvss >= 7.0) severity = 'HIGH';
+    else if (cvss >= 5.0) severity = 'MEDIUM';
+    
+    return {
+      id: item.id,
+      published: item.published || item.modified || '',
+      modified: item.modified || '',
+      description: (item.description || '').substring(0, 300),
+      cvssScore: cvss,
+      severity,
+      url: `https://vulners.com/${item.type}/${item.id}`,
+    };
+  });
+}
+
 app.get('/api/scan/history', optionalAuth, async (req: any, res) => {
   const email = req.authUser || req.query.email;
   if (!email) return res.status(401).json({ error: 'No autenticado.' });
@@ -1679,6 +1881,21 @@ app.get('/api/scan/history/:id', optionalAuth, async (req: any, res) => {
     analysisText: r.analysis_text, scanSource: r.scan_source,
     geo: JSON.parse(r.geo_json || '{}'), createdAt: r.created_at,
   });
+});
+
+// Scan History Dashboard (all authenticated users, not just premium)
+app.get('/api/scan/dashboard', optionalAuth, async (req: any, res) => {
+  const email = req.authUser || req.query.email;
+  if (!email) return res.status(401).json({ error: 'No autenticado.' });
+  const user = authDb.getUserByEmail(email.toLowerCase().trim());
+  if (!user) return res.status(404).json({ error: 'Usuario no encontrado.' });
+  const history = authDb.getScanHistory(user.email, 100);
+  res.json({ history: history.map((h: any) => ({
+    id: h.id, targetIp: h.target_ip, score: h.score, scoreReason: h.score_reason,
+    scanSource: h.scan_source, createdAt: h.created_at,
+    portCount: JSON.parse(h.ports_json || '[]').length,
+    scoreNumeric: h.score_numeric ?? null,
+  })) });
 });
 
 // Security: Check password breach via HaveIBeenPwned (Server-side proxy to avoid CORS)
