@@ -1,5 +1,6 @@
 import express from 'express';
 import path from 'path';
+import { getSecurityKpis } from './securityKpis';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
@@ -1435,6 +1436,16 @@ ${score === 'green' ? '- **Mantenimiento**: Realiza escaneos periódicos para ve
 });
 
 // Scan History (Premium)
+app.get('/api/security/kpis', (req, res) => {
+  try {
+    const kpis = getSecurityKpis();
+    res.json(kpis);
+  } catch (e: any) {
+    console.error('Error fetching security KPIs:', e);
+    res.status(500).json({ error: 'No se pudieron obtener los KPIs de seguridad' });
+  }
+});
+
 app.get('/api/stats/community', (req, res) => {
   const stats = authDb.getSystemStats();
   const community = authDb.getCommunityStats();

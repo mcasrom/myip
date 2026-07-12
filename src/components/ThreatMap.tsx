@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Shield, AlertTriangle, Globe, RefreshCw } from 'lucide-react';
+import { Shield, AlertTriangle, Globe, RefreshCw, TrendingUp, Clock, Layers, Info } from 'lucide-react';
 
 // Leaflet is loaded via script tag in index.html
 declare const L: any;
@@ -20,6 +20,213 @@ interface ThreatData {
   total_bans: number;
   top_countries: Record<string, number>;
   attackers: Attacker[];
+}
+
+interface SecurityKpis {
+  generated: string;
+  total_events: number;
+  total_bans: number;
+  unique_ips: number;
+  date_range: { oldest: string; newest: string };
+  top_countries: { country_code: string; country: string; attacks: number }[];
+  weekly: { week: string; attacks: number }[];
+  monthly: { month: string; attacks: number }[];
+  hourly: { hour: string; attacks: number }[];
+  avg_ban_duration_minutes: { jail: string; minutes: number }[];
+  top_subnets: { subnet: string; attacks: number; unique_ips: number }[];
+  data_gaps: { from: string; to: string; note: string }[];
+}
+
+function Bar({ label, value, max, colorClass }: { label: string; value: number; max: number; colorClass: string }) {
+  const pct = max > 0 ? Math.max(2, (value / max) * 100) : 0;
+  return (
+    <div className="flex items-center gap-2 text-xs">
+      <span className="w-20 shrink-0 text-slate-400 font-mono truncate">{label}</span>
+      <div className="flex-1 bg-slate-800 rounded h-4 overflow-hidden">
+        <div className={`h-full ${colorClass}`} style={{ width: `${pct}%` }} />
+      </div>
+      <span className="w-14 shrink-0 text-right text-slate-300 font-mono">{value}</span>
+    </div>
+  );
+}
+
+function KpiCard({ label, value, icon }: { label: string; value: string | number; icon: React.ReactNode }) {
+  return (
+    <div className="bg-slate-800 p-3 rounded-lg flex items-center gap-3">
+      <div className="text-indigo-400">{icon}</div>
+      <div>
+        <p className="text-lg font-bold text-white leading-none">{value}</p>
+        <p className="text-[11px] text-slate-400 mt-1">{label}</p>
+      </div>
+    </div>
+  );
+}
+
+function SecurityKpiPanel() {
+  const [kpis, setKpis] = useState<SecurityKpis | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchKpis = async () => {
+    try {
+      const res = await fetch('/api/security/kpis');
+      if (!res.ok) throw new Error('Error cargando KPIs de seguridad');
+      const json = await res.json();
+      setKpis(json);
+      setError(null);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchKpis();
+    const interval = setInterval(fetchKpis, 15 * 60 * 1000); // 15 min
+    return () => clearInterval(interval);
+  }, []);
+
+  if (loading && !kpis) {
+    return (
+      <div className="bg-slate-900 p-6 rounded-xl border border-slate-800 flex items-center justify-center">
+        <RefreshCw className="w-5 h-5 text-indigo-500 animate-spin mr-2" />
+        <span className="text-slate-400 text-sm">Cargando KPIs de seguridad...</span>
+      </div>
+    );
+  }
+
+  if (error || !kpis) {
+    return (
+      <div className="bg-slate-900 p-6 rounded-xl border border-slate-800 text-red-400 text-sm flex items-center gap-2">
+        <AlertTriangle className="w-4 h-4" /> {error || 'Sin datos disponibles'}
+      </div>
+    );
+  }
+
+  const maxMonthly = Math.max(...kpis.monthly.map(m => m.attacks), 1);
+  const maxWeekly = Math.max(...kpis.weekly.map(w => w.attacks), 1);
+  const maxCountry = Math.max(...kpis.top_countries.map(c => c.attacks), 1);
+  const maxSubnet = Math.max(...kpis.top_subnets.map(s => s.attacks), 1);
+  const maxHourly = Math.max(...kpis.hourly.map(h => h.attacks), 1);
+
+  return (
+    <div className="space-y-4">
+      {/* Resumen global */}
+      <div className="bg-slate-900 p-4 rounded-xl border border-slate-800">
+        <h3 className="text-sm font-bold text-slate-300 mb-3 flex items-center gap-2">
+          <TrendingUp className="w-4 h-4" /> Resumen Histórico
+        </h3>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <KpiCard label="Bloqueos totales" value={kpis.total_bans.toLocaleString()} icon={<Shield className="w-5 h-5" />} />
+          <KpiCard label="IPs únicas" value={kpis.unique_ips.toLocaleString()} icon={<Globe className="w-5 h-5" />} />
+          <KpiCard label="Eventos registrados" value={kpis.total_events.toLocaleString()} icon={<Layers className="w-5 h-5" />} />
+          <KpiCard
+            label="Periodo monitorizado"
+            value={`${kpis.date_range.oldest.slice(0, 10)} → hoy`}
+            icon={<Clock className="w-5 h-5" />}
+          />
+        </div>
+        {kpis.data_gaps.length > 0 && (
+          <div className="mt-3 text-[11px] text-amber-400/80 bg-amber-950/30 border border-amber-900/40 rounded p-2 flex items-start gap-2">
+            <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+            <span>
+              Nota de transparencia: hubo un corte de recolección de datos entre el {kpis.data_gaps[0].from} y el {kpis.data_gaps[0].to}.
+              No representa una bajada real de ataques, sino un fallo del sistema de monitorización ya corregido.
+            </span>
+          </div>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Evolución mensual */}
+        <div className="bg-slate-900 p-4 rounded-xl border border-slate-800">
+          <h3 className="text-sm font-bold text-slate-300 mb-3">Ataques por Mes</h3>
+          <div className="space-y-2">
+            {kpis.monthly.map(m => (
+              <Bar key={m.month} label={m.month} value={m.attacks} max={maxMonthly} colorClass="bg-indigo-500" />
+            ))}
+          </div>
+        </div>
+
+        {/* Evolución semanal */}
+        <div className="bg-slate-900 p-4 rounded-xl border border-slate-800">
+          <h3 className="text-sm font-bold text-slate-300 mb-3">Ataques por Semana</h3>
+          <div className="space-y-2">
+            {kpis.weekly.map(w => (
+              <Bar key={w.week} label={w.week} value={w.attacks} max={maxWeekly} colorClass="bg-cyan-500" />
+            ))}
+          </div>
+        </div>
+
+        {/* Países (corregido, agrupado por country_code) */}
+        <div className="bg-slate-900 p-4 rounded-xl border border-slate-800">
+          <h3 className="text-sm font-bold text-slate-300 mb-3 flex items-center gap-2">
+            <Globe className="w-4 h-4" /> Top Países de Origen
+          </h3>
+          <div className="space-y-2">
+            {kpis.top_countries.slice(0, 8).map(c => (
+              <Bar key={c.country_code} label={c.country} value={c.attacks} max={maxCountry} colorClass="bg-red-500" />
+            ))}
+          </div>
+          <p className="text-[11px] text-slate-500 mt-2">
+            El origen refleja la ubicación de la IP atacante, a menudo infraestructura cloud/VPS y no el país del atacante real.
+          </p>
+        </div>
+
+        {/* Subredes reincidentes */}
+        <div className="bg-slate-900 p-4 rounded-xl border border-slate-800">
+          <h3 className="text-sm font-bold text-slate-300 mb-3 flex items-center gap-2">
+            <Layers className="w-4 h-4" /> Redes Más Reincidentes
+          </h3>
+          <div className="space-y-2">
+            {kpis.top_subnets.slice(0, 8).map(s => (
+              <Bar key={s.subnet} label={s.subnet} value={s.attacks} max={maxSubnet} colorClass="bg-orange-500" />
+            ))}
+          </div>
+          <p className="text-[11px] text-slate-500 mt-2">
+            Agrupado por subred /24 para identificar infraestructura de ataque concentrada, sin exponer IPs individuales.
+          </p>
+        </div>
+      </div>
+
+      {/* Distribución horaria */}
+      <div className="bg-slate-900 p-4 rounded-xl border border-slate-800">
+        <h3 className="text-sm font-bold text-slate-300 mb-3 flex items-center gap-2">
+          <Clock className="w-4 h-4" /> Distribución Horaria (UTC)
+        </h3>
+        <div className="flex items-end gap-1 h-24">
+          {kpis.hourly.map(h => (
+            <div key={h.hour} className="flex-1 flex flex-col items-center justify-end h-full gap-1" title={`${h.hour}h: ${h.attacks}`}>
+              <div
+                className="w-full bg-teal-500 rounded-t"
+                style={{ height: `${Math.max(4, (h.attacks / maxHourly) * 100)}%` }}
+              />
+              <span className="text-[9px] text-slate-500">{h.hour}</span>
+            </div>
+          ))}
+        </div>
+        <p className="text-[11px] text-slate-500 mt-2">
+          Actividad distribuida a lo largo del día: patrón típico de ataques automatizados, no ligados a horario humano.
+        </p>
+      </div>
+
+      {/* Duración media de ban */}
+      <div className="bg-slate-900 p-4 rounded-xl border border-slate-800">
+        <h3 className="text-sm font-bold text-slate-300 mb-3">Duración Media de Bloqueo por Servicio</h3>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {kpis.avg_ban_duration_minutes.map(j => (
+            <KpiCard
+              key={j.jail}
+              label={j.jail}
+              value={`${(j.minutes / 60).toFixed(1)}h`}
+              icon={<Shield className="w-5 h-5" />}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function ThreatMap() {
@@ -52,7 +259,6 @@ export default function ThreatMap() {
   useEffect(() => {
     if (!data || !mapRef.current) return;
 
-    // Initialize map if not exists
     if (!leafletMapRef.current) {
       leafletMapRef.current = L.map(mapRef.current, {
         center: [30, 10],
@@ -65,7 +271,6 @@ export default function ThreatMap() {
         maxZoom: 18
       }).addTo(leafletMapRef.current);
     } else {
-      // Clear existing layers
       leafletMapRef.current.eachLayer((layer: any) => {
         if (layer instanceof L.CircleMarker) {
           leafletMapRef.current.removeLayer(layer);
@@ -73,7 +278,6 @@ export default function ThreatMap() {
       });
     }
 
-    // Force Leaflet to recalculate container size
     setTimeout(() => {
       leafletMapRef.current?.invalidateSize();
     }, 100);
@@ -147,11 +351,11 @@ export default function ThreatMap() {
         <div ref={mapRef} className="w-full h-full" />
       </div>
 
-      {/* Top Countries */}
+      {/* Top Countries (mapa en vivo, pipeline parcial) */}
       {data && (
         <div className="bg-slate-900 p-4 rounded-xl border border-slate-800">
           <h3 className="text-sm font-bold text-slate-300 mb-3 flex items-center gap-2">
-            <Globe className="w-4 h-4" /> Top Países Atacantes
+            <Globe className="w-4 h-4" /> Top Países Atacantes (ventana reciente)
           </h3>
           <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3">
             {Object.entries(data.top_countries)
@@ -166,6 +370,9 @@ export default function ThreatMap() {
           </div>
         </div>
       )}
+
+      {/* KPIs históricos de alto valor (fuente completa: SQLite events + geo_cache) */}
+      <SecurityKpiPanel />
     </div>
   );
 }
