@@ -75,7 +75,7 @@ No. El sistema detecta automáticamente tu IP pública a partir de la petición 
 Sí. Solo audita tu propia IP pública mediante comprobaciones pasivas y activas de bajo impacto (equivalentes a un diagnóstico de salud de red), no accede a sistemas ajenos ni realiza explotación de vulnerabilidades. Más detalle en la pestaña "Marco Legal y Cumplimiento".
 
 ### ¿Qué diferencia hay entre el plan Gratuito y SysAdmin Pro?
-El plan gratuito incluye diagnóstico básico bajo demanda. SysAdmin Pro (4,99€/mes) añade monitorización recurrente, alertas por email cuando se detectan cambios o exposiciones nuevas, e historial de escaneos. También está disponible el plan Hogar (9,99€, pago único de por vida).
+El plan gratuito incluye diagnóstico básico bajo demanda, detección de vulnerabilidades CVE en puertos abiertos y acceso al historial de escaneos con grafico de evolucion. SysAdmin Pro (4,99€/mes) añade monitorizacion recurrente, alertas por email cuando se detectan cambios o exposiciones nuevas, exportacion de reportes PDF y acceso a herramientas avanzadas. Tambien esta disponible el plan Hogar (9,99€, pago unico de por vida).
 
 ### ¿Cómo cancelo mi suscripción?
 Desde tu panel de cuenta, en cualquier momento. El acceso Pro se mantiene hasta el final del periodo ya pagado; no se realizan cargos adicionales tras la cancelación.
@@ -90,7 +90,13 @@ Email, contraseña (cifrada), historial de escaneos (incluye tu IP y resultados 
 Sí, es tu derecho bajo RGPD. Mientras habilitamos el borrado automático desde el panel, puedes solicitarlo escribiendo a [threatradar-myip@viajeinteligencia.com](mailto:threatradar-myip@viajeinteligencia.com) y lo gestionamos manualmente en un plazo razonable.
 
 ### ¿Los escaneos afectan al rendimiento de mi red?
-No de forma perceptible. Son comprobaciones puntuales y cortas, no monitorización continua invasiva.
+No de forma perceptible. Son comprobaciones puntuales y cortas, no monitorizacion continua invasiva.
+
+### ¿Que son las vulnerabilidades CVE que muestra el escaneo?
+Cuando el escaneo detecta la version de un servicio abierto (ej: OpenSSH 7.4, Apache 2.4.49), consulta automaticamente la base de datos nacional de vulnerabilidades (NVD/NIST) y muestra los CVEs conocidos asociados. Cada CVE incluye una puntuacion CVSS (0-10) que indica su severidad. Esto te permite priorizar que actualizar primero.
+
+### ¿Como leo el grafico de evolucion de mi score?
+En el tab de resultados, bajo los puertos escaneados, veras un grafico que muestra como ha cambiado tu puntuacion de seguridad a lo largo del tiempo. Una linea ascendente indica que tu seguridad mejora; una descendente que empeora. Tambien veras una comparativa entre tu ultimo y penultimo escaneo con la diferencia exacta en puntos y puertos.
 
 ### ¿Necesito instalar algo?
 No, myip funciona íntegramente desde el navegador.

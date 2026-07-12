@@ -148,7 +148,22 @@ export const guides: SecurityGuide[] = [
       '**Activa la verificación en dos pasos (2FA):** Incluso si alguien roba tu contraseña, necesita un segundo factor (código SMS, app autenticadora, llave física) para entrar. Actívalo en email, banco y redes sociales.',
       '**Verifica si tus contraseñas fueron filtradas:** MyIP incluye un comprobador que consulta Have I Been Pwned (k-anonymity) sin enviar tu contraseña completa. También puedes visitar haveibeenpwned.com/Passwords.'
     ],
-    recommendation: 'El paso más impactante que puedes hacer hoy: activa 2FA en tu cuenta de email principal. Es la llave maestra de tu vida digital — si la pierdes, pierdes acceso a todo lo vinculado a ese correo.',
+    recommendation: 'El paso mas impactante que puedes hacer hoy: activa 2FA en tu cuenta de email principal. Es la llave maestra de tu vida digital — si la pierdes, pierdes acceso a todo lo vinculado a ese correo.',
+    difficulty: 'Fácil'
+  },
+  {
+    id: 'cve-guide',
+    title: '¿Que son los CVE y Como Interpretar las Vulnerabilidades de tus Puertos?',
+    category: 'Conceptos de Seguridad',
+    description: 'Cada vez que MyIP detecta un servicio con version especifica en un puerto abierto (ej: OpenSSH 7.4), consulta automaticamente la base de datos NVD/NIST para mostrarte vulnerabilidades conocidas (CVEs). Aprender a leer estas alertas es clave para priorizar actualizaciones.',
+    steps: [
+      '**¿Que es un CVE?** Common Vulnerabilities and Exposures es un identificador estandar para vulnerabilidades de seguridad. Ejemplo: CVE-2021-41773 es una vulnerabilidad critica en Apache 2.4.49.',
+      '**¿Que es el CVSS?** Common Vulnerability Scoring System puntuacion de 0 a 10. 0-3.9: Baja, 4.0-6.9: Media, 7.0-8.9: Alta, 9.0-10.0: Critica. Prioriza siempre las criticas y altas.',
+      '**¿Como se detectan en MyIP?** El escaneo nmap con perfil standard (-sV) detecta la version del software. Luego se consulta la API del NIST NVD buscando CVEs asociados a esa version exacta.',
+      '**¿Que hacer si encuentras CVEs?** Actualiza el software afectado a la version mas reciente. Si no es posible, considera cerrar ese puerto o restringir el acceso por firewall. Los CVEs con CVSS >= 9.0 requieren accion inmediata.',
+      '**¿Los CVEs significan que estoy hackeado?** No. Significa que tu software tiene una vulnerabilidad conocida que *podria* ser explotada. Es una alerta preventiva para que actualices antes de que sea tarde.'
+    ],
+    recommendation: 'Mantener tu software actualizado es la defensa mas efectiva contra CVEs. La mayoria de exploits atacan versiones antiguas con parches disponibles. Actualizar regularmente elimina el 95% de los riesgos conocidos.',
     difficulty: 'Fácil'
   }
 ];
