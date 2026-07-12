@@ -2051,28 +2051,28 @@ Auditoria externa recibida con criticas sobre GDPR/LOPDGDD parcial, falta de pol
 - Producción: `https://myip.viajeinteligencia.com` — healthy ✅
 - PM2: `myip-server` online (puerto 3000)
 - Nginx: active ✅
-- Commit: `79eaf8d`
+- Commit: `c2bff76`
 - Legal & Compliance: Sprint 1 CERRADO ✅
 - CVE/NIST Integration: Sprint 2 CERRADO ✅
 - Dashboard Historial: Sprint B CERRADO ✅
+- UX Errors Graceful: Sprint D CERRADO ✅
 
-### Sprint B: Dashboard Historial — COMPLETADO ✅
+### Sprint D: UX Errors Graceful — COMPLETADO ✅
 **Fecha:** 2026-07-12
 
 **Implementado:**
-- [x] Componente `ScanHistoryDashboard.tsx` con Recharts
-- [x] Grafico de area: evolucion del score a lo largo del tiempo
-- [x] 4 stat cards: score promedio, total escaneos, ultimo score, tendencia
-- [x] Comparativa ultimo vs anterior escaneo (score diff, port diff)
-- [x] Tabla historial completo: fecha, IP, score, puertos, fuente
-- [x] Endpoint `/api/scan/dashboard` (todos los usuarios autenticados, no solo premium)
-- [x] Integracion en App.tsx (tab dashboard, debajo de resultados de escaneo)
+- [x] Componente `ErrorBoundary.tsx` (funcional, captura errores de React)
+- [x] Integrado en `main.tsx` (envuelve toda la app)
+- [x] Mensajes de error amigables en scan (timeout, rate limit, unauthorized, 500)
+- [x] Global error handlers en server.ts (`unhandledRejection`, `uncaughtException`)
+- [x] 404 handler custom (no stack traces)
+- [x] 500 handler custom (oculta detalles en produccion)
 
 **Archivos modificados:**
-- `src/components/ScanHistoryDashboard.tsx`: nuevo componente (250 lineas)
-- `server.ts`: nuevo endpoint `/api/scan/dashboard`
-- `src/App.tsx`: import + integracion ScanHistoryDashboard
-- `package.json`: añadido `recharts`
+- `src/components/ErrorBoundary.tsx`: nuevo componente
+- `src/main.tsx`: envuelto con ErrorBoundary
+- `src/App.tsx`: mensajes de error mejorados en handlePerformScan
+- `server.ts`: handlers globales de error + 404/500 custom
 
 ### Sprints pendientes para siguiente sesion
 
@@ -2093,6 +2093,5 @@ Auditoria externa recibida con criticas sobre GDPR/LOPDGDD parcial, falta de pol
 ### Decisiones pendientes
 - [ ] ¿Eliminar WelcomeModal? (propuesto ayer, sin decision)
 - [ ] ¿Docker o PM2 directo? (Docker build timeout, PM2 funciona)
-- [ ] ¿Revisar logs de errores para UX errors graceful?
 
 ---

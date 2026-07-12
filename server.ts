@@ -2167,6 +2167,32 @@ async function startServer() {
     console.log(`MyIP server running on http://0.0.0.0:${PORT}`);
     startAlertsCron(PORT);
   });
+
+// ============================================================================
+// Global Error Handlers — Prevent stack trace leaks
+// ============================================================================
+process.on('unhandledRejection', (reason: any) => {
+  console.error('[UNHANDLED REJECTION]', reason?.message || reason);
+});
+
+process.on('uncaughtException', (error: Error) => {
+  console.error('[UNCAUGHT EXCEPTION]', error.message);
+});
+
+// 404 Handler
+app.use((req, res) => {
+  res.status(404).json({ error: 'Ruta no encontrada.' });
+});
+
+// 500 Error Handler (must be last)
+app.use((err: any, req: any, res: any, next: any) => {
+  console.error('[SERVER ERROR]', err.message);
+  res.status(500).json({
+    error: process.env.NODE_ENV === 'production'
+      ? 'Error interno del servidor. Intentalo de nuevo mas tarde.'
+      : err.message || 'Error desconocido.'
+  });
+});
 }
 
 startServer();

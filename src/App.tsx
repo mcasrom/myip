@@ -364,7 +364,22 @@ export default function App() {
       }
     } catch (err: any) {
       console.error('[SCAN] Error:', err);
-      triggerToast(err.message || 'Error de conexión con el motor de diagnóstico.', 'warning');
+      const msg = err.message || '';
+      let userMsg = 'Error de conexión con el motor de diagnóstico.';
+      
+      if (msg.includes('timeout') || msg.includes('Timeout')) {
+        userMsg = 'El escaneo tardo demasiado. Tu red puede estar lenta o el servidor ocupado. Intentalo de nuevo.';
+      } else if (msg.includes('429') || msg.includes('rate limit')) {
+        userMsg = 'Has alcanzado el limite de escaneos. Espera unos minutos antes de intentar de nuevo.';
+      } else if (msg.includes('401') || msg.includes('unauthorized')) {
+        userMsg = 'Debes iniciar sesión para realizar este escaneo.';
+      } else if (msg.includes('500') || msg.includes('internal')) {
+        userMsg = 'Error interno del servidor. Estamos trabajando en resolverlo. Intentalo mas tarde.';
+      } else if (msg) {
+        userMsg = msg;
+      }
+      
+      triggerToast(userMsg, 'warning');
     } finally {
       setScanning(false);
     }
