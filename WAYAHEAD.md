@@ -2100,17 +2100,21 @@ Auditoria externa recibida con criticas sobre GDPR/LOPDGDD parcial, falta de pol
 - Nueva guia "Que son los CVE y Como Interpretar Vulnerabilidades"
 - FAQ de planes actualizada con features nuevas
 
+#### Sprint F: Alertas en Tiempo Real ✅
+- Tabla `alert_log` para rastrear alertas enviadas (evita spam)
+- `compareScans` mejorado: detecta caidas de score, nuevos puertos, listas negras
+- Severidad de alertas: `low`, `medium`, `critical`
+- Deteccion de IPs dinamicas con alerta y actualizacion automatica
+- Cooldown de 24h entre alertas para mismo usuario
+- Limpieza mensual de logs antiguos
+- Template email mejorado con colores segun severidad
+
 ### Sprints pendientes para siguiente sesion
 
 #### Sprint E: Exportar Reporte PDF (prioridad alta)
 **Objetivo:** Usuario puede guardar/compartir su analisis de seguridad en PDF.
 **Estado:** `PDFDocument` ya importado en server.ts
 **Tiempo:** 3-5 dias | **Riesgo:** Bajo
-
-#### Sprint F: Alertas en Tiempo Real (prioridad media)
-**Objetivo:** Notificacion cuando cambia algo en tu red.
-**Estado:** Ya existe cron de alertas en `alerts.ts`
-**Tiempo:** 1 semana | **Riesgo:** Medio
 
 #### Sprint C: Blog Tecnico SEO (continuo, paralelo)
 **Objetivo:** Trafico organico desde busquedas de seguridad.
