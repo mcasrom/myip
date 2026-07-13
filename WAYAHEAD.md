@@ -2177,7 +2177,7 @@ Pregunta de Miguel: ¿es viable/legal analizar datos de escaneo (estadísticas, 
 - **NO** ML con datos identificables (requiere opt-in explícito)
 
 ### Pendiente próximo paso
-- Añadir endpoints `/api/stats/anonymized` y `/api/stats/trends` en server.ts (funciones ya existen en db.ts)
+- Añadir endpoints `/api/stats/anonymized` y `/api/stats/trends` en server.ts (funciones ya existen en db.ts) ✅ DONE
 - Si se quiere clustering/ML: implementar opt-in explícito (checkbox en registro/escaneo)
 
 ---
