@@ -317,7 +317,7 @@ export function getAnonymizedStats(): {
 export function getWeeklyTrends(): { week: string; avgScore: number; scanCount: number }[] {
   const rows = db.prepare(`
     SELECT 
-      strftime('%Y-%W', datetime(created_at, 'unixepoch')) as week,
+      strftime('%Y-%W', datetime(created_at / 1000, 'unixepoch')) as week,
       ROUND(AVG(score_numeric)) as avgScore,
       COUNT(*) as scanCount
     FROM scan_history
