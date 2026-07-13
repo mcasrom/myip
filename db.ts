@@ -253,6 +253,87 @@ export function getUserScoreDistribution(email: string): { green: number; yellow
   };
 }
 
+// ============================================================
+// Estadísticas anonimizadas (GDPR Art. 89 — sin PII)
+// ============================================================
+
+export function getAnonymizedStats(): {
+  avgScore: number | null;
+  totalScans: number;
+  distribution: { green: number; yellow: number; red: number };
+  topExposedPorts: { port: number; count: number; percentage: number }[];
+  blacklistRate: number;
+} {
+  const totalRow = db.prepare('SELECT COUNT(*) as total FROM scan_history WHERE score_numeric IS NOT NULL').get() as any;
+  const totalScans = totalRow?.total || 0;
+
+  const avgRow = db.prepare('SELECT AVG(score_numeric) as avg FROM scan_history WHERE score_numeric IS NOT NULL').get() as any;
+  const avgScore = avgRow?.avg !== null && avgRow?.avg !== undefined ? Math.round(avgRow.avg) : null;
+
+  const distRow = db.prepare(`
+    SELECT 
+      SUM(CASE WHEN score_numeric >= 70 THEN 1 ELSE 0 END) as green,
+      SUM(CASE WHEN score_numeric >= 40 AND score_numeric < 70 THEN 1 ELSE 0 END) as yellow,
+      SUM(CASE WHEN score_numeric < 40 THEN 1 ELSE 0 END) as red
+    FROM scan_history WHERE score_numeric IS NOT NULL
+  `).get() as any;
+  const distribution = {
+    green: distRow?.green || 0,
+    yellow: distRow?.yellow || 0,
+    red: distRow?.red || 0,
+  };
+
+  // Puertos más expuestos (sin vincular a IP/email)
+  const portRows = db.prepare(`
+    SELECT port, COUNT(*) as count
+    FROM scan_history, json_each(ports_json)
+    WHERE json_each.value LIKE '%"open"%'
+    GROUP BY port
+    ORDER BY count DESC
+    LIMIT 10
+  `).all() as any[];
+
+  const topExposedPorts = portRows
+    .filter((r: any) => r.port && r.count)
+    .map((r: any) => ({
+      port: typeof r.port === 'string' ? parseInt(r.port, 10) : r.port,
+      count: r.count,
+      percentage: totalScans > 0 ? Math.round((r.count / totalScans) * 100) : 0,
+    }));
+
+  // Tasa de blacklist (scans con al menos 1 blacklist)
+  const blacklistRow = db.prepare(`
+    SELECT COUNT(*) as flagged
+    FROM scan_history
+    WHERE reputation_json IS NOT NULL
+    AND json_extract(reputation_json, '$.blacklists') IS NOT NULL
+    AND json_array_length(json_extract(reputation_json, '$.blacklists')) > 0
+  `).get() as any;
+  const blacklistRate = totalScans > 0 ? Math.round(((blacklistRow?.flagged || 0) / totalScans) * 100) : 0;
+
+  return { avgScore, totalScans, distribution, topExposedPorts, blacklistRate };
+}
+
+export function getWeeklyTrends(): { week: string; avgScore: number; scanCount: number }[] {
+  const rows = db.prepare(`
+    SELECT 
+      strftime('%Y-%W', datetime(created_at, 'unixepoch')) as week,
+      ROUND(AVG(score_numeric)) as avgScore,
+      COUNT(*) as scanCount
+    FROM scan_history
+    WHERE score_numeric IS NOT NULL
+    GROUP BY week
+    ORDER BY week DESC
+    LIMIT 12
+  `).all() as any[];
+
+  return rows.map((r: any) => ({
+    week: r.week,
+    avgScore: r.avgScore || 0,
+    scanCount: r.scanCount || 0,
+  }));
+}
+
 const serverStartTimestamp = Date.now();
 
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 dias

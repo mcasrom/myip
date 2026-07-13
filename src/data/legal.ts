@@ -127,12 +127,17 @@ SIEG, con domicilio de contacto en Murcia, España. Email: [threatradar-myip@via
 ### 2.3 Datos de escaneo
 - **Historial de escaneos**: resultados de auditorías de puertos, reputación de IP y análisis de red. Se almacenan exclusivamente para usuarios registrados.
 
+### 2.4 Datos anonimizados para estadísticas
+- **Datos agregados**: tras cada escaneo, se genera una versión anonimizada (sin email, sin IP exacta) que se utiliza exclusivamente para estadísticas de comunidad: puntuación media, distribución de scores, puertos más expuestos, tasa de blacklists.
+- **Base legal**: Art. 89 RGPD — procesamiento estadístico con datos anonimizados no requiere consentimiento explícito.
+- **Qué NO hacemos**: nunca vinculamos estadísticas a tu identidad, nunca vendemos datos, nunca compartimos información identificable con terceros.
+
 ## 3. Finalidad del tratamiento
 
 - Prestación del servicio de diagnóstico de red.
 - Envío de alertas de seguridad (plan Pro).
 - Cumplimiento de obligaciones legales (consentimiento de escaneo).
-- Mejora continua del servicio (datos agregados y anónimos).
+- Mejora continua del servicio mediante **datos agregados y anónimos** (estadísticas de comunidad, puertos más expuestos, tendencias de seguridad). Estos datos nunca se vinculan a tu identidad.
 
 ## 4. Base legal
 
@@ -145,6 +150,7 @@ SIEG, con domicilio de contacto en Murcia, España. Email: [threatradar-myip@via
 - **Cuentas activas**: mientras la cuenta permanezca activa.
 - **Cuentas eliminadas**: los datos se borran en un plazo de 30 días tras la solicitud.
 - **Historial de escaneos**: se conserva mientras la cuenta esté activa.
+- **Datos anonimizados**: las estadísticas agregadas (sin PII) se conservan indefinidamente para análisis de tendencias, ya que no son datos personales según el Art. 89 RGPD.
 - **Logs de servidor**: 90 días máximo, luego se eliminan automáticamente.
 
 ## 6. Destinatarios
@@ -172,6 +178,7 @@ Para ejercer estos derechos, escribe a [threatradar-myip@viajeinteligencia.com](
 - Sesiones con tokens opacos (no JWT), borradas al logout.
 - Conexiones HTTPS obligatorias.
 - Sin cookies de tracking ni analytics de terceros.
+- **Anonimización de estadísticas**: los datos de escaneo se agregan sin email ni IP para estadísticas de comunidad. Nunca se publican datos identificables.
 
 ## 9. Transferencias internacionales
 
