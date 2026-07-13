@@ -119,28 +119,7 @@ export function startAlertsCron(port: number): void {
     
     for (const u of users) {
       try {
-        // 1. Detectar IP actual (puede haber cambiado)
-        const currentIpRes = await fetch(`http://localhost:${port}/api/ip/detect`);
-        const currentIpData = await currentIpRes.json();
-        const currentIp = currentIpData.ip;
-        
-        // Si la IP cambio significativamente, alertar y saltar escaneo detallado
-        if (currentIp !== u.ipAddress) {
-          const lastIpAlert = authDb.getLastAlertTime(u.email, 'ip_change');
-          if (!lastIpAlert || Date.now() - lastIpAlert > 24 * 60 * 60 * 1000) {
-            await sendEmail({
-              to: u.email,
-              subject: 'MyIP: Tu IP pública ha cambiado',
-              text: `Tu IP pública ha cambiado de ${u.ipAddress} a ${currentIp}. MyIP actualizará tu registro automáticamente.`,
-              html: `<p>Tu IP pública ha cambiado de <strong>${u.ipAddress}</strong> a <strong>${currentIp}</strong>.</p>`
-            });
-            authDb.logAlert(u.email, 'ip_change', `IP changed from ${u.ipAddress} to ${currentIp}`);
-            authDb.updateUserFields(u.email, { ipAddress: currentIp });
-          }
-          continue;
-        }
-
-        // 2. Escanear IP actual
+        // 1. Escanear IP guardada del usuario
         const res = await fetch(`http://localhost:${port}/api/scan`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
