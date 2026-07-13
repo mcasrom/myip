@@ -64,3 +64,17 @@ export interface SecurityGuide {
   recommendation: string;
   difficulty: 'Fácil' | 'Medio' | 'Avanzado';
 }
+
+export interface AnonymizedStats {
+  avgScore: number | null;
+  totalScans: number;
+  distribution: { green: number; yellow: number; red: number };
+  topExposedPorts: { port: number; count: number; percentage: number }[];
+  blacklistRate: number;
+}
+
+export interface WeeklyTrend {
+  week: string;
+  avgScore: number;
+  scanCount: number;
+}

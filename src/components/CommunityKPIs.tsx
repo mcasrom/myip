@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, Scan, AlertTriangle, Users, Activity } from 'lucide-react';
+import { Shield, Scan, AlertTriangle, Users, Activity, Globe, ShieldAlert, TrendingUp } from 'lucide-react';
+import type { AnonymizedStats, WeeklyTrend } from '../types';
 
 interface Distribution {
   green: number;
@@ -12,6 +13,8 @@ export default function CommunityKPIs({ isOnline = true }: { isOnline?: boolean 
   const [counts, setCounts] = useState({ scans: 0, users: 0, threats: 0, premium: 0 });
   const [distribution, setDistribution] = useState<Distribution>({ green: 0, yellow: 0, red: 0 });
   const [fetchError, setFetchError] = useState(false);
+  const [anonStats, setAnonStats] = useState<AnonymizedStats | null>(null);
+  const [trends, setTrends] = useState<WeeklyTrend[]>([]);
 
   useEffect(() => {
     if (!isOnline) {
@@ -27,6 +30,16 @@ export default function CommunityKPIs({ isOnline = true }: { isOnline?: boolean 
         setFetchError(false);
       })
       .catch(() => setFetchError(true));
+
+    fetch('/api/stats/anonymized')
+      .then(r => r.json())
+      .then(d => setAnonStats(d))
+      .catch(() => {});
+
+    fetch('/api/stats/trends')
+      .then(r => r.json())
+      .then(d => setTrends(d.trends || []))
+      .catch(() => {});
   }, [isOnline]);
 
   const animateCounts = (scans: number, users: number, threats: number, premium: number) => {
@@ -179,6 +192,107 @@ export default function CommunityKPIs({ isOnline = true }: { isOnline?: boolean 
               </p>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Anonymized Community Insights (GDPR Art. 89) */}
+      {anonStats && anonStats.totalScans > 0 && (
+        <div className="space-y-4">
+          {/* Top Exposed Ports + Blacklist Rate */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Top Exposed Ports */}
+            <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm">
+              <div className="flex items-center gap-2 mb-4">
+                <Globe className="w-4 h-4 text-indigo-600" />
+                <h3 className="text-sm font-bold text-slate-800">Puertos Más Expuestos</h3>
+              </div>
+              {anonStats.topExposedPorts.length > 0 ? (
+                <div className="space-y-3">
+                  {anonStats.topExposedPorts.slice(0, 5).map((p) => (
+                    <div key={p.port} className="flex items-center gap-3">
+                      <span className="text-xs font-mono font-bold text-slate-700 w-12">:{p.port}</span>
+                      <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-amber-500 rounded-full transition-all duration-700"
+                          style={{ width: `${Math.min(p.percentage * 5, 100)}%` }}
+                        />
+                      </div>
+                      <span className="text-xs font-mono text-slate-500 w-10 text-right">{p.percentage}%</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-slate-400">No se detectaron puertos expuestos en la comunidad.</p>
+              )}
+            </div>
+
+            {/* Blacklist Rate + Quick Stats */}
+            <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm">
+              <div className="flex items-center gap-2 mb-4">
+                <ShieldAlert className="w-4 h-4 text-red-600" />
+                <h3 className="text-sm font-bold text-slate-800">Tasa de Blacklist</h3>
+              </div>
+              <div className="flex items-center justify-center mb-4">
+                <div className="relative w-24 h-24">
+                  <svg width="96" height="96" viewBox="0 0 96 96" className="transform -rotate-90">
+                    <circle cx="48" cy="48" r="36" fill="none" stroke="#e2e8f0" strokeWidth="8" />
+                    <circle cx="48" cy="48" r="36" fill="none"
+                      stroke={anonStats.blacklistRate > 10 ? '#ef4444' : anonStats.blacklistRate > 0 ? '#f59e0b' : '#10b981'}
+                      strokeWidth="8"
+                      strokeDasharray={`${(anonStats.blacklistRate / 100) * 226.2} ${226.2 - (anonStats.blacklistRate / 100) * 226.2}`}
+                      strokeDashoffset="0"
+                      strokeLinecap="round"
+                      className="transition-all duration-1000" />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className={`text-xl font-extrabold font-mono ${anonStats.blacklistRate > 10 ? 'text-red-600' : anonStats.blacklistRate > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                      {anonStats.blacklistRate}%
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <p className="text-xs text-slate-500 text-center">
+                de {anonStats.totalScans} escaneos aparecen en listas negras
+              </p>
+            </div>
+          </div>
+
+          {/* Weekly Trends Sparkline */}
+          {trends.length > 1 && (
+            <div className="bg-gradient-to-br from-slate-50 to-indigo-50 border border-slate-200 rounded-2xl p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <TrendingUp className="w-4 h-4 text-indigo-600" />
+                <h3 className="text-sm font-bold text-slate-800">Tendencia Semanal</h3>
+              </div>
+              <div className="flex items-end gap-1 h-16">
+                {[...trends].reverse().map((t, i) => {
+                  const height = Math.max((t.avgScore / 100) * 100, 10);
+                  const isLast = i === trends.length - 1;
+                  return (
+                    <div key={t.week} className="flex-1 flex flex-col items-center gap-1">
+                      <div
+                        className={`w-full rounded-t transition-all duration-500 ${isLast ? 'bg-indigo-600' : 'bg-indigo-300'}`}
+                        style={{ height: `${height}%` }}
+                      />
+                      <span className="text-[8px] text-slate-400 font-mono">{t.week.slice(5)}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="flex items-center justify-between mt-2 text-[10px] text-slate-500">
+                <span>{trends[trends.length - 1]?.week} → {trends[0]?.week}</span>
+                <span className="font-mono font-bold">
+                  {trends.length > 1
+                    ? `${trends[trends.length - 1]?.avgScore} → ${trends[0]?.avgScore}`
+                    : `${trends[0]?.avgScore}`}
+                </span>
+              </div>
+            </div>
+          )}
+
+          <p className="text-[10px] text-slate-400 text-center">
+            Datos anonimizados (sin email ni IP) · Art. 89 RGPD
+          </p>
         </div>
       )}
     </div>
