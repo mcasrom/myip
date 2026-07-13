@@ -541,7 +541,7 @@ function HeaderAnalyzer() {
 
 // --- Main Component ---
 
-export default function AdvancedTools() {
+export default function AdvancedTools({ onNavigate }: { onNavigate?: (tab: string) => void }) {
   // State for DNS Leak
   const [dnsStatus, setDnsStatus] = useState<'idle' | 'running' | 'success' | 'warning' | 'error'>('idle');
   const [dnsResult, setDnsResult] = useState<{ message: string; details?: string } | null>(null);
@@ -738,7 +738,7 @@ function IPReputation() {
         <p className="text-indigo-100 text-sm mb-4 max-w-xl mx-auto">
           Estas herramientas son manuales. Con MyIP Premium, automatizamos estos escaneos y te alertamos por email si detectamos cambios o riesgos.
         </p>
-        <button className="bg-white text-indigo-700 font-bold py-2.5 px-6 rounded-xl text-sm hover:bg-indigo-50 transition-colors flex items-center gap-2 mx-auto">
+        <button onClick={() => onNavigate?.('profile')} className="bg-white text-indigo-700 font-bold py-2.5 px-6 rounded-xl text-sm hover:bg-indigo-50 transition-colors flex items-center gap-2 mx-auto">
           Ver Planes Premium <ArrowRight className="w-4 h-4" />
         </button>
       </div>

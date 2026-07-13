@@ -1820,7 +1820,7 @@ export default function App() {
         {/* TAB: ADVANCED TOOLS */}
         {activeTab === 'advanced' && (
           user?.isPremium ? (
-            <AdvancedTools />
+            <AdvancedTools onNavigate={(tab) => setActiveTab(tab as any)} />
           ) : (
             <div className="max-w-2xl mx-auto text-center py-12 px-4">
               <div className="bg-white border border-slate-200 rounded-3xl p-8 shadow-lg">
