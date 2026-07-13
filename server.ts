@@ -1469,6 +1469,27 @@ app.get('/api/stats/user', (req, res) => {
   res.json(userStats);
 });
 
+// Estadísticas anonimizadas (GDPR Art. 89 — sin PII)
+app.get('/api/stats/anonymized', (req, res) => {
+  try {
+    const stats = authDb.getAnonymizedStats();
+    res.json(stats);
+  } catch (e) {
+    console.error('Error fetching anonymized stats:', e);
+    res.status(500).json({ error: 'No se pudieron obtener las estadísticas anonimizadas' });
+  }
+});
+
+app.get('/api/stats/trends', (req, res) => {
+  try {
+    const trends = authDb.getWeeklyTrends();
+    res.json({ trends });
+  } catch (e) {
+    console.error('Error fetching weekly trends:', e);
+    res.status(500).json({ error: 'No se pudieron obtener las tendencias semanales' });
+  }
+});
+
 // Advanced Tools: DNS Leak Test
 app.get('/api/tools/dns-leak', (req, res) => {
   const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'Unknown';
