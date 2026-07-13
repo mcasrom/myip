@@ -1412,6 +1412,7 @@ ${score === 'green' ? '- **Mantenimiento**: Realiza escaneos periódicos para ve
       if (prevHistory.length > 0) {
         const prev = prevHistory[0] as any;
         const cmp = compareScans(prev, {
+          score_numeric: scoreNumeric,
           ports_json: JSON.stringify(enrichedPorts),
           reputation_json: JSON.stringify(reputation),
         });
