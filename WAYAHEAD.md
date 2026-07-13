@@ -2130,7 +2130,7 @@ Auditoria externa recibida con criticas sobre GDPR/LOPDGDD parcial, falta de pol
 1. **myip score-drop falso** (`server.ts:1414`): `compareScans` recibia `curr` sin `score_numeric` → fallback a `scoreToNumeric(undefined)` = 50 → alerta falsa "bajo de 100 a 50". Fix: pasar `score_numeric: scoreNumeric` al objeto `curr`. Commit `c560224`.
 2. **georisk invisible**: Nginx `location /` apuntaba a puerto 3005 (vacio), Streamlit escucha en 3002. Fix: `sed` en nginx config, reload. ✅
 3. **ireadit roto**: `dist/` sin build en server + `BookReviews.tsx` importado pero no existe en repo. Fix: creado stub + `npm run build` + restart PM2. ✅ (3 restarts)
-4. **myip interlink perdido**: Boton "Ver Planes Premium" en `AdvancedTools.tsx` sin `onClick`. Fix: añadido prop `onNavigate` + callback a `setActiveTab('profile')` en App.tsx. Pendiente build + deploy.
+4. **myip interlink perdido**: Boton "Ver Planes Premium" en `AdvancedTools.tsx` sin `onClick`. Fix: añadido prop `onNavigate` + callback a `setActiveTab('profile')` en App.tsx. ✅ Deployed.
 
 ### Estado servidor
 - RAM: 1.6GB/3.7GB (43%) | CPU: 91% idle | Disco: 24GB/38GB (67%)
@@ -2139,7 +2139,6 @@ Auditoria externa recibida con criticas sobre GDPR/LOPDGDD parcial, falta de pol
 - myip server sync: `git pull` aplicado, en `c560224` ✅
 
 ### Pendientes
-- [ ] Build + deploy fix interlink AdvancedTools
 - [ ] Sprint E: Exportar PDF
 - [ ] Sprint C: Blog SEO
 - [ ] CSP reconfigurar
