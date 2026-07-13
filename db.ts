@@ -285,9 +285,9 @@ export function getAnonymizedStats(): {
 
   // Puertos más expuestos (sin vincular a IP/email)
   const portRows = db.prepare(`
-    SELECT port, COUNT(*) as count
+    SELECT json_extract(value, '$.port') as port, COUNT(*) as count
     FROM scan_history, json_each(ports_json)
-    WHERE json_each.value LIKE '%"open"%'
+    WHERE json_extract(value, '$.status') = 'open'
     GROUP BY port
     ORDER BY count DESC
     LIMIT 10
