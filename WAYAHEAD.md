@@ -2146,38 +2146,37 @@ Auditoria externa recibida con criticas sobre GDPR/LOPDGDD parcial, falta de pol
 - [ ] 7 explicaciones portDefinitions faltantes
 - [ ] sendEmail duplicado (alerts.ts + server.ts)
 
-## Sesión 2026-07-13 (tarde) — Anonimización de estadísticas (GDPR Art. 89)
+## Sesión 2026-07-13 (tarde) — Anonimización de estadísticas (GDPR Art. 89) — CERRADO
 
 ### Contexto
 Pregunta de Miguel: ¿es viable/legal analizar datos de escaneo (estadísticas, clustering) si decimos "no retenemos datos"?
 
 ### Solución implementada
-- **db.ts**: Nuevas funciones `getAnonymizedStats()` y `getWeeklyTrends()` — devuelven estadísticas SIN PII (sin email, sin IP):
-  - Media de score, distribución green/yellow/red
-  - Top 10 puertos más expuestos (con porcentaje)
-  - Tasa de blacklists (% de escaneos con al menos 1 blacklist)
-  - Tendencia semanal (últimas 12 semanas)
-- **legal.ts**: Privacy policy actualizada para ser honesta:
-  - Sección 2.4: "Datos anonimizados para estadísticas" — explica qué se hace y base legal (Art. 89 RGPD)
-  - Sección 3: Finalidad ampliada con "datos agregados y anónimos"
-  - Sección 5: Conservación de datos anonimizados indefinidamente (legal bajo Art. 89)
-  - Sección 8: Mención de anonimización en seguridad
+- **db.ts**: Nuevas funciones `getAnonymizedStats()` + `getWeeklyTrends()` — devuelven estadísticas SIN PII (sin email, sin IP)
+- **server.ts**: Endpoints `/api/stats/anonymized` + `/api/stats/trends` expuestos
+- **legal.ts**: Privacy policy actualizada para ser honesta sobre datos anonimizados (Art. 89 RGPD)
+- **CommunityKPIs.tsx**: UI integrada en Home con:
+  - Puertos más expuestos (barras de progreso con %)
+  - Tasa de blacklist (donut chart)
+  - Tendencia semanal (bar chart sparkline)
+  - Nota "Datos anonimizados · Art. 89 RGPD"
 
 ### Legalidad confirmada
-- ✅ **Art. 89 RGPD**: Procesamiento estadístico con datos anonimizados NO requiere consentimiento
-- ✅ **Sin PII**: Las funciones nuevas NO devuelven email, IP, ni datos identificables
-- ✅ **Privacy policy honesta**: Ya no dice "no retenemos datos" — dice "anonimizamos para estadísticas"
-- ✅ **Cero roturas**: Funciones existentes intactas, solo se añadieron nuevas
+- ✅ Art. 89 RGPD: Estadísticas con datos anonimizados = legal sin consentimiento
+- ✅ Sin PII: Las funciones NO devuelven email, IP ni datos identificables
+- ✅ Privacy policy honesta: Ya no dice "no retenemos datos" — dice "anonimizamos para estadísticas"
+- ✅ Cero roturas: Funciones existentes intactas
+
+### Datos reales de producción
+- 115 escaneos, media 98/100, 100% green
+- Puerto 443 expuesto en 3% de escaneos
+- Blacklist rate: 0%
+- Tendencia: Semana 27 → 99/100, Semana 28 → 91/100
 
 ### Qué se puede hacer ahora (legalmente)
-- Estadísticas de comunidad (ya existe)
-- "X% de usuarios tienen puerto 22 expuesto" (nuevo, con getAnonymizedStats)
-- Tendencia de scores semanales (nuevo, con getWeeklyTrends)
-- **NO** clustering por usuario (requiere opt-in explícito, Art. 6(1)(a))
-- **NO** ML con datos identificables (requiere opt-in explícito)
-
-### Pendiente próximo paso
-- Añadir endpoints `/api/stats/anonymized` y `/api/stats/trends` en server.ts (funciones ya existen en db.ts) ✅ DONE
-- Si se quiere clustering/ML: implementar opt-in explícito (checkbox en registro/escaneo)
+- Estadísticas de comunidad ✅
+- "X% de usuarios tienen puerto Y expuesto" ✅
+- Tendencia semanal de scores ✅
+- **Clustering/ML**: Requiere opt-in explícito (checkbox) — NO implementado aún
 
 ---
