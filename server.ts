@@ -1447,6 +1447,68 @@ app.get('/api/security/kpis', (req, res) => {
   }
 });
 
+// ──────────────────────────────────────────────
+// Threat Map SSE + snapshots (fail2ban en tiempo real)
+// ──────────────────────────────────────────────
+const THREAT_NOTIFY_SECRET = process.env.THREAT_NOTIFY_SECRET || 'gen-fail2ban-secret';
+const sseClients: Set<import('express').Response> = new Set();
+
+// SSE endpoint — clientes se conectan y reciben eventos en tiempo real
+app.get('/api/threat/events', (req, res) => {
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'X-Accel-Buffering': 'no',
+  });
+  res.write('data: {"connected":true}\n\n');
+  sseClients.add(res);
+  console.log(`[SSE] Cliente conectado (total: ${sseClients.size})`);
+  req.on('close', () => {
+    sseClients.delete(res);
+    console.log(`[SSE] Cliente desconectado (total: ${sseClients.size})`);
+  });
+});
+
+// Notify — el script gen-fail2ban-geo.sh llama aquí tras generar nuevo JSON
+app.post('/api/threat/notify', (req, res) => {
+  const { secret, total_ips, total_bans } = req.body;
+  if (secret !== THREAT_NOTIFY_SECRET) {
+    return res.status(403).json({ error: 'Invalid secret' });
+  }
+  const payload = JSON.stringify({ updated: true, total_ips, total_bans, timestamp: Date.now() });
+  let count = 0;
+  sseClients.forEach(client => {
+    try {
+      client.write(`data: ${payload}\n\n`);
+      count++;
+    } catch { sseClients.delete(client); }
+  });
+  console.log(`[NOTIFY] broadcast a ${count} clientes: ${total_ips} IPs, ${total_bans} bans`);
+  res.json({ ok: true, clients: count });
+});
+
+// Lista de snapshots disponibles para el timeline
+app.get('/api/threat/timeline', (req, res) => {
+  const fs = require('fs');
+  const path = require('path');
+  const snapDir = process.env.SNAP_DIR || '/app/data/snapshots';
+  try {
+    if (!fs.existsSync(snapDir)) return res.json({ snapshots: [] });
+    const files = fs.readdirSync(snapDir)
+      .filter((f: string) => f.endsWith('.json'))
+      .sort()
+      .map((f: string) => ({
+        file: f,
+        data: JSON.parse(fs.readFileSync(path.join(snapDir, f), 'utf-8')),
+        mtime: fs.statSync(path.join(snapDir, f)).mtimeMs
+      }));
+    res.json({ snapshots: files });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.get('/api/stats/community', (req, res) => {
   const stats = authDb.getSystemStats();
   const community = authDb.getCommunityStats();
