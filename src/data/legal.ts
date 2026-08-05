@@ -13,22 +13,15 @@ myip ofrece diagnóstico de red y monitorización de seguridad sobre la IP públ
 
 ## 3. Planes y precios
 
-- **Plan Gratuito**: funcionalidades básicas de diagnóstico, sin coste.
-- **Plan SysAdmin Pro**: 4,99€/mes, renovación automática.
-- **Plan Hogar**: 9,99€, pago único (acceso de por vida, sin renovación).
-- **Plan Consultores (Marca Blanca)**: próximamente disponible.
+MyIP es **completamente gratuito**. No existen planes de pago, suscripciones ni precios. Los costes de servidor, dominio e IA se cubren mediante **donaciones voluntarias** de los usuarios (Ko-fi: https://ko-fi.com/m_castillo). No se realiza ningún cobro ni procesamiento de tarjetas.
 
-Los precios se muestran en euros (EUR), impuestos incluidos cuando aplique. Nos reservamos el derecho de modificar precios para nuevos periodos de facturación; los cambios se notificarán con al menos 15 días de antelación a suscriptores activos y nunca afectarán a un periodo ya cobrado.
+## 4. Facturación
 
-## 4. Facturación y renovación
-
-Las suscripciones del Plan SysAdmin Pro se cobran de forma recurrente mensual a través de Stripe, con renovación automática al final de cada periodo salvo cancelación previa por parte del usuario. El Plan Hogar es un pago único sin renovación ni cobros recurrentes.
+Al no existir planes de pago ni suscripciones, MyIP no realiza facturación, no almacena datos de tarjetas ni procesa pagos. Las donaciones vía Ko-fi se gestionan por la propia plataforma Ko-fi y son voluntarias.
 
 ## 5. Cancelación y reembolsos
 
-El usuario puede cancelar su suscripción del Plan SysAdmin Pro en cualquier momento desde su panel de cuenta. La cancelación surte efecto **al final del periodo de facturación en curso**: el usuario conserva el acceso Pro hasta esa fecha y no se realizan cargos posteriores.
-
-**No se realizan reembolsos** de periodos ya iniciados o cobrados, incluidos casos de cancelación anticipada dentro de un periodo mensual ya pagado. El Plan Hogar, al ser un pago único, no es reembolsable una vez completada la compra. Recomendamos probar el plan gratuito antes de suscribirse.
+Al no existir suscripciones ni pagos, no hay cancelaciones ni reembolsos que gestionar. Todo el servicio es gratuito.
 
 ## 6. Uso aceptable
 
@@ -74,11 +67,11 @@ No. El sistema detecta automáticamente tu IP pública a partir de la petición 
 ### ¿Es legal usar myip?
 Sí. Solo audita tu propia IP pública mediante comprobaciones pasivas y activas de bajo impacto (equivalentes a un diagnóstico de salud de red), no accede a sistemas ajenos ni realiza explotación de vulnerabilidades. Más detalle en la pestaña "Marco Legal y Cumplimiento".
 
-### ¿Qué diferencia hay entre el plan Gratuito y SysAdmin Pro?
-El plan gratuito incluye diagnóstico básico bajo demanda, detección de vulnerabilidades CVE en puertos abiertos y acceso al historial de escaneos con grafico de evolucion. SysAdmin Pro (4,99€/mes) añade monitorizacion recurrente, alertas por email cuando se detectan cambios o exposiciones nuevas, exportacion de reportes PDF y acceso a herramientas avanzadas. Tambien esta disponible el plan Hogar (9,99€, pago unico de por vida).
+### ¿MyIP tiene versión de pago?
+No. MyIP es **completamente gratuito**: todas las funcionalidades (diagnóstico, escaneo, alertas, reportes, historial) están disponibles sin coste. Si te resulta útil, puedes apoyar el proyecto con una donación voluntaria en Ko-fi (https://ko-fi.com/m_castillo).
 
 ### ¿Cómo cancelo mi suscripción?
-Desde tu panel de cuenta, en cualquier momento. El acceso Pro se mantiene hasta el final del periodo ya pagado; no se realizan cargos adicionales tras la cancelación.
+No hay suscripciones que cancelar: MyIP es gratuito. Si quieres dejar de apoyarlo, simplemente deja de donar en Ko-fi.
 
 ### ¿Hacéis reembolsos?
 No ofrecemos reembolsos de periodos ya cobrados. Puedes probar el plan gratuito antes de suscribirte para asegurarte de que el servicio encaja con lo que necesitas.
@@ -156,7 +149,7 @@ SIEG, con domicilio de contacto en Murcia, España. Email: [threatradar-myip@via
 ## 6. Destinatarios
 
 No compartimos datos personales con terceros, excepto:
-- **Stripe**: para procesamiento de pagos (sujeto a su propia política de privacidad).
+- **Ko-fi**: para donaciones voluntarias (sujeto a su propia política de privacidad).
 - **Resend**: para envío de emails de alerta (sujeto a su propia política de privacidad).
 - **Obligación legal**: si somos requeridos por autoridad competente.
 
