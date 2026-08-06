@@ -19,7 +19,7 @@
 
 ## Backlog priorizado
 1. **Sprint 6 — Exportar Reporte PDF** (prioridad alta) → detallado abajo.
-2. **Sprint C — Blog técnico SEO** (continuo): guías "Qué son los CVE", "Cómo interpretar vulnerabilidades", etc.
+2. **Sprint C — Blog técnico SEO** ✅ (06-Ago): 3 nuevas guías (7 puertos más atacados · DNSBL/blacklist · escaneo de puertos) + duplicado PWA eliminado → **13 guías**. Commit `37eabfc`. (Continuo: más contenido SEO a demanda.)
 3. **CSP reconfigurar** (seguridad del frontend).
 4. **7 explicaciones `portDefinitions` faltantes** (mejorar recomendaciones).
 5. ~~**`sendEmail` duplicado**~~ → **unificado** (exportado de alerts.ts).
