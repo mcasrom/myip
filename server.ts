@@ -13,7 +13,7 @@ import { spawn } from 'child_process';
 import { createHash } from 'crypto';
 import cookieParser from 'cookie-parser';
 import * as authDb from './db';
-import { startAlertsCron, compareScans } from './alerts';
+import { startAlertsCron, compareScans, sendEmail } from './alerts';
 import { isCommonPassword } from './src/utils/passwordBloom.js';
 import PDFDocument from 'pdfkit';
 dotenv.config();
@@ -357,39 +357,6 @@ async function getGeoForIp(ip: string): Promise<any> {
 // ============================================================================
 // Mail Sending via Resend API (no SMTP, no Gmail exposure)
 // Free tier: 3,000 emails/month
-// Get API key: https://resend.com/api-keys
-// ============================================================================
-async function sendEmail({ to, subject, text, html }: { to: string; subject: string; text: string; html?: string }): Promise<boolean> {
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) {
-    console.log(`[EMAIL] Resend API key no configurada. Email a ${to} no enviado.`);
-    return false;
-  }
-
-  try {
-    const data = await postJson('https://api.resend.com/emails', {
-      from: process.env.RESEND_FROM || 'MyIP <onboarding@resend.dev>',
-      to: [to],
-      subject,
-      text,
-      html,
-    }, {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    });
-
-    if (data?.id) {
-      console.log(`[RESEND] Email enviado a ${to} (ID: ${data.id})`);
-      return true;
-    }
-    console.log(`[RESEND] Error enviando email:`, data);
-    return false;
-  } catch (err) {
-    console.error('[RESEND ERROR]', err);
-    return false;
-  }
-}
-
 // ============================================================================
 // Express App
 // ============================================================================
@@ -972,6 +939,76 @@ app.post('/api/scan', optionalAuth, async (req: any, res) => {
       closedExplanation: 'El puerto VNC (5900) no es accesible desde internet. Correcto para equipos domésticos.',
       closedRecommendation: 'No se requiere acción. Si necesitas acceso remoto, usa una VPN en lugar de exponer VNC.',
       unknownExplanation: 'No se pudo verificar el estado del puerto VNC (5900). Ningún método de escaneo está disponible.',
+      unknownRecommendation: 'Configura Shodan, Censys o nmap para verificar este puerto.',
+    },
+    21: {
+      service: 'FTP (File Transfer Protocol)',
+      openRisk: 'high',
+      openExplanation: 'El puerto FTP (21) está expuesto a internet. FTP transmite usuario y contraseña en texto plano, sin cifrado — fácil de interceptar.',
+      openRecommendation: 'Usa SFTP o FTPS (cifrado) en su lugar. Si no necesitas subir archivos desde internet, ciérralo en el firewall.',
+      closedExplanation: 'El puerto FTP (21) no es accesible desde internet. Correcto.',
+      closedRecommendation: 'No se requiere acción. Si necesitas transferir archivos, usa SFTP (puerto 22) o FTPS.',
+      unknownExplanation: 'No se pudo verificar el estado del puerto FTP (21). Ningún método de escaneo está disponible.',
+      unknownRecommendation: 'Configura Shodan, Censys o nmap para verificar este puerto.',
+    },
+    25: {
+      service: 'SMTP (Correo saliente)',
+      openRisk: 'medium',
+      openExplanation: 'El puerto SMTP (25) está abierto. Si no gestionas tu propio servidor de correo, suele ser innecesario y podría usarse para enviar spam.',
+      openRecommendation: 'Requiere autenticación y restringe quién puede usarlo. Si no envías correo propio, ciérralo.',
+      closedExplanation: 'El puerto SMTP (25) no es accesible desde internet. Correcto.',
+      closedRecommendation: 'No se requiere acción. El correo saliente suele gestionarse por el proveedor del dominio.',
+      unknownExplanation: 'No se pudo verificar el estado del puerto SMTP (25). Ningún método de escaneo está disponible.',
+      unknownRecommendation: 'Configura Shodan, Censys o nmap para verificar este puerto.',
+    },
+    53: {
+      service: 'DNS (Domain Name System)',
+      openRisk: 'medium',
+      openExplanation: 'El puerto DNS (53) está abierto. Un servidor DNS abierto a internet puede usarse en ataques de amplificación (DDoS) y consultas no autorizadas.',
+      openRecommendation: 'Restringe el DNS recursivo solo a tus redes. Usa un bloqueador local (como AdGuardHome) en lugar de exponer un DNS público.',
+      closedExplanation: 'El puerto DNS (53) no es accesible desde internet. Correcto para equipos domésticos.',
+      closedRecommendation: 'No se requiere acción. Si ofreces DNS, restringe quién puede consultarlo.',
+      unknownExplanation: 'No se pudo verificar el estado del puerto DNS (53). Ningún método de escaneo está disponible.',
+      unknownRecommendation: 'Configura Shodan, Censys o nmap para verificar este puerto.',
+    },
+    3389: {
+      service: 'RDP (Escritorio Remoto Windows)',
+      openRisk: 'high',
+      openExplanation: 'El puerto RDP (3389) está expuesto a internet. Es uno de los objetivos más atacados: los bots intentan acceso por fuerza bruta continuamente.',
+      openRecommendation: 'Desactiva el Escritorio Remoto expuesto a internet. Usa una VPN y activa NLA (Network Level Authentication).',
+      closedExplanation: 'El puerto RDP (3389) no es accesible desde internet. Correcto para equipos domésticos.',
+      closedRecommendation: 'No se requiere acción. Si necesitas acceso remoto a Windows, usa una VPN en lugar de exponer RDP.',
+      unknownExplanation: 'No se pudo verificar el estado del puerto RDP (3389). Ningún método de escaneo está disponible.',
+      unknownRecommendation: 'Configura Shodan, Censys o nmap para verificar este puerto.',
+    },
+    5432: {
+      service: 'PostgreSQL Database',
+      openRisk: 'high',
+      openExplanation: 'El puerto PostgreSQL (5432) está expuesto a internet. Cualquiera puede intentar conectarse a tu base de datos.',
+      openRecommendation: 'Cierra este puerto en el firewall. Configura PostgreSQL para escuchar solo en 127.0.0.1 y usa contraseñas fuertes.',
+      closedExplanation: 'El puerto PostgreSQL (5432) no es accesible desde internet. Tu base de datos está protegida.',
+      closedRecommendation: 'No se requiere acción. Las bases de datos nunca deben exponerse al internet público.',
+      unknownExplanation: 'No se pudo verificar el estado del puerto PostgreSQL (5432). Ningún método de escaneo está disponible.',
+      unknownRecommendation: 'Configura Shodan, Censys o nmap para verificar este puerto.',
+    },
+    6379: {
+      service: 'Redis (Cache de datos)',
+      openRisk: 'high',
+      openExplanation: 'El puerto Redis (6379) está expuesto a internet. Redis suele ejecutarse sin autenticación: cualquiera podría leer o borrar tus datos en caché.',
+      openRecommendation: 'Activa la autenticación de Redis y haz que escuche solo en 127.0.0.1. Cierra el puerto en el firewall.',
+      closedExplanation: 'El puerto Redis (6379) no es accesible desde internet. Correcto.',
+      closedRecommendation: 'No se requiere acción. Mantén Redis solo accesible desde tu red local.',
+      unknownExplanation: 'No se pudo verificar el estado del puerto Redis (6379). Ningún método de escaneo está disponible.',
+      unknownRecommendation: 'Configura Shodan, Censys o nmap para verificar este puerto.',
+    },
+    27017: {
+      service: 'MongoDB Database',
+      openRisk: 'high',
+      openExplanation: 'El puerto MongoDB (27017) está expuesto a internet. Sin autenticación, cualquiera podría leer o borrar tu base de datos — objetivo habitual de ransomware.',
+      openRecommendation: 'Activa la autenticación de MongoDB, haz que escuche solo en 127.0.0.1 y cierra el puerto en el firewall.',
+      closedExplanation: 'El puerto MongoDB (27017) no es accesible desde internet. Tu base de datos está protegida.',
+      closedRecommendation: 'No se requiere acción. Las bases de datos nunca deben exponerse al internet público.',
+      unknownExplanation: 'No se pudo verificar el estado del puerto MongoDB (27017). Ningún método de escaneo está disponible.',
       unknownRecommendation: 'Configura Shodan, Censys o nmap para verificar este puerto.',
     },
     23: {

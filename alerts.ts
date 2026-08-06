@@ -28,7 +28,7 @@ function postJson(url: string, body: any, headers: Record<string, string> = {}):
   });
 }
 
-async function sendEmail({ to, subject, text, html }: { to: string; subject: string; text: string; html?: string }): Promise<boolean> {
+export async function sendEmail({ to, subject, text, html }: { to: string; subject: string; text: string; html?: string }): Promise<boolean> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
     console.log(`[EMAIL] Resend API key no configurada. Email a ${to} no enviado.`);
