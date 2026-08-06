@@ -4,7 +4,8 @@
 **Live**: https://myip.viajeinteligencia.com · **Repo**: https://github.com/mcasrom/myip
 **Monetización**: NINGUNA — **100% gratuito**, mantenimiento por **donaciones voluntarias Ko-fi** (https://ko-fi.com/m_castillo). Stripe eliminado (06-Ago-2026).
 
-## Estado actual (06-Ago-2026)
+## Estado actual (06-Ago-2026, noche)
+- **Fixes aplicados y en vivo**: botón Ko-fi compacto 46px (causa: CSP nginx bloqueaba estilos inline, corregida) · tarjeta 'Usuarios Premium' (NaN) eliminada + refs premium de la UI · historial por usuario verificado (requiere login) · WAYAHEAD limpio + session-log archivado. Commit .
 - **En producción**: Docker `myip-server` (puerto 3004, healthy, límite 512MB — usa ~76MB). PM2 `myip` redundante eliminado.
 - **Git**: sincronizado con `origin/main` (`d1656c0`). Existe **WIP local sin commitear** (refactor "todo free": Snapshots Timeline, ThreatMap/heatmap, SSE push, SupportPanel Ko-fi, auth updates).
 - **Sin rastro de Stripe**: código, `.env`, `.env.example`, dependencia y `stripe.env` limpios. `legal.ts` consistente (gratuito + Ko-fi).
