@@ -76,12 +76,6 @@ export default function AuthSection({ user, onLoginSuccess, onLogout, canInstall
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   
-  // Premium code redemption
-  const [redeemCode, setRedeemCode] = useState('');
-  const [redeemLoading, setRedeemLoading] = useState(false);
-  const [redeemMsg, setRedeemMsg] = useState<string | null>(null);
-  const [redeemMsgType, setRedeemMsgType] = useState<'success' | 'error'>('error');
-
   // Password strength calculation
   const pwStrength = getPasswordStrength(password);
   const strengthScore = pwStrength.score;
@@ -188,47 +182,6 @@ export default function AuthSection({ user, onLoginSuccess, onLogout, canInstall
     }
   };
 
-  // Redeem premium code
-  const handleRedeemCode = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!redeemCode.trim()) { 
-      setRedeemMsg('Introduce un código.'); 
-      setRedeemMsgType('error'); 
-      return; 
-    }
-    if (!user?.email) {
-      setRedeemMsg('Debes iniciar sesión primero.'); 
-      setRedeemMsgType('error'); 
-      return;
-    }
-    
-    setRedeemLoading(true);
-    setRedeemMsg(null);
-    
-    try {
-      const res = await fetch('/api/premium/redeem-code', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: user.email, code: redeemCode })
-      });
-      const data = await res.json();
-      if (!res.ok) { 
-        setRedeemMsg(data.error); 
-        setRedeemMsgType('error'); 
-        return; 
-      }
-      setRedeemMsg(data.message); 
-      setRedeemMsgType('success');
-      onLoginSuccess(data.user);
-      setRedeemCode('');
-    } catch { 
-      setRedeemMsg('Error de conexión.'); 
-      setRedeemMsgType('error'); 
-    } finally {
-      setRedeemLoading(false);
-    }
-  };
-
   return (
     <div className="grid grid-cols-1 md:grid-cols-12 gap-6 lg:gap-8 items-start text-slate-800">
 
@@ -267,7 +220,7 @@ export default function AuthSection({ user, onLoginSuccess, onLogout, canInstall
             </span>
           </div>
           <p className="text-xs text-slate-600 leading-relaxed">
-            Cada escaneo consume recursos reales: consultas a APIs de seguridad (Shodan, AbuseIPDB, DNSBL), análisis de IA (Gemini/Grok) y ancho de banda. Los límites gratuitos protegen al servidor de abusos automatizados. Si necesitas más escaneos, crea una cuenta o adquiere Premium.
+            Cada escaneo consume recursos reales: consultas a APIs de seguridad (Shodan, AbuseIPDB, DNSBL), análisis de IA (Gemini/Grok) y ancho de banda. Los límites gratuitos protegen al servidor de abusos automatizados. Crea una cuenta para guardar tu historial de escaneos.
           </p>
         </div>
       </div>
@@ -436,12 +389,6 @@ export default function AuthSection({ user, onLoginSuccess, onLogout, canInstall
                 <span className="font-mono text-indigo-600 font-bold">{user.ipAddress}</span>
               </div>
               <div className="flex justify-between text-xs text-slate-600">
-                <span>Plan:</span>
-                <span className={`font-bold ${user.isPremium ? 'text-amber-600' : 'text-slate-500'}`}>
-                  {user.isPremium ? 'Premium 👑' : 'Gratuito'}
-                </span>
-              </div>
-              <div className="flex justify-between text-xs text-slate-600">
                 <span>Escaneos realizados:</span>
                 <span className="font-mono text-slate-700 font-semibold">{user.scanCount}</span>
               </div>
@@ -473,36 +420,6 @@ export default function AuthSection({ user, onLoginSuccess, onLogout, canInstall
                 >
                   Ver instrucciones manuales
                 </button>
-              </div>
-            )}
-
-            {/* Redeem Code Section - Only show if not premium */}
-            {!user.isPremium && (
-              <div className="bg-indigo-50/50 border border-indigo-100 rounded-xl p-4 space-y-3">
-                <h4 className="text-xs font-bold text-indigo-800 flex items-center gap-1.5">
-                  <Key className="w-3.5 h-3.5" /> ¿Tienes un código Premium?
-                </h4>
-                <form onSubmit={handleRedeemCode} className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="Introduce tu código"
-                    value={redeemCode}
-                    onChange={(e) => setRedeemCode(e.target.value.toUpperCase())}
-                    className="flex-1 bg-white border border-indigo-200 rounded-lg px-3 py-2 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                  />
-                  <button
-                    type="submit"
-                    disabled={redeemLoading}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-3 rounded-lg text-xs transition disabled:opacity-50"
-                  >
-                    {redeemLoading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : 'Activar'}
-                  </button>
-                </form>
-                {redeemMsg && (
-                  <p className={`text-[10px] font-mono ${redeemMsgType === 'success' ? 'text-emerald-600' : 'text-rose-500'}`}>
-                    {redeemMsg}
-                  </p>
-                )}
               </div>
             )}
 

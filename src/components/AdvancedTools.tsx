@@ -736,10 +736,10 @@ function IPReputation() {
       <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-2xl p-6 sm:p-8 text-center text-white shadow-lg">
         <h3 className="text-lg font-bold mb-2">¿Necesitas monitoreo 24/7?</h3>
         <p className="text-indigo-100 text-sm mb-4 max-w-xl mx-auto">
-          Estas herramientas son manuales. Con MyIP Premium, automatizamos estos escaneos y te alertamos por email si detectamos cambios o riesgos.
+          Estas herramientas son manuales. Con una cuenta gratuita, automatizamos estos escaneos y te alertamos por email si detectamos cambios o riesgos.
         </p>
         <button onClick={() => onNavigate?.('profile')} className="bg-white text-indigo-700 font-bold py-2.5 px-6 rounded-xl text-sm hover:bg-indigo-50 transition-colors flex items-center gap-2 mx-auto">
-          Ver Planes Premium <ArrowRight className="w-4 h-4" />
+          Crear cuenta gratuita <ArrowRight className="w-4 h-4" />
         </button>
       </div>
     </div>

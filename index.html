@@ -50,6 +50,17 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css"/>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.heat/0.2.0/leaflet-heat.js"></script>
+    <style>
+      .kofi-fixed {
+        position: fixed; bottom: 18px; right: 18px; z-index: 9999;
+        width: 46px; height: 46px;
+        background: #ff5e5b; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        box-shadow: 0 3px 10px rgba(0,0,0,.35);
+        transition: transform .2s, box-shadow .2s;
+      }
+      .kofi-fixed:hover { transform: scale(1.08); box-shadow: 0 4px 14px rgba(0,0,0,.45); }
+    </style>
   </head>
   <body>
     <div id="root"></div>
@@ -65,5 +76,8 @@
         });
       }
     </script>
-  </body>
+<a href="https://ko-fi.com/m_castillo" target="_blank" rel="noopener noreferrer" class="kofi-fixed" title="Invítame un café en Ko-fi" aria-label="Apoya MyIP en Ko-fi">
+  <svg class="w-6 h-6" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M23.881 8.948c-.773-4.085-4.859-4.593-4.859-4.593H.723c-.604 0-.679.798-.679.798s-.082 7.324-.026 11.822c.033 2.568 2.289 4.336 4.785 4.336h11.552c4.232 0 6.327-2.733 6.327-2.733s3.267-3.443 3.199-7.63zm-6.724 5.048c-.595 1.028-1.952 1.414-2.952 1.414H7.635c-.999 0-1.807-.386-1.807-.386s-.79-1.183-1.184-2.651c-.272-.994-.272-1.68-.272-1.68h12.315s.54 1.847-.54 3.303z"/></svg>
+</a>
+</body>
 </html>

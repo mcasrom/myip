@@ -286,17 +286,16 @@ export default function HowToGuides() {
 
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 border-t border-white/10">
             <p className="text-xs text-slate-400">
-              <span className="text-amber-400 font-bold">Premium</span> — Acceso ilimitado a todas las herramientas
+              <span className="text-emerald-400 font-bold">100% gratuito</span> — todas las herramientas avanzadas, sin coste ni registro
             </p>
             <button
               onClick={() => {
-                // Navigate to profile/upgrade section
-                const event = new CustomEvent('myip-navigate', { detail: { tab: 'profile' } });
+                const event = new CustomEvent('myip-navigate', { detail: { tab: 'advanced' } });
                 window.dispatchEvent(event);
               }}
-              className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-lg transition-all flex items-center gap-2"
+              className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-lg transition-all flex items-center gap-2"
             >
-              Acceder con Premium <ArrowRight className="w-3.5 h-3.5" />
+              Probar Herramientas Avanzadas <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>

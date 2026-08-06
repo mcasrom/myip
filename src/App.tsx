@@ -30,7 +30,6 @@ import RadarScanner from './components/RadarScanner';
 import TrafficLight from './components/TrafficLight';
 import HowToGuides from './components/HowToGuides';
 import AuthSection from './components/AuthSection';
-import UpgradePanel from './components/UpgradePanel';
 import MarkdownRenderer from './components/MarkdownRenderer';
 import { tosContent, faqContent, privacyContent, cookieContent } from './data/legal';
 import PWAInstallBanner from './components/PWAInstallBanner';
@@ -73,10 +72,7 @@ export default function App() {
   const [legalConsentAccepted, setLegalConsentAccepted] = useState<boolean>(true);
   const [shareCopied, setShareCopied] = useState<boolean>(false);
   
-  // Premium simulations
-  const [premiumAlerts, setPremiumAlerts] = useState<any[]>([]);
-  const [reportSending, setReportSending] = useState<boolean>(false);
-  const [reportMessage, setReportMessage] = useState<string | null>(null);
+  // Premium simulations (removed - all features are now free)
 
   // Notifications banner
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'warning' | 'info' } | null>(null);
@@ -138,10 +134,8 @@ export default function App() {
       const DEV_EMAIL = 'miguel@dev.com';
       const DEV_PASSWORD = 'DevPass2026!';
       const applyUser = (data: any) => {
-        if (data.user?.isPremium) {
-          setUser(data.user);
-          localStorage.setItem('myip_user', JSON.stringify(data.user));
-        }
+        setUser(data.user);
+        localStorage.setItem('myip_user', JSON.stringify(data.user));
       };
       fetch('/api/auth/login', {
         method: 'POST',
@@ -245,56 +239,9 @@ export default function App() {
   // Manual IP input (fallback when auto-detection fails)
   const effectiveIp = detectedIp;
 
-  // Check for Stripe redirect parameters (payment_success or payment_cancel)
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const paymentSuccess = params.get('payment_success') === 'true';
-    const paymentCancel = params.get('payment_cancel') === 'true';
-    const sessionId = params.get('session_id');
+  // Stripe redirect handling removed - all features are now free
 
-    if (paymentSuccess && sessionId) {
-      // Clear query params to make it clean
-      window.history.replaceState({}, document.title, window.location.pathname);
-      
-      triggerToast('Verificando tu pago con Stripe...', 'info');
-      
-      fetch('/api/premium/verify-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId })
-      })
-      .then(res => {
-        if (!res.ok) throw new Error('Error al verificar el pago');
-        return res.json();
-      })
-      .then(data => {
-        if (data.user) {
-          setUser(data.user);
-          triggerToast('¡Pago verificado con éxito! Cuenta Premium activada.', 'success');
-          setActiveTab('profile'); // go to profile/upgrade tab to see premium status
-        }
-      })
-      .catch(err => {
-        console.error('[STRIPE ERROR]', err);
-        triggerToast('Error al verificar tu sesión de pago con Stripe.', 'warning');
-      });
-    } else if (paymentCancel) {
-      window.history.replaceState({}, document.title, window.location.pathname);
-      triggerToast('Pago cancelado. Si tuviste problemas, contáctanos.', 'warning');
-    }
-  }, []);
-
-  // Sync premium alerts when user changes or becomes premium
-  useEffect(() => {
-    if (user && user.isPremium) {
-      fetch('/api/premium/alerts')
-        .then(res => res.json())
-        .then(data => setPremiumAlerts(data))
-        .catch(err => console.error(err));
-    } else {
-      setPremiumAlerts([]);
-    }
-  }, [user]);
+  // Premium alerts removed - all features are now free
 
   const triggerToast = (message: string, type: 'success' | 'warning' | 'info' = 'success') => {
     setToast({ message, type });
@@ -391,11 +338,7 @@ export default function App() {
     triggerToast(`Bienvenido de vuelta, ${loggedInUser.email}`, 'success');
   };
 
-  const handleUpgradeSuccess = (updatedUser: any) => {
-    setUser(updatedUser);
-    localStorage.setItem('myip_user', JSON.stringify(updatedUser));
-    triggerToast('¡Felicidades! Tu cuenta ha sido elevada a Premium 👑', 'success');
-  };
+  // handleUpgradeSuccess removed - all features are now free
 
   const handleLogout = () => {
     setUser(null);
@@ -404,42 +347,7 @@ export default function App() {
     triggerToast('Sesión cerrada correctamente.', 'info');
   };
 
-  // Simulate an alert trigger (Premium only)
-  const handleSimulateAlert = () => {
-    const newAlert = {
-      id: `alert-${Date.now()}`,
-      type: 'SECURITY_ALERT',
-      title: '¡Alerta de Seguridad Crítica!',
-      message: `Se detectó un nuevo puerto expuesto en la IP ${detectedIp} que antes estaba cerrado, o la IP fue añadida a una lista negra reciente. Revisa el detalle del análisis.`,
-      severity: 'critical',
-      time: 'Hace un momento'
-    };
-    setPremiumAlerts(prev => [newAlert, ...prev]);
-    triggerToast('¡Alerta de monitoreo simulada de forma exitosa!', 'warning');
-  };
-
-  // Send email report trigger (Premium only)
-  const handleSendReport = async (type: string) => {
-    if (!user) return;
-    setReportSending(true);
-    setReportMessage(null);
-
-    try {
-      const res = await fetch('/api/premium/send-report', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: user.email, reportType: type, scanData: scanResult })
-      });
-      const data = await res.json();
-      setReportMessage(data.message);
-      triggerToast('Reporte enviado a tu correo.', 'success');
-    } catch (err) {
-      console.error(err);
-      triggerToast('Error enviando el reporte.', 'warning');
-    } finally {
-      setReportSending(false);
-    }
-  };
+  // handleSimulateAlert and handleSendReport removed - all features are now free
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans flex flex-col selection:bg-indigo-500/30 selection:text-indigo-900">
@@ -584,7 +492,7 @@ export default function App() {
               }`}
             >
               <User className="w-3.5 h-3.5" />
-              {user ? (user.isPremium ? 'Plan Premium 👑' : 'Mi Perfil') : 'Iniciar Sesión'}
+              {user ? 'Mi Perfil' : 'Iniciar Sesión'}
             </button>
           </nav>
 
@@ -647,11 +555,11 @@ export default function App() {
                   <p className="text-[11px] text-slate-500">Completa la ruta de seguridad para blindar tu dirección de red.</p>
                 </div>
                 <span className="text-[10px] bg-slate-100 text-slate-700 font-mono font-bold px-2.5 py-1 rounded-lg">
-                  Progreso: {user?.isPremium ? '100% Completo 👑' : user ? '66% - Registrado' : scanResult ? '33% - Analizado' : '0% - Inicio'}
+                  Progreso: {user ? '100% Completo' : scanResult ? '50% - Analizado' : '0% - Inicio'}
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 
                 {/* Step 1: Action (Scan) */}
                 <div className={`p-4 rounded-2xl border transition-all ${
@@ -715,42 +623,6 @@ export default function App() {
                       className="mt-3 w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-1.5 rounded-lg text-[10px] transition"
                     >
                       Registrarme Gratis
-                    </button>
-                  )}
-                </div>
-
-                {/* Step 3: Premium */}
-                <div className={`p-4 rounded-2xl border transition-all ${
-                  user?.isPremium 
-                    ? 'bg-indigo-50/20 border-indigo-200 text-indigo-950 shadow-sm' 
-                    : 'bg-slate-50 border-slate-150 text-slate-800'
-                }`}>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] font-mono uppercase tracking-wider text-indigo-600 font-bold">Paso 3: Premium</span>
-                    {user?.isPremium ? (
-                      <span className="text-[10px] bg-emerald-50 text-emerald-700 font-bold px-1.5 py-0.5 rounded flex items-center gap-1">
-                        👑 Activo
-                      </span>
-                    ) : (
-                      <span className="text-[10px] bg-indigo-50 text-indigo-700 font-bold px-1.5 py-0.5 rounded">
-                        Opcional
-                      </span>
-                    )}
-                  </div>
-                  <h4 className="text-xs font-bold">Monitoreo y Alertas</h4>
-                  <p className="text-[10px] text-slate-500 mt-1 leading-relaxed">Soporte prioritario, envío de reportes PDF detallados y marca blanca.</p>
-                  {!user?.isPremium && (
-                    <button 
-                      onClick={() => {
-                        setActiveTab('profile');
-                        setTimeout(() => {
-                          const el = document.getElementById('upgrade-plans-section');
-                          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                        }, 100);
-                      }}
-                      className="mt-3 w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold py-1.5 rounded-lg text-[10px] transition shadow-sm"
-                    >
-                      Ver Planes Premium
                     </button>
                   )}
                 </div>
@@ -1074,46 +946,22 @@ export default function App() {
                         <p className="text-[11px] text-slate-500 leading-relaxed">{rep.details}</p>
                       </div>
                     ))}
-                    {!user?.isPremium && (
-                      <div className="bg-amber-50 border border-amber-100 p-3 rounded-xl text-[11px] text-amber-700 text-center font-medium">
-                        * Adquiere el plan <strong>Premium</strong> para activar chequeos continuos contra Project Honey Pot y Cisco Talos.
-                      </div>
-                    )}
+
                   </div>
                 </div>
 
-                {/* SSL Certificate Analysis (Freemium logic representation) */}
+                {/* SSL Certificate Analysis */}
                 <div className="bg-white border border-slate-200 p-5 rounded-2xl space-y-4 shadow-sm">
                   <div className="flex items-center justify-between">
                     <h3 className="text-xs font-bold font-mono uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
                       <Lock className="w-4 h-4 text-indigo-500" /> Certificado SSL/TLS
                     </h3>
-                    {!user?.isPremium ? (
-                      <span className="text-[10px] bg-amber-50 text-amber-600 border border-amber-100 px-2.5 py-0.5 rounded font-bold flex items-center gap-1">
-                        <Lock className="w-3 h-3" /> Premium
-                      </span>
-                    ) : (
-                      <span className="text-[10px] bg-emerald-50 text-emerald-600 border border-emerald-100 px-2.5 py-0.5 rounded font-bold flex items-center gap-1">
-                        <Unlock className="w-3 h-3" /> Activo
-                      </span>
-                    )}
+                    <span className="text-[10px] bg-emerald-50 text-emerald-600 border border-emerald-100 px-2.5 py-0.5 rounded font-bold flex items-center gap-1">
+                      <Unlock className="w-3 h-3" /> Activo
+                    </span>
                   </div>
 
-                  {!user?.isPremium ? (
-                    <div className="text-center py-6 bg-slate-50 border border-dashed border-slate-200 rounded-xl space-y-3">
-                      <Lock className="w-8 h-8 text-slate-450 mx-auto" />
-                      <div className="space-y-1">
-                        <p className="text-xs font-bold text-slate-700">Análisis SSL Bloqueado</p>
-                        <p className="text-[11px] text-slate-500 px-4 leading-relaxed">El monitoreo de certificados, alertas de expiración y huellas digitales está disponible en el plan Premium.</p>
-                      </div>
-                      <button
-                        onClick={() => setActiveTab('profile')}
-                        className="text-xs bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 px-4 py-1.5 rounded-lg font-bold transition shadow-sm"
-                      >
-                        Activar Premium
-                      </button>
-                    </div>
-                  ) : scanResult.sslInfo ? (
+                  {scanResult.sslInfo ? (
                     <div className="space-y-3">
                       <div className="bg-slate-50 p-4 border border-slate-100 rounded-xl space-y-3 text-xs">
                         <div className="flex justify-between">
@@ -1140,39 +988,7 @@ export default function App() {
                   )}
                 </div>
 
-                {/* 24/7 Monitoring state alerts (Premium only) */}
-                {user?.isPremium && (
-                  <div className="bg-white border border-slate-200 p-5 rounded-2xl space-y-3 shadow-sm">
-                    <h3 className="text-xs font-bold font-mono uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                      <Activity className="w-4 h-4 text-indigo-500 animate-pulse" /> Monitoreo de Disponibilidad 24/7
-                    </h3>
-                    
-                    <div className="space-y-2.5">
-                      {premiumAlerts.length > 0 ? (
-                        premiumAlerts.map((alert) => (
-                          <div 
-                            key={alert.id} 
-                            className={`p-3 rounded-xl border text-xs space-y-1.5 ${
-                              alert.severity === 'critical' 
-                                ? 'bg-red-50 border-red-100 text-red-800' 
-                                : alert.severity === 'warning'
-                                ? 'bg-amber-50 border-amber-100 text-amber-800'
-                                : 'bg-slate-50 border-slate-100 text-slate-700'
-                            }`}
-                          >
-                            <div className="flex justify-between font-bold">
-                              <span>{alert.title}</span>
-                              <span className="text-[10px] font-mono text-slate-400">{alert.time}</span>
-                            </div>
-                            <p className="text-[11px] leading-relaxed opacity-90">{alert.message}</p>
-                          </div>
-                        ))
-                      ) : (
-                        <p className="text-xs text-slate-400 italic text-center py-4">Todo en orden. No hay alertas de monitoreo registradas.</p>
-                      )}
-                    </div>
-                  </div>
-                )}
+
 
               </div>
 
@@ -1594,7 +1410,7 @@ export default function App() {
                   <a href="https://aistudio.google.com/" target="_blank" rel="noopener noreferrer" className="text-[10px] text-indigo-600 hover:underline mt-1 inline-block">aistudio.google.com</a>
                 </div>
                 <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                  <h4 className="text-xs font-bold text-slate-700">xAI Grok (Premium)</h4>
+                  <h4 className="text-xs font-bold text-slate-700">xAI Grok</h4>
                   <p className="text-[11px] text-slate-500 mt-1">Genera informes ejecutivos profesionales. Beta con cuota generosa.</p>
                   <a href="https://console.x.ai/" target="_blank" rel="noopener noreferrer" className="text-[10px] text-indigo-600 hover:underline mt-1 inline-block">console.x.ai</a>
                 </div>
@@ -1613,7 +1429,7 @@ export default function App() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
                   <h4 className="text-xs font-bold text-slate-700">Por IP</h4>
-                  <p className="text-[11px] text-slate-500 mt-1">1 escaneo cada 24 horas (usuarios gratuitos). Ilimitado para Premium.</p>
+                  <p className="text-[11px] text-slate-500 mt-1">1 escaneo cada 24 horas.</p>
                 </div>
                 <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
                   <h4 className="text-xs font-bold text-slate-700">Por Huella de Navegador</h4>
@@ -1819,27 +1635,7 @@ export default function App() {
         )}
         {/* TAB: ADVANCED TOOLS */}
         {activeTab === 'advanced' && (
-          user?.isPremium ? (
-            <AdvancedTools onNavigate={(tab) => setActiveTab(tab as any)} />
-          ) : (
-            <div className="max-w-2xl mx-auto text-center py-12 px-4">
-              <div className="bg-white border border-slate-200 rounded-3xl p-8 shadow-lg">
-                <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                  <Shield className="w-8 h-8" />
-                </div>
-                <h2 className="text-2xl font-bold text-slate-800 mb-3">Herramientas de Seguridad Avanzada</h2>
-                <p className="text-slate-500 mb-6 leading-relaxed">
-                  Accede a diagnósticos profesionales: escáner de URLs con VirusTotal, auditoría SSL, detección de VPN, análisis forense de emails y más.
-                </p>
-                <button
-                  onClick={() => setActiveTab('profile')}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-xl transition-colors flex items-center gap-2 mx-auto"
-                >
-                  Adquirir Plan Premium <ArrowRight className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          )
+          <AdvancedTools onNavigate={(tab) => setActiveTab(tab as any)} />
         )}
         
         {activeTab === 'radar' && <ThreatMap />}
@@ -1852,7 +1648,7 @@ export default function App() {
               <div>
                 <span className="text-xs font-mono tracking-widest text-indigo-600 uppercase font-bold">Membresías & Cuenta</span>
                 <h2 className="text-xl md:text-2xl font-bold text-slate-800 mt-1">Gestión de Acceso MyIP</h2>
-                <p className="text-xs text-slate-500 mt-1">Regístrate de forma simple para vincular tu IP o adquiere el plan Premium con Stripe.</p>
+                <p className="text-xs text-slate-500 mt-1">Regístrate de forma simple para vincular tu cuenta y guardar tu historial de escaneos.</p>
               </div>
               
               {user && (
@@ -1872,18 +1668,13 @@ export default function App() {
               onInstallPwa={handleInstallApp}
             />
 
-            {/* Upgrade Panel Segment — always visible, dev code first */}
             <div className="border-t border-slate-150 pt-8">
-              <UpgradePanel
-                email={user?.email || ''}
-                isPremium={user?.isPremium || false}
-                premiumExpiresAt={user?.premiumExpiresAt}
-                onUpgradeSuccess={handleUpgradeSuccess}
-                onSimulateAlert={handleSimulateAlert}
-                onSendReport={handleSendReport}
-                reportSending={reportSending}
-                reportMessage={reportMessage}
-              />
+              <div className="text-center p-4 bg-slate-800 rounded-lg">
+                <p className="text-slate-300 text-sm mb-2">MyIP es completamente gratuito. Si te es útil, puedes apoyar el proyecto.</p>
+                <a href="https://ko-fi.com/m_castillo" target="_blank" rel="noopener noreferrer" className="inline-block">
+                  <img src="https://storage.ko-fi.com/cdn/kofi2.png" alt="Ko-fi" className="h-8" />
+                </a>
+              </div>
             </div>
           </div>
         )}

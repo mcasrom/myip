@@ -72,3 +72,4 @@ scripts/rockyou.txt.pkl
 scripts/rockyou-bloom.json
 diag_local.sh
 diag_local_OUTPUT.txt
+data/

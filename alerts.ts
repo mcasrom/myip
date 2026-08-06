@@ -110,11 +110,11 @@ function scoreToNumeric(score: string): number {
 
 export function startAlertsCron(port: number): void {
   cron.schedule('0 8 * * *', async () => {
-    console.log('[CRON] Ejecutando chequeo de alertas premium...');
+    console.log('[CRON] Ejecutando chequeo de alertas...');
     authDb.cleanOldAlertLogs(); // Limpieza mensual
     
     const users = authDb.getAllUsers().filter(u =>
-      u.isPremium && u.ipAddress && u.ipAddress !== 'pending' && u.ipAddress !== '0.0.0.0'
+      u.ipAddress && u.ipAddress !== 'pending' && u.ipAddress !== '0.0.0.0'
     );
     
     for (const u of users) {

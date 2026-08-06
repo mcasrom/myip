@@ -25,6 +25,7 @@ services:
     volumes:
       - ./data:/app/data
       - /var/www/sieg-security/data:/data/sieg-security:ro
+      - /var/www/html/snapshots:/app/snapshots:ro
 
     # Security: Limit resources
     deploy:

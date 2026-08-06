@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, Scan, AlertTriangle, Users, Activity, Globe, ShieldAlert, TrendingUp } from 'lucide-react';
+import { Scan, AlertTriangle, Users, Activity, Globe, ShieldAlert, TrendingUp } from 'lucide-react';
 import type { AnonymizedStats, WeeklyTrend } from '../types';
 
 interface Distribution {
@@ -9,8 +9,8 @@ interface Distribution {
 }
 
 export default function CommunityKPIs({ isOnline = true }: { isOnline?: boolean }) {
-  const [data, setData] = useState({ totalScans: 0, totalUsers: 0, premiumUsers: 0, avgScore: 0, totalScored: 0 });
-  const [counts, setCounts] = useState({ scans: 0, users: 0, threats: 0, premium: 0 });
+  const [data, setData] = useState({ totalScans: 0, totalUsers: 0, avgScore: 0, totalScored: 0 });
+  const [counts, setCounts] = useState({ scans: 0, users: 0, threats: 0 });
   const [distribution, setDistribution] = useState<Distribution>({ green: 0, yellow: 0, red: 0 });
   const [fetchError, setFetchError] = useState(false);
   const [anonStats, setAnonStats] = useState<AnonymizedStats | null>(null);
@@ -26,7 +26,7 @@ export default function CommunityKPIs({ isOnline = true }: { isOnline?: boolean 
       .then(d => {
         setData(d);
         if (d.distribution) setDistribution(d.distribution);
-        animateCounts(d.totalScans, d.totalUsers, d.totalScored, d.premiumUsers);
+        animateCounts(d.totalScans, d.totalUsers, d.totalScored);
         setFetchError(false);
       })
       .catch(() => setFetchError(true));
@@ -42,7 +42,7 @@ export default function CommunityKPIs({ isOnline = true }: { isOnline?: boolean 
       .catch(() => {});
   }, [isOnline]);
 
-  const animateCounts = (scans: number, users: number, threats: number, premium: number) => {
+  const animateCounts = (scans: number, users: number, threats: number) => {
     const duration = 1500;
     const steps = 30;
     const interval = duration / steps;
@@ -56,7 +56,6 @@ export default function CommunityKPIs({ isOnline = true }: { isOnline?: boolean 
         scans: Math.round(scans * eased),
         users: Math.round(users * eased),
         threats: Math.round(threats * eased),
-        premium: Math.round(premium * eased),
       });
       if (step >= steps) clearInterval(timer);
     }, interval);
@@ -117,13 +116,7 @@ export default function CommunityKPIs({ isOnline = true }: { isOnline?: boolean 
           color="text-amber-600"
           bgColor="bg-amber-50"
         />
-        <KPICard
-          icon={<Shield className="w-5 h-5" />}
-          label="Usuarios Premium"
-          value={counts.premium}
-          color="text-slate-600"
-          bgColor="bg-slate-50"
-        />
+
       </div>
 
       {/* Community Health Donut Chart */}

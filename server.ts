@@ -4,7 +4,6 @@ import { getSecurityKpis } from './securityKpis';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
-import Stripe from 'stripe';
 import crypto from 'crypto';
 import https from 'https';
 import tls from 'tls';
@@ -356,18 +355,6 @@ async function getGeoForIp(ip: string): Promise<any> {
 }
 
 // ============================================================================
-// Stripe Client
-// ============================================================================
-let stripeClient: Stripe | null = null;
-function getStripe(): Stripe | null {
-  if (!stripeClient) {
-    const key = process.env.STRIPE_SECRET_KEY;
-    if (key) { stripeClient = new Stripe(key, { apiVersion: '2023-10-16' as any }); }
-  }
-  return stripeClient;
-}
-
-// ============================================================================
 // Mail Sending via Resend API (no SMTP, no Gmail exposure)
 // Free tier: 3,000 emails/month
 // Get API key: https://resend.com/api-keys
@@ -409,49 +396,6 @@ async function sendEmail({ to, subject, text, html }: { to: string; subject: str
 const app = express();
 app.disable('x-powered-by'); // Fix: evita fuga "X-Powered-By: Express" (detectado por testssl.sh 08 Jul 2026)
 
-// Webhook de Stripe: DEBE ir antes de express.json() global, porque Stripe
-// necesita el body RAW (sin parsear) para verificar la firma HMAC.
-app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), async (req, res) => {
-  const sig = req.headers['stripe-signature'];
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-  const stripe = getStripe();
-  if (!stripe || !webhookSecret || !sig) {
-    console.error('[WEBHOOK] Stripe/webhook secret no configurado o falta firma.');
-    return res.status(400).send('Webhook no configurado.');
-  }
-  let event: Stripe.Event;
-  try {
-    event = stripe.webhooks.constructEvent(req.body, sig as string, webhookSecret);
-  } catch (err: any) {
-    console.error('[WEBHOOK] Firma invalida:', err.message);
-    return res.status(400).send(`Webhook Error: ${err.message}`);
-  }
-  if (event.type === 'checkout.session.completed') {
-    const session = event.data.object as Stripe.Checkout.Session;
-    if (session.payment_status === 'paid' && session.metadata?.email) {
-      const normalizedEmail = session.metadata.email.toLowerCase().trim();
-      const resolvedTier = session.metadata.tier === 'monthly' ? 'monthly' : 'lifetime';
-      if (!usersDb[normalizedEmail]) {
-        usersDb[normalizedEmail] = { email: normalizedEmail, isPremium: true, ipAddress: '0.0.0.0', scanCount: 0, verified: true, tier: resolvedTier, monthlyScanCount: 0 };
-      } else {
-        usersDb[normalizedEmail].isPremium = true;
-        usersDb[normalizedEmail].verified = true;
-        usersDb[normalizedEmail].tier = resolvedTier;
-      }
-      try {
-        authDb.updateUserFields(normalizedEmail, { isPremium: true, tier: resolvedTier });
-        console.log(`[WEBHOOK] Premium activado via webhook para ${normalizedEmail} (tier: ${resolvedTier})`);
-      } catch (e) {
-        console.error('[WEBHOOK] No se pudo persistir tier en SQLite:', e);
-      }
-    } else {
-      console.log('[WEBHOOK] checkout.session.completed recibido pero sin email/pago confirmado, ignorado.');
-    }
-  } else {
-    console.log(`[WEBHOOK] Evento recibido sin manejar: ${event.type}`);
-  }
-  res.json({ received: true });
-});
 const PORT = parseInt(process.env.PORT || '3000', 10);
 
 app.use(express.json());
@@ -485,21 +429,17 @@ app.get('/api/speedtest/dns', (req, res) => {
 
 // In-memory database
 interface DbUser {
-  email: string; isPremium: boolean; ipAddress: string;
+  email: string; ipAddress: string;
   lastScanTime?: number; scanCount: number;
-  verified: boolean; isGuest?: boolean; premiumCode?: string;
-  tier?: string; monthlyScanCount?: number; monthlyScanReset?: string;
-  premiumExpiresAt?: number;
+  verified: boolean; isGuest?: boolean;
 }
 const usersDb: Record<string, DbUser> = {};
 // Hidratar cache en memoria desde SQLite al arrancar (sobrevive a reinicios)
 for (const u of authDb.getAllUsers()) {
   usersDb[u.email] = {
-    email: u.email, isPremium: u.isPremium, ipAddress: u.ipAddress,
+    email: u.email, ipAddress: u.ipAddress,
     lastScanTime: u.lastScanTime, scanCount: u.scanCount,
-    verified: u.verified, isGuest: u.isGuest, premiumCode: u.premiumCode,
-    tier: u.tier, monthlyScanCount: u.monthlyScanCount, monthlyScanReset: u.monthlyScanReset,
-    premiumExpiresAt: u.premiumExpiresAt
+    verified: u.verified, isGuest: u.isGuest,
   };
 }
 console.log(`[DB] ${authDb.getAllUsers().length} usuario(s) cargado(s) desde SQLite.`);
@@ -510,12 +450,6 @@ function optionalAuth(req: any, res: any, next: any) {
     const su = authDb.getSessionUser(token);
     if (su) {
       req.authUser = su.email;
-      // Verificar si el premium ha expirado
-      if (su.isPremium && su.premiumExpiresAt && su.premiumExpiresAt < Date.now()) {
-        authDb.updateUserFields(su.email, { isPremium: false, premiumExpiresAt: undefined });
-        if (usersDb[su.email]) usersDb[su.email].isPremium = false;
-        console.log(`[AUTH] Premium expirado para ${su.email}`);
-      }
     }
   }
   next();
@@ -525,18 +459,12 @@ function requireAuth(req: any, res: any, next: any) {
   const su = token ? authDb.getSessionUser(token) : undefined;
   if (!su) return res.status(401).json({ error: 'No autenticado. Inicia sesion.' });
   req.authUser = su.email;
-  // Verificar si el premium ha expirado
-  if (su.isPremium && su.premiumExpiresAt && su.premiumExpiresAt < Date.now()) {
-    authDb.updateUserFields(su.email, { isPremium: false, premiumExpiresAt: undefined });
-    if (usersDb[su.email]) usersDb[su.email].isPremium = false;
-    console.log(`[AUTH] Premium expirado para ${su.email}`);
-  }
   next();
 }
 
 // ============================================================================
 // Anti-Fraud: Rate limiting by IP + Fingerprint
-// - Same IP: 1 scan per 24h (free), unlimited (premium)
+// - Same IP: 1 scan per 24h
 // - Same fingerprint: max 3 scans per 7 days (regardless of IP changes)
 // - Combined: both limits apply — bypassing one still hits the other
 // ============================================================================
@@ -549,11 +477,8 @@ interface RateRecord {
 const ipRateLimit: Record<string, RateRecord> = {};
 const fpRateLimit: Record<string, RateRecord> = {};
 
-function checkRateLimit(ip: string, fingerprint: string, isPremium: boolean, isGuest: boolean): { allowed: boolean; error?: string; hoursRemaining?: number } {
+function checkRateLimit(ip: string, fingerprint: string, isGuest: boolean): { allowed: boolean; error?: string; hoursRemaining?: number } {
   const now = Date.now();
-
-  // Premium: no limits
-  if (isPremium) return { allowed: true };
 
   // Guest: max 3 scans lifetime
   if (isGuest) {
@@ -710,7 +635,7 @@ app.post('/api/auth/register', async (req, res) => {
   }
   const stored = await authDb.createUserWithPassword(normalizedEmail, password, clientIp || 'pending');
   usersDb[normalizedEmail] = {
-    email: stored.email, isPremium: stored.isPremium, ipAddress: stored.ipAddress,
+    email: stored.email, ipAddress: stored.ipAddress,
     scanCount: stored.scanCount, verified: stored.verified, isGuest: stored.isGuest
   };
   const token = authDb.createSession(normalizedEmail);
@@ -739,7 +664,7 @@ app.post('/api/auth/register', async (req, res) => {
 
   res.json({
     message: 'Cuenta creada. Tus escaneos se guardarán en esta cuenta.',
-    user: { email: stored.email, isPremium: stored.isPremium, ipAddress: stored.ipAddress, scanCount: stored.scanCount, isGuest: stored.isGuest }
+    user: { email: stored.email, ipAddress: stored.ipAddress, scanCount: stored.scanCount, isGuest: stored.isGuest }
   });
 });
 // Auth: Login real, verifica contrasena con bcrypt
@@ -759,7 +684,7 @@ app.post('/api/auth/login', async (req, res) => {
   console.log(`[AUTH] Login: ${normalizedEmail}`);
   res.json({
     message: 'Bienvenido de vuelta.',
-    user: { email: stored.email, isPremium: stored.isPremium, ipAddress: stored.ipAddress, scanCount: stored.scanCount, isGuest: stored.isGuest }
+    user: { email: stored.email, ipAddress: stored.ipAddress, scanCount: stored.scanCount, isGuest: stored.isGuest }
   });
 });
 // Auth: Logout, borra la sesion de la BD (no solo la cookie)
@@ -798,17 +723,16 @@ app.post('/api/auth/guest', async (req, res) => {
   const guestEmail = `invitado_${randomId}@myip.local`;
 
   usersDb[guestEmail] = {
-    email: guestEmail, isPremium: false, ipAddress: clientIp || 'pending',
+    email: guestEmail, ipAddress: clientIp || 'pending',
     scanCount: 0, verified: true, isGuest: true
   };
 
   res.json({
     message: 'Sesión de invitado iniciada. 3 escaneos gratuitos.',
-    user: { email: guestEmail, isPremium: false, ipAddress: clientIp || 'pending', scanCount: 0, isGuest: true }
+    user: { email: guestEmail, ipAddress: clientIp || 'pending', scanCount: 0, isGuest: true }
   });
 });
 
-// Premium upgrade (fallback when Stripe not configured)
 app.get('/api/admin/audit', (req, res) => {
   const authHeader = req.headers.authorization || '';
   const expected = `Bearer ${process.env.ADMIN_SECRET || ''}`;
@@ -819,7 +743,6 @@ app.get('/api/admin/audit', (req, res) => {
     const stats = authDb.getSystemStats();
     const recentUsers = authDb.getAllUsers().slice(-10).map(u => ({
       email: u.email,
-      isPremium: u.isPremium,
       ipAddress: u.ipAddress,
     }));
     res.json({ stats, recentUsers, checkedAt: new Date().toISOString() });
@@ -829,148 +752,11 @@ app.get('/api/admin/audit', (req, res) => {
   }
 });
 
-app.post('/api/premium/upgrade', (req, res) => {
-  // Guard: este endpoint es SOLO fallback de demo cuando Stripe no esta
-  // configurado. Si Stripe esta activo, bloquear para evitar bypass del
-  // pago real (activacion premium sin tarjeta ni Stripe de por medio).
-  if (getStripe()) {
-    return res.status(403).json({ error: 'Pago debe procesarse via Stripe Checkout.' });
-  }
-  const { email } = req.body;
-  if (!email) return res.status(400).json({ error: 'Se requiere email.' });
-  const user = usersDb[email.toLowerCase().trim()];
-  if (!user) return res.status(404).json({ error: 'Usuario no encontrado.' });
-  user.isPremium = true;
-  res.json({ message: '¡Premium activado!', user: { email: user.email, isPremium: true, ipAddress: user.ipAddress, scanCount: user.scanCount } });
-});
 
-// Dev premium code redemption (codes stored server-side only, never exposed to frontend)
-const DEV_PREMIUM_CODES: Record<string, { label: string; uses: number }> = {
-  'MYIP-DEV-2026-ALPHA': { label: 'Alpha', uses: 0 },
-  'MYIP-DEV-2026-BETA': { label: 'Beta', uses: 0 },
-};
 
-app.post('/api/premium/redeem-code', (req, res) => {
-  const { email, code } = req.body;
-  if (!email || !code) return res.status(400).json({ error: 'Se requiere email y código.' });
-  const normalizedEmail = email.toLowerCase().trim();
-  const trimmedCode = code.trim().toUpperCase();
 
-  // 1. Intentar con SQLite (códigos persistentes con expiración)
-  const validation = authDb.validatePremiumCode(trimmedCode);
-  let redeemed = false;
-  let expiresAt: number | undefined;
 
-  if (validation.valid) {
-    const result = authDb.redeemPremiumCode(trimmedCode);
-    if (result.success) {
-      expiresAt = Date.now() + (30 * 24 * 60 * 60 * 1000); // 30 días desde el canje
-      redeemed = true;
-    } else {
-      return res.status(400).json({ error: result.reason });
-    }
-  } else {
-    // 2. Fallback: códigos legacy en memoria (ALPHA, BETA)
-    const devCode = DEV_PREMIUM_CODES[trimmedCode];
-    if (!devCode) return res.status(400).json({ error: 'Código inválido.' });
-    devCode.uses++;
-    expiresAt = Date.now() + (30 * 24 * 60 * 60 * 1000);
-    redeemed = true;
-  }
 
-  if (!redeemed) return res.status(400).json({ error: 'No se pudo canjear el código.' });
-
-  // Actualizar usuario en memoria y SQLite
-  if (!usersDb[normalizedEmail]) {
-    usersDb[normalizedEmail] = { email: normalizedEmail, isPremium: true, ipAddress: '0.0.0.0', scanCount: 0, verified: true, isGuest: false, premiumCode: trimmedCode, premiumExpiresAt: expiresAt };
-  } else {
-    usersDb[normalizedEmail].isPremium = true;
-    usersDb[normalizedEmail].premiumCode = trimmedCode;
-    usersDb[normalizedEmail].premiumExpiresAt = expiresAt;
-  }
-
-  try {
-    authDb.updateUserFields(normalizedEmail, { isPremium: true, premiumCode: trimmedCode, premiumExpiresAt: expiresAt });
-  } catch (e) {
-    console.error('[PREMIUM CODE] No se pudo persistir en SQLite:', e);
-  }
-
-  console.log(`[PREMIUM CODE] ${trimmedCode} usado por ${normalizedEmail} (expira: ${new Date(expiresAt).toISOString()})`);
-  res.json({ message: '¡Premium activado por 30 días!', user: { email: normalizedEmail, isPremium: true, scanCount: usersDb[normalizedEmail].scanCount, premiumExpiresAt: expiresAt } });
-});
-
-// Admin: generar código premium (solo para el dueño)
-app.post('/api/admin/generate-code', (req, res) => {
-  const { label, maxUses, daysValid } = req.body;
-  if (!label) return res.status(400).json({ error: 'Se requiere una etiqueta.' });
-  const code = authDb.createPremiumCode(label, maxUses || 1, daysValid || 30);
-  console.log(`[ADMIN] Código premium generado: ${code.code} (${code.label}, ${code.maxUses} usos, ${daysValid || 30} días)`);
-  res.json({ code: code.code, label: code.label, maxUses: code.maxUses, daysValid: daysValid || 30, expiresAt: code.expiresAt });
-});
-
-// Stripe Checkout Session
-app.post('/api/premium/create-checkout-session', async (req, res) => {
-  const { email, tier } = req.body;
-  if (!email) return res.status(400).json({ error: 'Se requiere email.' });
-  const normalizedEmail = email.toLowerCase().trim();
-  const stripe = getStripe();
-  if (!stripe) return res.json({ isDemo: true });
-
-  // Tier whitelabel desactivado: sus features (PDF sin marca, logo, export
-  // JSON) no existen todavia. Ver auditoria en WAYAHEAD.md.
-  if (tier === 'whitelabel') {
-    return res.status(501).json({ error: 'Plan Consultores no disponible todavia. Proximamente.' });
-  }
-
-  let productName = 'MyIP Premium - Acceso de por Vida';
-  let amount = 999;
-  let mode: 'payment' | 'subscription' = 'payment';
-  if (tier === 'monthly') { productName = 'MyIP Pro SysAdmin - Mensual'; amount = 499; mode = 'subscription'; }
-
-  try {
-    const appUrl = process.env.APP_URL || 'http://localhost:3000';
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
-      line_items: [{ price_data: { currency: 'eur', product_data: { name: productName }, unit_amount: amount }, quantity: 1 } as any],
-      mode, metadata: { email: normalizedEmail, tier: tier || 'lifetime' },
-      success_url: `${appUrl}/?payment_success=true&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${appUrl}/?payment_cancel=true`,
-    });
-    res.json({ checkoutUrl: session.url, isDemo: false });
-  } catch (err: any) {
-    console.error('[STRIPE ERROR]', err);
-    res.status(500).json({ error: 'Error con Stripe.' });
-  }
-});
-
-app.post('/api/premium/verify-session', async (req, res) => {
-  const { sessionId } = req.body;
-  if (!sessionId) return res.status(400).json({ error: 'Se requiere sessionId.' });
-  const stripe = getStripe();
-  if (!stripe) return res.status(400).json({ error: 'Stripe no configurado.' });
-
-  try {
-    const session = await stripe.checkout.sessions.retrieve(sessionId);
-    if (session.payment_status === 'paid' && session.metadata?.email) {
-      const normalizedEmail = session.metadata.email.toLowerCase().trim();
-      const resolvedTier = session.metadata.tier === 'monthly' ? 'monthly' : 'lifetime';
-      if (!usersDb[normalizedEmail]) {
-        usersDb[normalizedEmail] = { email: normalizedEmail, isPremium: true, ipAddress: '0.0.0.0', scanCount: 0, verified: true, tier: resolvedTier, monthlyScanCount: 0 };
-      } else {
-        usersDb[normalizedEmail].isPremium = true;
-        usersDb[normalizedEmail].verified = true;
-        usersDb[normalizedEmail].tier = resolvedTier;
-      }
-      try {
-        authDb.updateUserFields(normalizedEmail, { isPremium: true, tier: resolvedTier });
-      } catch (e) {
-        console.error('[VERIFY-SESSION] No se pudo persistir tier en SQLite:', e);
-      }
-      return res.json({ success: true, message: '¡Premium activado!', user: { email: usersDb[normalizedEmail].email, isPremium: true, ipAddress: usersDb[normalizedEmail].ipAddress, scanCount: usersDb[normalizedEmail].scanCount } });
-    }
-    res.status(400).json({ error: 'Pago no completado.' });
-  } catch (err: any) { res.status(500).json({ error: 'Error verificando Stripe.' }); }
-});
 
 // ============================================================================
 // MAIN SCAN — Client MUST send targetIp. Server NEVER detects IP.
@@ -993,7 +779,6 @@ app.post('/api/scan', optionalAuth, async (req: any, res) => {
     const u = usersDb[email.toLowerCase().trim()];
     if (u) user = u;
   }
-  const isPremium = user?.isPremium ?? false;
   const isGuest = user?.isGuest ?? (user ? false : true);
 
   // [PATCH ip_address sync] Actualiza la IP conocida del usuario en cada scan
@@ -1021,31 +806,15 @@ app.post('/api/scan', optionalAuth, async (req: any, res) => {
   if (isGuest && user && user.scanCount >= 3) {
     return res.status(429).json({ error: 'Límite de invitado alcanzado (3/3). Crea una cuenta con email.', rateLimited: true, isGuestLimit: true });
   }
-  // Limite fair-use del plan Hogar (pago unico "de por vida", no ilimitado real): 50 escaneos/mes.
-  // SysAdmin Pro ('monthly', suscripcion recurrente) NO tiene este limite.
-  if (user && user.tier === 'lifetime') {
-    const currentMonth = new Date().toISOString().slice(0, 7); // 'YYYY-MM'
-    if (user.monthlyScanReset !== currentMonth) {
-      user.monthlyScanCount = 0;
-      user.monthlyScanReset = currentMonth;
-    }
-    const HOGAR_MONTHLY_LIMIT = 50;
-    if ((user.monthlyScanCount ?? 0) >= HOGAR_MONTHLY_LIMIT) {
-      return res.status(429).json({
-        error: `Límite de fair-use del plan Hogar alcanzado (${HOGAR_MONTHLY_LIMIT}/mes). Se restablece el día 1 de cada mes. Si necesitas más, el plan SysAdmin Pro no tiene límite mensual.`,
-        rateLimited: true, isHogarLimit: true
-      });
-    }
-  }
 
   // Development mode: NO rate limits at all
   if (process.env.NODE_ENV !== 'production') {
     // skip all rate limiting in dev
-  } else if (!isPremium) {
-    // Production non-premium: check IP + fingerprint rate limits
+  } else {
+    // Production: same rate limits for all users
     const fingerprint = req.headers['x-device-fingerprint'] || '';
     const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || 'unknown';
-    const limit = checkRateLimit(clientIp, fingerprint, false, isGuest);
+    const limit = checkRateLimit(clientIp, fingerprint, isGuest);
     if (!limit.allowed) {
       return res.status(429).json({ error: limit.error, rateLimited: true });
     }
@@ -1289,16 +1058,12 @@ app.post('/api/scan', optionalAuth, async (req: any, res) => {
     }
   }
 
-  if (isPremium) {
-    const vt = await checkVirusTotal(ip);
-    reputation.push({ listName: 'VirusTotal', clean: vt.clean, unverified: vt.unverified, details: vt.details, malicious: vt.malicious });
-  }
+  const vt = await checkVirusTotal(ip);
+  reputation.push({ listName: 'VirusTotal', clean: vt.clean, unverified: vt.unverified, details: vt.details, malicious: vt.malicious });
 
   // --- SSL ---
   let sslInfo: any = null;
-  if (isPremium) {
-    try { sslInfo = await checkSSL(ip); } catch (err) { console.log('[SSL] Error:', err); }
-  }
+  try { sslInfo = await checkSSL(ip); } catch (err) { console.log('[SSL] Error:', err); }
 
   // --- SCORE: Separate port risk from reputation risk ---
   let score: 'green' | 'yellow' | 'red' = 'green';
@@ -1373,14 +1138,7 @@ ${score === 'green' ? '- **Mantenimiento**: Realiza escaneos periódicos para ve
   const now = Date.now();
   if (user) {
     user.lastScanTime = now; user.scanCount += 1;
-    if (user.tier === 'lifetime') {
-      user.monthlyScanCount = (user.monthlyScanCount ?? 0) + 1;
-      try {
-        authDb.updateUserFields(user.email, { monthlyScanCount: user.monthlyScanCount, monthlyScanReset: user.monthlyScanReset });
-      } catch (e) {
-        console.error('[SCAN] No se pudo persistir monthlyScanCount:', e);
-      }
-    }
+
 
     // Email del primer scan
     if (user.scanCount === 1) {
@@ -1436,7 +1194,7 @@ ${score === 'green' ? '- **Mantenimiento**: Realiza escaneos periódicos para ve
   });
 });
 
-// Scan History (Premium)
+// Scan History
 app.get('/api/security/kpis', (req, res) => {
   try {
     const kpis = getSecurityKpis();
@@ -1516,14 +1274,13 @@ app.get('/api/stats/community', (req, res) => {
   res.json({
     totalScans: stats.totalScans,
     totalUsers: stats.totalUsers,
-    premiumUsers: stats.premiumUsers,
     avgScore: community.avgScore,
     totalScored: community.totalScored,
     distribution,
   });
 });
 
-// User Specific Stats (Premium)
+// User Specific Stats
 app.get('/api/stats/user', (req, res) => {
   const email = req.query.email as string;
   if (!email) return res.status(400).json({ error: 'Email requerido.' });
@@ -1951,7 +1708,6 @@ app.get('/api/scan/history', optionalAuth, async (req: any, res) => {
   if (!email) return res.status(401).json({ error: 'No autenticado.' });
   const user = authDb.getUserByEmail(email.toLowerCase().trim());
   if (!user) return res.status(404).json({ error: 'Usuario no encontrado.' });
-  if (!user.isPremium) return res.status(403).json({ error: 'Requiere Premium.' });
   const history = authDb.getScanHistory(user.email, 100);
   res.json({ history: history.map((h: any) => ({
     id: h.id, targetIp: h.target_ip, score: h.score, scoreReason: h.score_reason,
@@ -1960,12 +1716,12 @@ app.get('/api/scan/history', optionalAuth, async (req: any, res) => {
   })) });
 });
 
-// Get single scan record (Premium)
+// Get single scan record
 app.get('/api/scan/history/:id', optionalAuth, async (req: any, res) => {
   const email = req.authUser || req.query.email;
   if (!email) return res.status(401).json({ error: 'No autenticado.' });
   const user = authDb.getUserByEmail(email.toLowerCase().trim());
-  if (!user || !user.isPremium) return res.status(403).json({ error: 'Requiere Premium.' });
+  if (!user) return res.status(404).json({ error: 'Usuario no encontrado.' });
   const record = authDb.getScanRecord(parseInt(req.params.id), user.email);
   if (!record) return res.status(404).json({ error: 'Escaneo no encontrado.' });
   const r = record as any;
@@ -2066,50 +1822,6 @@ app.post('/api/wifi/audit', async (req, res) => {
   }
 });
 
-// Send report — Full HTML email with analysis
-app.post('/api/premium/send-report', async (req, res) => {
-  const { email, reportType, scanData } = req.body;
-  if (!email) return res.status(400).json({ error: 'Se requiere email.' });
-
-  const html = `
-    <div style="font-family: system-ui, sans-serif; max-width: 600px; margin: 0 auto; color: #1e293b;">
-      <div style="background: linear-gradient(135deg, #1e1b4b, #312e81); color: white; padding: 24px; border-radius: 12px 12px 0 0;">
-        <h1 style="margin: 0; font-size: 20px;">MyIP — ${reportType || 'Reporte de Seguridad'}</h1>
-        <p style="margin: 8px 0 0; opacity: 0.8; font-size: 13px;">Generado el ${new Date().toLocaleString('es-ES')}</p>
-      </div>
-      <div style="background: #f8fafc; padding: 24px; border: 1px solid #e2e8f0; border-top: none;">
-        ${scanData ? `
-          <div style="margin-bottom: 20px;">
-            <h2 style="font-size: 16px; color: #4338ca; margin: 0 0 8px;">IP Analizada: ${scanData.ip || 'N/A'}</h2>
-            <p style="margin: 0; font-size: 14px;">Estado: <strong style="color: ${scanData.score === 'green' ? '#059669' : scanData.score === 'yellow' ? '#d97706' : '#dc2626'};">${(scanData.score || 'unknown').toUpperCase()}</strong></p>
-            <p style="margin: 4px 0 0; font-size: 13px; color: #64748b;">${scanData.scoreReason || ''}</p>
-          </div>
-          <h3 style="font-size: 14px; color: #334155; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px;">Puertos Escaneados</h3>
-          <table style="width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 20px;">
-            <tr style="background: #f1f5f9;"><th style="text-align: left; padding: 6px 8px; border-bottom: 1px solid #e2e8f0;">Puerto</th><th style="text-align: left; padding: 6px 8px; border-bottom: 1px solid #e2e8f0;">Servicio</th><th style="text-align: left; padding: 6px 8px; border-bottom: 1px solid #e2e8f0;">Estado</th></tr>
-            ${(scanData.ports || []).map((p: any) => `<tr><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; font-family: monospace;">${p.port}</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9;">${p.service}</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; color: ${p.status === 'open' ? '#dc2626' : '#059669'};">${p.status === 'open' ? '🔓 Abierto' : '🔒 Cerrado'}</td></tr>`).join('')}
-          </table>
-          <h3 style="font-size: 14px; color: #334155; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px;">Análisis</h3>
-          <div style="font-size: 13px; line-height: 1.6; white-space: pre-wrap;">${(scanData.analysisText || '').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/### (.*)/g, '<h4 style="margin: 12px 0 4px; color: #4338ca;">$1</h4>')}</div>
-        ` : '<p style="color: #64748b;">Tu reporte está listo. Inicia sesión en MyIP para ver los detalles completos.</p>'}
-        <div style="text-align: center; margin-top: 20px;">
-          <a href="${process.env.APP_URL || 'http://localhost:3000'}" style="display: inline-block; background: #4338ca; color: white; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-size: 13px; font-weight: 600;">Iniciar sesión en MyIP</a>
-        </div>
-      </div>
-      <div style="background: #f1f5f9; padding: 16px; border-radius: 0 0 12px 12px; text-align: center; font-size: 11px; color: #94a3b8;">
-        MyIP &copy; 2026 SIEG — Herramienta de auditoría de seguridad
-      </div>
-    </div>
-  `;
-
-  const sent = await sendEmail({
-    to: email,
-    subject: `MyIP — ${reportType || 'Reporte de Seguridad'} — ${new Date().toLocaleDateString('es-ES')}`,
-    text: `Tu reporte MyIP (${reportType || 'seguridad'}) está listo. Inicia sesión en MyIP para ver los detalles completos.`,
-    html,
-  });
-  res.json({ message: sent ? `Reporte enviado a ${email}.` : `Reporte generado, pero no se pudo enviar el email. Inténtalo de nuevo más tarde.`, sentAt: new Date().toISOString() });
-});
 
 // ============================================================================
 // Vite / Production
@@ -2229,13 +1941,10 @@ async function startServer() {
       if (!stored) {
         stored = await authDb.createUserWithPassword(devEmail, DEV_PASSWORD, '127.0.0.1');
       }
-      if (!stored.isPremium) {
-        authDb.updateUserFields(devEmail, { isPremium: true, premiumCode: 'DEV-OWNER' });
-      }
       usersDb[devEmail] = {
-        email: devEmail, isPremium: true,
+        email: devEmail,
         ipAddress: '127.0.0.1', scanCount: stored.scanCount,
-        verified: true, isGuest: false, premiumCode: 'DEV-OWNER'
+        verified: true, isGuest: false,
       };
     }
 
@@ -2248,7 +1957,7 @@ async function startServer() {
     console.warn('  ATENCION: SERVIDOR EN MODO DESARROLLO (NODE_ENV != production)');
     console.warn('============================================================');
     console.warn(`  NODE_ENV actual: "${process.env.NODE_ENV || '(vacio)'}"`);
-    console.warn(`  Cuentas dev activas y premium: ${devAccounts.join(', ')}`);
+    console.warn(`  Cuentas dev activas: ${devAccounts.join(', ')}`);
     console.warn('  Password dev hardcodeada en el codigo fuente: DevPass2026!');
     console.warn('  Rate limiting: DESACTIVADO POR COMPLETO (sin limite de escaneos)');
     console.warn('  Si esta maquina tiene IP publica o esta detras de PM2 en');

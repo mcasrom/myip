@@ -47,12 +47,10 @@ export interface ScanResult {
 
 export interface UserSession {
   email: string;
-  isPremium: boolean;
   ipAddress: string;
   lastScanTime?: number;
   scanCount: number;
   isGuest?: boolean;
-  premiumExpiresAt?: number;
 }
 
 export interface SecurityGuide {
