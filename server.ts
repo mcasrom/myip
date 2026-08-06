@@ -1749,6 +1749,120 @@ app.get('/api/scan/dashboard', optionalAuth, async (req: any, res) => {
   })) });
 });
 
+// API: Export scan report as PDF (Sprint 6)
+app.post('/api/export/pdf', optionalAuth, async (req: any, res) => {
+  const email = req.authUser || req.body?.email;
+  if (!email) return res.status(401).json({ error: 'No autenticado.' });
+  const user = authDb.getUserByEmail(email.toLowerCase().trim());
+  if (!user) return res.status(404).json({ error: 'Usuario no encontrado.' });
+  const scanId = req.body?.scanId;
+  const record = scanId
+    ? authDb.getScanRecord(parseInt(scanId), user.email)
+    : (authDb.getScanHistory(user.email, 1)[0] || null);
+  if (!record) return res.status(404).json({ error: 'No hay escaneos para exportar.' });
+
+  const rec = record as any;
+  const scoreToNum = (sc: string) => sc === 'green' ? 85 : sc === 'yellow' ? 50 : sc === 'red' ? 20 : 50;
+  let ports: any[] = [], reputation: any[] = [];
+  try { ports = JSON.parse(rec.ports_json || '[]'); } catch {}
+  try { reputation = JSON.parse(rec.reputation_json || '[]'); } catch {}
+  const scoreNumeric = rec.score_numeric ?? scoreToNum(rec.score);
+  const date = new Date().toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
+  const scanDate = new Date(rec.created_at).toLocaleString('es-ES');
+  const stripMd = (t: string) => (t || '').replace(/^#{1,4}\s*/gm, '').replace(/\*\*/g, '').replace(/^\s*[-*]\s+/gm, '• ').replace(/`/g, '');
+
+  const doc = new PDFDocument({ margin: 50, size: 'A4' });
+  res.setHeader('Content-Disposition', `attachment; filename="Informe_MyIP_${rec.target_ip}.pdf"`);
+  res.setHeader('Content-Type', 'application/pdf');
+  doc.pipe(res);
+
+  const primary = '#4338ca', dark = '#0f172a', text = '#334155', light = '#f8fafc';
+  const scoreColor = rec.score === 'green' ? '#059669' : rec.score === 'yellow' ? '#d97706' : '#dc2626';
+
+  const drawSection = (title: string) => {
+    doc.moveDown(1.2);
+    doc.fontSize(13).font('Helvetica-Bold').fillColor(primary).text(title);
+    doc.moveDown(0.3);
+    doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#e2e8f0').lineWidth(1).stroke();
+    doc.moveDown(0.4);
+  };
+
+  // Header
+  doc.fontSize(22).font('Helvetica-Bold').fillColor(dark).text('Informe de Seguridad MyIP', { align: 'center' });
+  doc.fontSize(11).fillColor(primary).text('Análisis de tu conexión · myip.viajeinteligencia.com', { align: 'center' });
+  doc.moveDown(0.4);
+  doc.fontSize(9).fillColor('#64748b').text(`Fecha: ${date} | Generado por MyIP`, { align: 'center' });
+  doc.moveDown(0.8);
+  doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor(primary).lineWidth(2).stroke();
+  doc.moveDown(1);
+
+  // Score card
+  const scoreY = doc.y;
+  doc.rect(50, scoreY, 495, 64).fill(scoreColor);
+  doc.fillColor('#ffffff').fontSize(30).font('Helvetica-Bold').text(String(scoreNumeric) + '/100', 70, scoreY + 8);
+  doc.fontSize(11).font('Helvetica').text('Puntuación de seguridad de tu conexión', 70, scoreY + 42, { width: 460 });
+  doc.y = scoreY + 68;
+
+  // Datos
+  drawSection('Datos del análisis');
+  doc.fillColor(text).fontSize(10).font('Helvetica').text(
+    'IP analizada: ' + (rec.target_ip || '—') + '\n' +
+    'Fecha del escaneo: ' + scanDate + '\n' +
+    'Fuente: ' + (rec.scan_source || '—') + '\n' +
+    'Motivo: ' + stripMd(rec.score_reason || '—'),
+    { width: 495, lineGap: 3 }
+  );
+
+  // Puertos
+  drawSection('Puertos analizados');
+  const openPorts = ports.filter((p: any) => p.status !== 'closed');
+  if (openPorts.length === 0) {
+    doc.fillColor(text).fontSize(10).font('Helvetica').text('No se detectaron puertos expuestos. Todos los puertos verificados están protegidos.');
+  } else {
+    openPorts.forEach((p: any) => {
+      if (doc.y > 740) { doc.addPage(); }
+      const startY = doc.y;
+      doc.rect(50, startY, 495, 60).fillAndStroke(light, '#e2e8f0');
+      const riskColor = p.risk === 'high' ? '#dc2626' : p.risk === 'medium' ? '#d97706' : '#059669';
+      doc.fillColor(dark).fontSize(10).font('Helvetica-Bold').text('Puerto ' + (p.port ?? '?') + ' · ' + (p.service || ''), 60, startY + 8, { width: 380 });
+      doc.fillColor(riskColor).fontSize(9).font('Helvetica-Bold').text(String(p.status || '').toUpperCase(), 440, startY + 8, { width: 95, align: 'right' });
+      doc.fillColor(text).fontSize(8.5).font('Helvetica').text(stripMd(p.explanation || ''), 60, startY + 24, { width: 475 });
+      if (p.recommendation) doc.fillColor(text).fontSize(8.5).font('Helvetica-Oblique').text('→ ' + stripMd(p.recommendation), 60, startY + 38, { width: 475 });
+      doc.y = startY + 64;
+    });
+  }
+
+  // Blacklist
+  drawSection('Reputación (listas negras)');
+  if (reputation.length === 0) {
+    doc.fillColor(text).fontSize(10).text('Sin datos de reputación para esta IP.');
+  } else {
+    reputation.forEach((r: any) => {
+      if (doc.y > 750) { doc.addPage(); }
+      const startY = doc.y;
+      doc.rect(50, startY, 495, 26).fillAndStroke(light, '#e2e8f0');
+      doc.fillColor(dark).fontSize(9.5).font('Helvetica-Bold').text(r.listName || 'Lista', 60, startY + 7, { width: 330 });
+      doc.fillColor(r.clean ? '#059669' : '#dc2626').fontSize(9).font('Helvetica-Bold').text(r.clean ? 'LIMPIA' : 'LISTADA', 440, startY + 7, { width: 95, align: 'right' });
+      doc.y = startY + 28;
+    });
+  }
+
+  // Resumen ejecutivo
+  drawSection('Resumen ejecutivo');
+  doc.fillColor(text).fontSize(9.5).font('Helvetica').text(stripMd(rec.analysis_text || 'Sin resumen disponible.'), { width: 495, lineGap: 3 });
+
+  // Footer
+  doc.moveDown(1.5);
+  doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#e2e8f0').lineWidth(1).stroke();
+  doc.moveDown(0.3);
+  doc.fontSize(8).fillColor('#94a3b8').font('Helvetica-Oblique').text(
+    'Generado por MyIP · myip.viajeinteligencia.com · MyIP es gratuito, apoyable en Ko-fi · Este informe analiza únicamente tu propia IP pública.',
+    { align: 'center', width: 495 }
+  );
+
+  doc.end();
+});
+
 // Security: Check password breach via HaveIBeenPwned (Server-side proxy to avoid CORS)
 app.post('/api/security/check-password', async (req, res) => {
   const { hash } = req.body;

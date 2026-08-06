@@ -21,6 +21,7 @@ import {
   Network,
   ArrowRight,
   Loader2,
+  FileDown,
 } from 'lucide-react';
 
 interface ScanRecord {
@@ -149,8 +150,44 @@ export default function ScanHistoryDashboard() {
   const totalScans = scans.length;
   const lastScan = scans[scans.length - 1];
 
+  const exportPdf = async () => {
+    try {
+      const res = await fetch('/api/export/pdf', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        window.alert(d.error || 'No se pudo exportar el PDF.');
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'Informe_MyIP_' + lastScan.targetIp + '.pdf';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      window.alert('No se pudo exportar el PDF.');
+    }
+  };
+
   return (
     <div className="space-y-6">
+      {/* Export toolbar */}
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <span className="text-xs font-mono tracking-widest text-slate-500 uppercase font-bold">Tu historial de seguridad</span>
+        <button
+          onClick={exportPdf}
+          className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2 rounded-lg transition-colors shadow-sm"
+        >
+          <FileDown className="w-4 h-4" /> Exportar PDF
+        </button>
+      </div>
+
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard

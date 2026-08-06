@@ -162,7 +162,7 @@ export default function SnapshotTimeline() {
 
           <div className="grid grid-cols-3 gap-2">
             {Object.entries(data.top_countries || {})
-              .sort((a, b) => b[1] - a[1])
+              .sort((a, b) => (b[1] as number) - (a[1] as number))
               .slice(0, 6)
               .map(([country, count]) => (
                 <div key={country} className="bg-slate-800 p-2 rounded text-center">
