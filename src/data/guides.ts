@@ -75,21 +75,7 @@ export const guides: SecurityGuide[] = [
     recommendation: 'Un firewall configurado por defecto como "denegar todo lo entrante" neutraliza instantáneamente los riesgos de cualquier puerto de base de datos o servicio expuesto accidentalmente.',
     difficulty: 'Medio'
   },
-  {
-    id: 'pwa-guide',
-    title: '¿Cómo instalar MyIP como App (PWA) en tu Smartphone o Tablet?',
-    category: 'Soberanía y Portabilidad',
-    description: 'Instala MyIP en tu pantalla de inicio sin usar tiendas de aplicaciones (App Store o Google Play). Se ejecuta en un contenedor ligero, consume menos datos y te da acceso de un solo toque.',
-    steps: [
-      '**En Dispositivos Android (Chrome, Edge):** Cuando entres a la web, aparecerá un banner sugiriendo "Instalar App". Haz clic en él o presiona el menú de tres puntos arriba a la derecha en Chrome y selecciona **"Instalar aplicación"** o **"Añadir a la pantalla de inicio"**.',
-      '**En iPhone o iPad (Safari):** Abre la página en Safari. Pulsa el botón **"Compartir"** (el icono del cuadrado con una flecha hacia arriba) en la barra de navegación inferior, desplázate por el menú y selecciona **"Añadir a la pantalla de inicio"**.',
-      '**Acceso Directo Sin Fricción:** Aparecerá un icono de alta definición con el escudo de MyIP en tu escritorio o cajón de aplicaciones. Ábrela desde ahí para disfrutar del modo Standalone a pantalla completa.',
-      '**Ahorro de Memoria y Batería:** A diferencia de las pesadas aplicaciones tradicionales de 100MB, esta PWA pesa menos de 1MB, no ejecuta procesos en segundo plano innecesarios y respeta la vida útil de tu batería.',
-      '**[Instalar App Ahora](#install-pwa):** Haz clic en este enlace para intentar la instalación automática en tu dispositivo.'
-    ],
-    recommendation: 'Instalar la PWA te permite llevar tus herramientas de diagnóstico siempre contigo, ideal para cuando realizas auditorías rápidas en la red Wi-Fi de tu oficina o de un café.',
-    difficulty: 'Fácil'
-  },
+
   {
     id: 'router-security-guide',
     title: '¿Cómo asegurar tu Router Doméstico y tu Red WiFi?',
@@ -165,6 +151,53 @@ export const guides: SecurityGuide[] = [
     ],
     recommendation: 'Mantener tu software actualizado es la defensa mas efectiva contra CVEs. La mayoria de exploits atacan versiones antiguas con parches disponibles. Actualizar regularmente elimina el 95% de los riesgos conocidos.',
     difficulty: 'Fácil'
+  },
+  {
+    id: 'top-ports-guide',
+    title: 'Los 7 puertos más atacados y cómo protegerlos',
+    category: 'Conceptos de Seguridad',
+    description: 'Cada día, bots y escáneres automáticos recorren internet buscando puertos abiertos para explotar. Conocer los puertos más atacados y cómo cerrarlos es la base de una conexión segura.',
+    steps: [
+      '**22 (SSH):** Blanco de fuerza bruta constante. Usa llaves SSH y desactiva el login por contraseña.',
+      '**3389 (RDP):** El escritorio remoto de Windows es uno de los más atacados del mundo. Nunca lo expongas a internet sin VPN.',
+      '**445 (SMB):** Responsable de gusanos como WannaCry. Debe estar cerrado a internet siempre.',
+      '**23 (Telnet):** Transmite credenciales en texto plano. Desactívalo y usa SSH.',
+      '**3306 (MySQL) y 5432 (PostgreSQL):** Si tu base de datos está abierta, cualquiera puede intentar conectarse. Vincúlala a 127.0.0.1.',
+      '**6379 (Redis) y 27017 (MongoDB):** Suelen ejecutarse sin autenticación; son objetivo frecuente de ransomware. Cierra estos puertos en el firewall.',
+      '**Comprueba con MyIP:** Ejecuta un escaneo y verás qué puertos están expuestos, su nivel de riesgo y la recomendación exacta.'
+    ],
+    recommendation: 'Regla de oro: si no usas un servicio desde fuera de tu red, ese puerto no debería estar abierto a internet. El firewall de tu router es tu primera línea de defensa.',
+    difficulty: 'Fácil'
+  },
+  {
+    id: 'blacklist-guide',
+    title: 'Cómo saber si tu IP está en una lista negra (DNSBL)',
+    category: 'Reputación',
+    description: 'Si tu dirección IP aparece en una lista negra (DNSBL), tus correos pueden caer en spam y algunos servicios pueden bloquearte. Descubre cómo comprobarlo y cómo salir.',
+    steps: [
+      '**¿Qué es una DNSBL?** Las listas negras de DNS (Spamhaus, Barracuda, AbuseIPDB) recopilan IPs con actividad maliciosa o mala reputación.',
+      '**¿Por qué podrías estar listado?** Un equipo infectado enviando spam, un servidor de correo mal configurado o una IP de rango previamente usado por atacantes.',
+      '**Compruébalo con MyIP:** La pestaña de reputación consulta varias listas en tiempo real y te dice si tu IP está limpia o listada.',
+      '**Si estás listado:** Escanea tu equipo en busca de malware, reinicia el router para solicitar una IP nueva (si es dinámica) y sigue el proceso de deslistado de cada lista.',
+      '**Prevención:** No expongas servicios innecesarios, usa contraseñas fuertes y mantén todo actualizado.'
+    ],
+    recommendation: 'Un correo que llega a spam pierde hasta el 90% de su efectividad. Revisa tu reputación periódicamente si gestionas un dominio o servidor de correo.',
+    difficulty: 'Fácil'
+  },
+  {
+    id: 'port-scan-guide',
+    title: 'Qué es un escaneo de puertos y cómo interpretar sus resultados',
+    category: 'Conceptos de Seguridad',
+    description: 'Un escaneo de puertos comprueba qué servicios de tu conexión están abiertos a internet. Aprende qué significan los estados ABIERTO, CERRADO y FILTRADO para interpretar tu informe.',
+    steps: [
+      '**¿Qué es un puerto?** Una "puerta" lógica por la que un servicio recibe conexiones (SSH en el 22, web en el 80/443). Cada puerto es un posible punto de entrada.',
+      '**Estados:** ABIERTO significa que un servicio responde (posible superficie de ataque); CERRADO que no hay servicio; FILTRADO que un firewall lo está ocultando.',
+      '**Cómo se escanea:** Herramientas como nmap envían paquetes de prueba y observan la respuesta. MyIP usa fuentes pasivas y nmap para auditar únicamente TU propia IP.',
+      '**Por qué importa:** Cada puerto abierto es una puerta que un atacante podría intentar forzar. Menos puertos abiertos = menor superficie de ataque.',
+      '**Acción:** Con el informe de MyIP, cierra los puertos que no uses, actualiza los servicios expuestos y protege los imprescindibles con autenticación fuerte.'
+    ],
+    recommendation: 'El escaneo solo analiza tu propia IP pública: es tu derecho conocer qué expones. Hazlo con regularidad, sobre todo tras cambios en tu router o red.',
+    difficulty: 'Medio'
   }
 ];
 
