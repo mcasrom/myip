@@ -30,9 +30,11 @@
 - ¿Eliminar `WelcomeModal`?
 - ¿Docker o PM2 directo? (Docker funciona en prod; PM2 solo para dev local)
 
-## Sprint 6 — Exportar Reporte PDF (prioridad alta)
+## Sprint 6 — Exportar Reporte PDF ✅ (06-Ago-2026)
 
-**Objetivo**: el usuario puede guardar/compartir su análisis de seguridad en PDF (un clic, desde el dashboard o el historial).
+**HECHO**: endpoint `POST /api/export/pdf` (pdfkit, 2-3 páginas: score, datos del análisis, puertos con estado/riesgo/recomendación, blacklist, resumen ejecutivo) + botón **"📄 Exportar PDF"** en la dashboard del historial. Verificado: PDF válido con contenido correcto. Commit `320bfab`.
+
+**Objetivo original**: el usuario puede guardar/compartir su análisis de seguridad en PDF (un clic, desde el dashboard o el historial).
 
 **Estado**: `PDFDocument` ya importado en `server.ts`. **Tiempo**: 3-5 días · **Riesgo**: bajo.
 
