@@ -22,7 +22,7 @@
 2. **Sprint C — Blog técnico SEO** (continuo): guías "Qué son los CVE", "Cómo interpretar vulnerabilidades", etc.
 3. **CSP reconfigurar** (seguridad del frontend).
 4. **7 explicaciones `portDefinitions` faltantes** (mejorar recomendaciones).
-5. **`sendEmail` duplicado** (alerts.ts + server.ts) → unificar.
+5. ~~**`sendEmail` duplicado**~~ → **unificado** (exportado de alerts.ts).
 6. **Clustering/ML** de datos de comunidad — requiere **opt-in explícito RGPD** (futuro, NO implementado).
 7. ~~Checkout Stripe~~ → **CANCELADO** (no hay monetización).
 
