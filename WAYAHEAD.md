@@ -33,6 +33,7 @@
 ## Sprint 6 — Exportar Reporte PDF ✅ (06-Ago-2026)
 
 **HECHO**: endpoint `POST /api/export/pdf` (pdfkit, 2-3 páginas: score, datos del análisis, puertos con estado/riesgo/recomendación, blacklist, resumen ejecutivo) + botón **"📄 Exportar PDF"** en la dashboard del historial. Verificado: PDF válido con contenido correcto. Commit `320bfab`.
+**FIX 07-Ago (`006c2a6`)**: el PDF salía deformado/mal alineado — las tarjetas de puertos (60px) y filas de blacklist (26px) tenían altura fija y el texto largo (explicaciones/recomendaciones) se salía del recuadro y se solapaba. Arreglado con **alturas dinámicas** (`heightOfString`) para puertos y blacklist. Verificado: tsc OK + PDF de prueba válido (header/xref/EOF) + redesplegado (Docker rebuild healthy, `heightOfString` en dist).
 
 **Objetivo original**: el usuario puede guardar/compartir su análisis de seguridad en PDF (un clic, desde el dashboard o el historial).
 
