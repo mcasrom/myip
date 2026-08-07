@@ -1818,6 +1818,7 @@ app.post('/api/export/pdf', optionalAuth, async (req: any, res) => {
 
   const drawSection = (title: string) => {
     doc.moveDown(1.2);
+    doc.x = 50;
     doc.fontSize(13).font('Helvetica-Bold').fillColor(primary).text(title);
     doc.moveDown(0.3);
     doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#e2e8f0').lineWidth(1).stroke();
@@ -1859,7 +1860,7 @@ app.post('/api/export/pdf', optionalAuth, async (req: any, res) => {
     openPorts.forEach((p: any) => {
       if (doc.y > 700) { doc.addPage(); }
       const expl = stripMd(p.explanation || '');
-      const rec = p.recommendation ? '→ ' + stripMd(p.recommendation) : '';
+      const rec = p.recommendation ? '» ' + stripMd(p.recommendation) : '';
       doc.fontSize(8.5).font('Helvetica');
       const hExpl = doc.heightOfString(expl, { width: 475 });
       doc.font('Helvetica-Oblique');
