@@ -56,6 +56,7 @@ CREATE TABLE IF NOT EXISTS scan_history (
   analysis_text TEXT,
   scan_source TEXT,
   geo_json TEXT,
+  ssl_info TEXT,
   created_at INTEGER NOT NULL,
   FOREIGN KEY (email) REFERENCES users(email)
 );
@@ -77,6 +78,7 @@ try { db.exec('ALTER TABLE users ADD COLUMN tier TEXT'); } catch (e) { /* column
 try { db.exec('ALTER TABLE users ADD COLUMN monthly_scan_count INTEGER NOT NULL DEFAULT 0'); } catch (e) { /* columna ya existe */ }
 try { db.exec('ALTER TABLE users ADD COLUMN monthly_scan_reset TEXT'); } catch (e) { /* columna ya existe */ }
 try { db.exec('ALTER TABLE scan_history ADD COLUMN score_numeric INTEGER'); } catch (e) { /* columna ya existe */ }
+try { db.exec('ALTER TABLE scan_history ADD COLUMN ssl_info TEXT'); } catch (e) { /* columna ya existe */ }
 try { db.exec('ALTER TABLE users ADD COLUMN premium_expires_at INTEGER'); } catch (e) { /* columna ya existe */ }
 
 // Tabla de estadísticas del sistema (una sola fila)
@@ -124,6 +126,15 @@ CREATE TABLE IF NOT EXISTS alert_log (
   sent_at INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_alert_log_email ON alert_log(email);
+
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  email TEXT NOT NULL,
+  endpoint TEXT NOT NULL,
+  keys TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  UNIQUE(email, endpoint)
+);
 `);
 
 export interface PremiumCodeRecord {
@@ -448,17 +459,35 @@ export interface ScanRecord {
 export function saveScanRecord(email: string, scanData: {
   targetIp: string; score: string; scoreReason: string;
   ports: any[]; reputation: any[]; analysisText: string;
-  scanSource: string; geo: any; scoreNumeric?: number;
+  scanSource: string; geo: any; scoreNumeric?: number; sslInfo?: any;
 }): void {
   db.prepare(`
-    INSERT INTO scan_history (email, target_ip, score, score_reason, ports_json, reputation_json, analysis_text, scan_source, geo_json, created_at, score_numeric)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO scan_history (email, target_ip, score, score_reason, ports_json, reputation_json, analysis_text, scan_source, geo_json, ssl_info, created_at, score_numeric)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     email, scanData.targetIp, scanData.score, scanData.scoreReason,
     JSON.stringify(scanData.ports), JSON.stringify(scanData.reputation),
     scanData.analysisText, scanData.scanSource, JSON.stringify(scanData.geo),
+    scanData.sslInfo ? JSON.stringify(scanData.sslInfo) : null,
     Date.now(), scanData.scoreNumeric ?? null
   );
+}
+
+export function addPushSubscription(email: string, endpoint: string, keys: any): void {
+  db.prepare(`
+    INSERT INTO push_subscriptions (email, endpoint, keys, created_at)
+    VALUES (?, ?, ?, ?)
+    ON CONFLICT(email, endpoint) DO UPDATE SET keys=excluded.keys
+  `).run(email, endpoint, JSON.stringify(keys), Date.now());
+}
+
+export function removePushSubscription(email: string, endpoint: string): void {
+  db.prepare('DELETE FROM push_subscriptions WHERE email = ? AND endpoint = ?').run(email, endpoint);
+}
+
+export function getPushSubscriptions(email: string): { endpoint: string; keys: any }[] {
+  const rows = db.prepare('SELECT endpoint, keys FROM push_subscriptions WHERE email = ? ORDER BY created_at DESC').all(email) as any[];
+  return rows.map((r: any) => ({ endpoint: r.endpoint, keys: JSON.parse(r.keys || '{}') }));
 }
 
 export function getScanHistory(email: string, limit = 50): ScanRecord[] {

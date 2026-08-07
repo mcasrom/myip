@@ -1,4 +1,4 @@
-const CACHE_NAME = 'myip-pwa-v2';
+const CACHE_NAME = 'myip-pwa-v3';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -35,6 +35,27 @@ self.addEventListener('activate', (event) => {
 });
 
 // Fetch Event (Network-First with Cache Fallback for offline safety)
+self.addEventListener('push', (event) => {
+  const data = (event.data && event.data.json()) || {};
+  const title = data.title || 'MyIP';
+  const options = {
+    body: data.body || '',
+    icon: '/myip_icon-CdMeM-GG.jpg',
+    badge: '/icon.svg',
+    data: { url: data.url || '/' }
+  };
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || '/';
+  event.waitUntil(clients.matchAll({ type: 'window', includeUncontrolled: true }).then((cls) => {
+    for (const c of cls) { if ('focus' in c) { c.navigate(url); return c.focus(); } }
+    return clients.openWindow(url);
+  }));
+});
+
 self.addEventListener('fetch', (event) => {
   // Only cache GET requests and avoid caching api requests or external keys
   if (event.request.method !== 'GET' || event.request.url.includes('/api/')) {

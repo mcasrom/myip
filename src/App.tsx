@@ -61,6 +61,7 @@ export default function App() {
   const [scanning, setScanning] = useState<boolean>(false);
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
   const [showChangesPopup, setShowChangesPopup] = useState<boolean>(false);
+  const [pushEnabled, setPushEnabled] = useState<boolean>(false);
   const [showWelcomeModal, setShowWelcomeModal] = useState<boolean>(() => {
     // Solo mostrar si no ha sido descartado previamente por el usuario
     if (typeof window !== 'undefined') {
@@ -168,7 +169,43 @@ export default function App() {
       }
     };
     window.addEventListener('myip-navigate', handler);
-    return () => window.removeEventListener('myip-navigate', handler);
+    const urlB64ToUint8Array = (b64: string) => {
+    const pad = '='.repeat((4 - (b64.length % 4)) % 4);
+    const base64 = (b64 + pad).replace(/-/g, '+').replace(/_/g, '/');
+    const raw = atob(base64);
+    return Uint8Array.from(Array.prototype.map.call(raw, (ch: string) => ch.charCodeAt(0)));
+  };
+
+  const togglePush = async () => {
+    try {
+      if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
+        triggerToast('Las notificaciones push no están soportadas en este navegador.', 'info'); return;
+      }
+      const reg = await navigator.serviceWorker.ready;
+      let sub = await reg.pushManager.getSubscription();
+      if (sub) {
+        await sub.unsubscribe();
+        await fetch('/api/push/unsubscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ endpoint: sub.endpoint }) });
+        setPushEnabled(false);
+        triggerToast('Alertas push desactivadas.', 'info');
+        return;
+      }
+      const perm = await Notification.requestPermission();
+      if (perm !== 'granted') { triggerToast('Permiso denegado para notificaciones.', 'warning'); return; }
+      const res = await fetch('/api/push/vapid-key');
+      const { public_key } = await res.json();
+      if (!public_key) { triggerToast('Alertas push no configuradas todavía.', 'info'); return; }
+      sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64ToUint8Array(public_key) });
+      const json = sub.toJSON();
+      await fetch('/api/push/subscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subscription: { endpoint: json.endpoint, keys: json.keys } }) });
+      setPushEnabled(true);
+      triggerToast('Alertas push activadas. Te avisaremos si tu score empeora.', 'success');
+    } catch (e) {
+      triggerToast('No se pudieron activar las alertas push.', 'warning');
+    }
+  };
+
+  return () => window.removeEventListener('myip-navigate', handler);
   }, []);
 
   // Auto-detect IP on load
@@ -348,6 +385,42 @@ export default function App() {
   };
 
   // handleSimulateAlert and handleSendReport removed - all features are now free
+
+  const urlB64ToUint8Array = (b64: string) => {
+    const pad = '='.repeat((4 - (b64.length % 4)) % 4);
+    const base64 = (b64 + pad).replace(/-/g, '+').replace(/_/g, '/');
+    const raw = atob(base64);
+    return Uint8Array.from(Array.prototype.map.call(raw, (ch: string) => ch.charCodeAt(0)));
+  };
+
+  const togglePush = async () => {
+    try {
+      if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
+        triggerToast('Las notificaciones push no están soportadas en este navegador.', 'info'); return;
+      }
+      const reg = await navigator.serviceWorker.ready;
+      let sub = await reg.pushManager.getSubscription();
+      if (sub) {
+        await sub.unsubscribe();
+        await fetch('/api/push/unsubscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ endpoint: sub.endpoint }) });
+        setPushEnabled(false);
+        triggerToast('Alertas push desactivadas.', 'info');
+        return;
+      }
+      const perm = await Notification.requestPermission();
+      if (perm !== 'granted') { triggerToast('Permiso denegado para notificaciones.', 'warning'); return; }
+      const res = await fetch('/api/push/vapid-key');
+      const { public_key } = await res.json();
+      if (!public_key) { triggerToast('Alertas push no configuradas todavía.', 'info'); return; }
+      sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64ToUint8Array(public_key) });
+      const json = sub.toJSON();
+      await fetch('/api/push/subscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subscription: { endpoint: json.endpoint, keys: json.keys } }) });
+      setPushEnabled(true);
+      triggerToast('Alertas push activadas. Te avisaremos si tu score empeora.', 'success');
+    } catch (e) {
+      triggerToast('No se pudieron activar las alertas push.', 'warning');
+    }
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans flex flex-col selection:bg-indigo-500/30 selection:text-indigo-900">
@@ -623,6 +696,14 @@ export default function App() {
                       className="mt-3 w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-1.5 rounded-lg text-[10px] transition"
                     >
                       Registrarme Gratis
+                    </button>
+                  )}
+                  {user && (
+                    <button 
+                      onClick={togglePush}
+                      className="mt-3 w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-1.5 rounded-lg text-[10px] transition"
+                    >
+                      {pushEnabled ? '🔔 Alertas push activadas (toca para desactivar)' : '🔔 Activar alertas push (si el score empeora)'}
                     </button>
                   )}
                 </div>
@@ -1004,7 +1085,43 @@ export default function App() {
                   <div className="space-y-4">
                     {scanResult.ports.map((p, idx) => {
                       const isUnknown = p.status === 'unknown';
-                      return (
+                      const urlB64ToUint8Array = (b64: string) => {
+    const pad = '='.repeat((4 - (b64.length % 4)) % 4);
+    const base64 = (b64 + pad).replace(/-/g, '+').replace(/_/g, '/');
+    const raw = atob(base64);
+    return Uint8Array.from(Array.prototype.map.call(raw, (ch: string) => ch.charCodeAt(0)));
+  };
+
+  const togglePush = async () => {
+    try {
+      if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
+        triggerToast('Las notificaciones push no están soportadas en este navegador.', 'info'); return;
+      }
+      const reg = await navigator.serviceWorker.ready;
+      let sub = await reg.pushManager.getSubscription();
+      if (sub) {
+        await sub.unsubscribe();
+        await fetch('/api/push/unsubscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ endpoint: sub.endpoint }) });
+        setPushEnabled(false);
+        triggerToast('Alertas push desactivadas.', 'info');
+        return;
+      }
+      const perm = await Notification.requestPermission();
+      if (perm !== 'granted') { triggerToast('Permiso denegado para notificaciones.', 'warning'); return; }
+      const res = await fetch('/api/push/vapid-key');
+      const { public_key } = await res.json();
+      if (!public_key) { triggerToast('Alertas push no configuradas todavía.', 'info'); return; }
+      sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64ToUint8Array(public_key) });
+      const json = sub.toJSON();
+      await fetch('/api/push/subscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subscription: { endpoint: json.endpoint, keys: json.keys } }) });
+      setPushEnabled(true);
+      triggerToast('Alertas push activadas. Te avisaremos si tu score empeora.', 'success');
+    } catch (e) {
+      triggerToast('No se pudieron activar las alertas push.', 'warning');
+    }
+  };
+
+  return (
                       <div
                         key={idx}
                         className={`p-5 rounded-xl border space-y-3 transition-all ${

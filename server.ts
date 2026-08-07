@@ -14,6 +14,7 @@ import { createHash } from 'crypto';
 import cookieParser from 'cookie-parser';
 import * as authDb from './db';
 import { startAlertsCron, compareScans, sendEmail } from './alerts';
+import webpush from 'web-push';
 import { isCommonPassword } from './src/utils/passwordBloom.js';
 import PDFDocument from 'pdfkit';
 dotenv.config();
@@ -107,29 +108,62 @@ function checkDNSBL(ip: string, dnsblServer: string): Promise<boolean> {
 }
 
 // ============================================================================
-// SSL certificate check
+// SSL certificate check + sondeo de protocolos TLS + grade orientativo
 // ============================================================================
+function probeTLSProtocols(hostname: string, port = 443, timeoutMs = 3500): Promise<string[]> {
+  const versions: { name: string; v: string }[] = [
+    { name: 'TLSv1.0', v: 'TLSv1' }, { name: 'TLSv1.1', v: 'TLSv1.1' },
+    { name: 'TLSv1.2', v: 'TLSv1.2' }, { name: 'TLSv1.3', v: 'TLSv1.3' },
+  ];
+  return Promise.all(versions.map((ver) => new Promise<string>((res) => {
+    const s = tls.connect({ host: hostname, port, minVersion: ver.v as any, maxVersion: ver.v as any, rejectUnauthorized: false });
+    const done = (name: string) => { try { s.destroy(); } catch {} res(name); };
+    s.once('secureConnect', () => done(ver.name));
+    s.once('error', () => done(''));
+    s.setTimeout(timeoutMs, () => done(''));
+  }))).then((arr) => arr.filter(Boolean) as string[]);
+}
+
+function computeSSLGrade(protocols: string[]): string {
+  if (protocols.includes('TLSv1.3') && protocols.includes('TLSv1.2')) return 'A';
+  if (protocols.includes('TLSv1.2') && !protocols.includes('TLSv1.1')) return 'B';
+  if (protocols.includes('TLSv1.1') && !protocols.includes('TLSv1.0')) return 'C';
+  if (protocols.includes('TLSv1.0')) return 'D';
+  return 'N/A';
+}
+
 function checkSSL(hostname: string, port = 443, timeoutMs = 5000): Promise<{
   valid: boolean; issuer: string; validTo: string; daysToExpiry: number; alert?: string;
+  protocols?: string[]; grade?: string; subject?: string;
 } | null> {
-  return new Promise((resolve) => {
-    const socket = tls.connect({ host: hostname, port, rejectUnauthorized: false }, () => {
-      const cert = socket.getPeerCertificate();
-      if (!cert || Object.keys(cert).length === 0) { socket.destroy(); resolve(null); return; }
-      const validTo = new Date(cert.valid_to);
-      const now = new Date();
-      const daysToExpiry = Math.ceil((validTo.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-      socket.destroy();
-      resolve({
-        valid: now <= validTo,
-        issuer: (cert.issuer as any)?.CN || (cert.issuer as any)?.O || JSON.stringify(cert.issuer) || 'Desconocido',
-        validTo: validTo.toISOString().split('T')[0],
-        daysToExpiry,
-        alert: daysToExpiry < 30 ? `El certificado SSL vencerá en ${daysToExpiry} días.` : undefined,
+  return new Promise(async (resolve) => {
+    let certResult: any = null;
+    try {
+      await new Promise<void>((done) => {
+        const socket = tls.connect({ host: hostname, port, rejectUnauthorized: false }, () => {
+          const cert = socket.getPeerCertificate();
+          if (!cert || Object.keys(cert).length === 0) { socket.destroy(); done(); return; }
+          const validTo = new Date(cert.valid_to);
+          const now = new Date();
+          const daysToExpiry = Math.ceil((validTo.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+          certResult = {
+            valid: now <= validTo,
+            issuer: (cert.issuer as any)?.CN || (cert.issuer as any)?.O || JSON.stringify(cert.issuer) || 'Desconocido',
+            subject: (cert.subject as any)?.CN || (cert.subject as any)?.O || '',
+            validTo: validTo.toISOString().split('T')[0],
+            daysToExpiry,
+            alert: daysToExpiry < 30 ? `El certificado SSL vencerá en ${daysToExpiry} días.` : undefined,
+          };
+          socket.destroy(); done();
+        });
+        socket.setTimeout(timeoutMs, () => { try { socket.destroy(); } catch {} done(); });
+        socket.on('error', () => { try { socket.destroy(); } catch {} done(); });
       });
-    });
-    socket.setTimeout(timeoutMs, () => { socket.destroy(); resolve(null); });
-    socket.on('error', () => resolve(null));
+    } catch (err) { /* noop */ }
+    let protocols: string[] = [];
+    try { protocols = await probeTLSProtocols(hostname, port, timeoutMs); } catch (err) { /* noop */ }
+    if (!certResult && protocols.length === 0) { resolve(null); return; }
+    resolve({ ...certResult, protocols, grade: computeSSLGrade(protocols) });
   });
 }
 
@@ -1021,6 +1055,76 @@ app.post('/api/scan', optionalAuth, async (req: any, res) => {
       unknownExplanation: 'No se pudo verificar el estado del puerto Telnet (23). Ningún método de escaneo está disponible.',
       unknownRecommendation: 'Configura Shodan, Censys o nmap para verificar este puerto.',
     },
+    110: {
+      service: 'POP3 (Correo entrante)',
+      openRisk: 'medium',
+      openExplanation: 'El puerto POP3 (110) está expuesto. El correo entrante sin cifrar viaja en texto plano.',
+      openRecommendation: 'Usa POP3S (995) o IMAPS (993) con TLS. Desactiva el acceso sin cifrar.',
+      closedExplanation: 'El puerto POP3 (110) no está expuesto. Correcto.',
+      closedRecommendation: 'No se requiere acción.',
+      unknownExplanation: 'No se pudo verificar el estado del puerto POP3 (110).',
+      unknownRecommendation: 'Configura Shodan, Censys o nmap para verificar este puerto.',
+    },
+    143: {
+      service: 'IMAP (Correo entrante)',
+      openRisk: 'medium',
+      openExplanation: 'El puerto IMAP (143) está expuesto sin cifrar. Credenciales y correo viajan en claro.',
+      openRecommendation: 'Usa IMAPS (993) con TLS. Desactiva el acceso sin cifrado.',
+      closedExplanation: 'El puerto IMAP (143) no está expuesto. Correcto.',
+      closedRecommendation: 'No se requiere acción.',
+      unknownExplanation: 'No se pudo verificar el estado del puerto IMAP (143).',
+      unknownRecommendation: 'Configura Shodan, Censys o nmap para verificar este puerto.',
+    },
+    993: {
+      service: 'IMAPS (Correo cifrado)',
+      openRisk: 'low',
+      openExplanation: 'El puerto IMAPS (993) está expuesto con cifrado TLS. Aceptable si requiere autenticación fuerte.',
+      openRecommendation: 'Verifica el certificado TLS y usa contraseñas robustas. Considera restringir por IP.',
+      closedExplanation: 'El puerto IMAPS (993) no está expuesto. Correcto.',
+      closedRecommendation: 'No se requiere acción.',
+      unknownExplanation: 'No se pudo verificar el estado del puerto IMAPS (993).',
+      unknownRecommendation: 'Configura Shodan, Censys o nmap para verificar este puerto.',
+    },
+    995: {
+      service: 'POP3S (Correo cifrado)',
+      openRisk: 'low',
+      openExplanation: 'El puerto POP3S (995) está expuesto con cifrado TLS. Aceptable con autenticación fuerte.',
+      openRecommendation: 'Verifica el certificado TLS y restringe el acceso por IP si es posible.',
+      closedExplanation: 'El puerto POP3S (995) no está expuesto. Correcto.',
+      closedRecommendation: 'No se requiere acción.',
+      unknownExplanation: 'No se pudo verificar el estado del puerto POP3S (995).',
+      unknownRecommendation: 'Configura Shodan, Censys o nmap para verificar este puerto.',
+    },
+    161: {
+      service: 'SNMP (Gestión de red)',
+      openRisk: 'high',
+      openExplanation: '¡Crítico! El puerto SNMP (161) está expuesto. La comunidad pública por defecto permite leer la configuración del dispositivo.',
+      openRecommendation: 'Cambia las community strings, restringe el acceso por IP o cierra el puerto en el firewall.',
+      closedExplanation: 'El puerto SNMP (161) no está expuesto. Correcto.',
+      closedRecommendation: 'No se requiere acción.',
+      unknownExplanation: 'No se pudo verificar el estado del puerto SNMP (161).',
+      unknownRecommendation: 'Configura Shodan, Censys o nmap para verificar este puerto.',
+    },
+    5060: {
+      service: 'SIP (VoIP)',
+      openRisk: 'medium',
+      openExplanation: 'El puerto SIP (5060) está expuesto. Usado por telefonía IP; susceptible a fraude y escaneo de extensiones.',
+      openRecommendation: 'Restringe el acceso por IP a tu proveedor VoIP y usa autenticación fuerte.',
+      closedExplanation: 'El puerto SIP (5060) no está expuesto. Correcto.',
+      closedRecommendation: 'No se requiere acción.',
+      unknownExplanation: 'No se pudo verificar el estado del puerto SIP (5060).',
+      unknownRecommendation: 'Configura Shodan, Censys o nmap para verificar este puerto.',
+    },
+    8443: {
+      service: 'HTTPS Alternativo / Panel Admin',
+      openRisk: 'medium',
+      openExplanation: 'El puerto 8443 está abierto. Suele alojar paneles de administración o API web.',
+      openRecommendation: 'Protege con autenticación fuerte y certificado TLS válido. Si no lo necesitas, ciérralo.',
+      closedExplanation: 'El puerto 8443 no está expuesto. Correcto.',
+      closedRecommendation: 'No se requiere acción.',
+      unknownExplanation: 'No se pudo verificar el estado del puerto 8443.',
+      unknownRecommendation: 'Configura Shodan, Censys o nmap para verificar este puerto.',
+    },
   };
 
   const enrichedPorts = ports.map((p: any) => {
@@ -1214,11 +1318,18 @@ ${score === 'green' ? '- **Mantenimiento**: Realiza escaneos periódicos para ve
         noChanges = !cmp.hasChanges;
         daysSinceLastScan = Math.floor((now - prev.created_at) / (1000 * 60 * 60 * 24));
         detectedChanges = cmp.changes;
+        const rank: any = { green: 3, yellow: 2, red: 1 };
+        const prevScoreRank = rank[prev.score];
+        if (prevScoreRank !== undefined && rank[score] < prevScoreRank) {
+          sendPushToUser(user.email, 'MyIP — Tu seguridad bajó',
+            `El score de ${ip} bajó de ${String(prev.score).toUpperCase()} a ${score.toUpperCase()}. Revisa el informe.`,
+            'https://myip.viajeinteligencia.com/');
+        }
       }
       authDb.saveScanRecord(user.email, {
         targetIp: ip, score, scoreReason,
         ports: enrichedPorts, reputation, analysisText,
-        scanSource: portScanSource, geo, scoreNumeric,
+        scanSource: portScanSource, geo, scoreNumeric, sslInfo,
       });
     } catch (err) { console.log('[HISTORY] Save error:', err); }
   }
@@ -1787,6 +1898,42 @@ app.get('/api/scan/dashboard', optionalAuth, async (req: any, res) => {
 });
 
 // API: Export scan report as PDF (Sprint 6)
+// ============================================================================
+// Alertas push (web push) — se activan si el score empeora
+// ============================================================================
+const VAPID_PUBLIC = process.env.VAPID_PUBLIC_KEY || '';
+const VAPID_PRIVATE = process.env.VAPID_PRIVATE_KEY || '';
+if (VAPID_PUBLIC && VAPID_PRIVATE) {
+  webpush.setVapidDetails('mailto:admin@viajeinteligencia.com', VAPID_PUBLIC, VAPID_PRIVATE);
+}
+
+app.get('/api/push/vapid-key', (req: any, res: any) => {
+  res.json({ public_key: VAPID_PUBLIC });
+});
+
+app.post('/api/push/subscribe', optionalAuth, (req: any, res: any) => {
+  if (!req.authUser) return res.status(401).json({ error: 'Inicia sesión para activar las alertas push.' });
+  const sub = req.body?.subscription || {};
+  if (!sub.endpoint || !sub.keys) return res.status(400).json({ error: 'Suscripción inválida.' });
+  authDb.addPushSubscription(req.authUser, sub.endpoint, sub.keys);
+  res.json({ ok: true });
+});
+
+app.post('/api/push/unsubscribe', optionalAuth, (req: any, res: any) => {
+  if (!req.authUser) return res.status(401).json({ error: 'No autenticado.' });
+  authDb.removePushSubscription(req.authUser, req.body?.endpoint || '');
+  res.json({ ok: true });
+});
+
+async function sendPushToUser(email: string, title: string, body: string, url = 'https://myip.viajeinteligencia.com') {
+  if (!VAPID_PUBLIC || !VAPID_PRIVATE) return;
+  const subs = authDb.getPushSubscriptions(email);
+  const payload = JSON.stringify({ title, body, url });
+  for (const s of subs) {
+    try { await webpush.sendNotification({ endpoint: s.endpoint, keys: s.keys }, payload); } catch (err) { /* suscripción caducada u otro error */ }
+  }
+}
+
 app.post('/api/export/pdf', optionalAuth, async (req: any, res) => {
   const email = req.authUser || req.body?.email;
   if (!email) return res.status(401).json({ error: 'No autenticado.' });
@@ -1843,10 +1990,16 @@ app.post('/api/export/pdf', optionalAuth, async (req: any, res) => {
 
   // Datos
   drawSection('Datos del análisis');
+  let geoLine = '';
+  try {
+    const g = typeof rec.geo_json === 'string' ? JSON.parse(rec.geo_json || '{}') : (rec.geo || {});
+    if (g && (g.city || g.country)) geoLine = '\nUbicación: ' + (g.city || '—') + ', ' + (g.country || '—') + (g.isp ? ' (' + g.isp + ')' : '');
+  } catch {}
   doc.fillColor(text).fontSize(10).font('Helvetica').text(
     'IP analizada: ' + (rec.target_ip || '—') + '\n' +
     'Fecha del escaneo: ' + scanDate + '\n' +
-    'Fuente: ' + (rec.scan_source || '—') + '\n' +
+    'Fuente: ' + (rec.scan_source || '—') +
+    geoLine + '\n' +
     'Motivo: ' + stripMd(rec.score_reason || '—'),
     { width: 495, lineGap: 3 }
   );
@@ -1879,6 +2032,22 @@ app.post('/api/export/pdf', optionalAuth, async (req: any, res) => {
       }
       doc.y = startY + cardH + 4;
     });
+  }
+
+  // Certificado SSL
+  let sslInfoRec: any = null;
+  try { sslInfoRec = typeof rec.ssl_info === 'string' ? JSON.parse(rec.ssl_info || '{}') : rec.ssl_info; } catch {}
+  if (sslInfoRec && (sslInfoRec.valid !== undefined || sslInfoRec.issuer)) {
+    drawSection('Certificado SSL / TLS');
+    doc.fillColor(text).fontSize(10).font('Helvetica').text(
+      'Estado: ' + (sslInfoRec.valid ? 'Válido' : 'Inválido') + '\n' +
+      'Emisor: ' + (sslInfoRec.issuer || '—') + '\n' +
+      'Expira: ' + (sslInfoRec.validTo || '—') + (sslInfoRec.daysToExpiry != null ? ' (' + sslInfoRec.daysToExpiry + ' días)' : '') +
+      (sslInfoRec.protocols && sslInfoRec.protocols.length ? '\nProtocolos TLS: ' + sslInfoRec.protocols.join(', ') : '') +
+      (sslInfoRec.grade ? '\nGrade SSL (local, orientativo): ' + sslInfoRec.grade : '') +
+      (sslInfoRec.alert ? '\nAlerta: ' + sslInfoRec.alert : ''),
+      { width: 495, lineGap: 3 }
+    );
   }
 
   // Blacklist
