@@ -21,6 +21,14 @@
 - **Fix**: extraído el registro del Service Worker a `public/sw-register.js` (script externo, commit `721213f`) → HTML construido sin scripts inline → CSP sin `unsafe-inline` en script-src.
 - **nginx** (`/etc/nginx/sites-enabled/myip.viajeinteligencia.com`): `script-src 'self' https://cdnjs.cloudflare.com` (sin unsafe-inline) + `object-src 'none'` + `base-uri 'self'` + `frame-ancestors 'none'`. Verificado: app carga sin violaciones CSP (headless, #root renderizado, sin errores JS). **Nota**: este cambio es infraestructura (nginx), no está en el repo.
 
+## Mejoras 07-Ago (commit `a54cb02`, un solo rebuild):
+- **SSL/TLS en el informe PDF**: sección nueva con estado/emisor/expiración + protocolos TLS sondeados (TLS 1.0-1.3) + grade local. `ssl_info` guardado en `scan_history`.
+- **Grade SSL local**: sondeo de protocolos TLS y grade orientativo (A: TLS1.3+1.2, B: 1.2, C: 1.1, D: 1.0) mostrado en informe.
+- **+7 portDefinitions** (110 POP3, 143 IMAP, 993 IMAPS, 995 POP3S, 161 SNMP, 5060 SIP, 8443) → mejores recomendaciones.
+- **GeoIP en el informe**: ubicación (ciudad/país/ISP) en la sección Datos del PDF.
+- **Alertas push por empeoramiento del score**: `web-push` + tabla `push_subscriptions` + `/api/push/{vapid-key,subscribe,unsubscribe}` + `sendPushToUser` (dispara si el nuevo score es peor que el anterior) + SW v3 (handlers push/notificationclick) + botón "Activar alertas push" en la cuenta (logueado). VAPID keys en `.env` del servidor (fuera del repo).
+- **Pendiente**: verificar el informe completo con un escaneo real (el endpoint PDF requiere sesión); probar el disparo push end-to-end.
+
 ## Backlog priorizado
 1. **Sprint 6 — Exportar Reporte PDF** (prioridad alta) → detallado abajo.
 2. **Sprint C — Blog técnico SEO** ✅ (06-Ago): 3 nuevas guías (7 puertos más atacados · DNSBL/blacklist · escaneo de puertos) + duplicado PWA eliminado → **13 guías**. Commit `37eabfc`. (Continuo: más contenido SEO a demanda.)
