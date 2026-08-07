@@ -1857,15 +1857,26 @@ app.post('/api/export/pdf', optionalAuth, async (req: any, res) => {
     doc.fillColor(text).fontSize(10).font('Helvetica').text('No se detectaron puertos expuestos. Todos los puertos verificados están protegidos.');
   } else {
     openPorts.forEach((p: any) => {
-      if (doc.y > 740) { doc.addPage(); }
+      if (doc.y > 700) { doc.addPage(); }
+      const expl = stripMd(p.explanation || '');
+      const rec = p.recommendation ? '→ ' + stripMd(p.recommendation) : '';
+      doc.fontSize(8.5).font('Helvetica');
+      const hExpl = doc.heightOfString(expl, { width: 475 });
+      doc.font('Helvetica-Oblique');
+      const hRec = rec ? doc.heightOfString(rec, { width: 475 }) : 0;
+      const cardH = 20 + Math.max(hExpl, 12) + (rec ? 4 + hRec : 0) + 6;
       const startY = doc.y;
-      doc.rect(50, startY, 495, 60).fillAndStroke(light, '#e2e8f0');
+      doc.rect(50, startY, 495, cardH).fillAndStroke(light, '#e2e8f0');
       const riskColor = p.risk === 'high' ? '#dc2626' : p.risk === 'medium' ? '#d97706' : '#059669';
-      doc.fillColor(dark).fontSize(10).font('Helvetica-Bold').text('Puerto ' + (p.port ?? '?') + ' · ' + (p.service || ''), 60, startY + 8, { width: 380 });
+      doc.fillColor(dark).fontSize(10).font('Helvetica-Bold').text('Puerto ' + (p.port ?? '?') + ' · ' + (p.service || ''), 60, startY + 8, { width: 370 });
       doc.fillColor(riskColor).fontSize(9).font('Helvetica-Bold').text(String(p.status || '').toUpperCase(), 440, startY + 8, { width: 95, align: 'right' });
-      doc.fillColor(text).fontSize(8.5).font('Helvetica').text(stripMd(p.explanation || ''), 60, startY + 24, { width: 475 });
-      if (p.recommendation) doc.fillColor(text).fontSize(8.5).font('Helvetica-Oblique').text('→ ' + stripMd(p.recommendation), 60, startY + 38, { width: 475 });
-      doc.y = startY + 64;
+      let yy = startY + 24;
+      doc.fillColor(text).fontSize(8.5).font('Helvetica').text(expl, 60, yy, { width: 475 });
+      yy += hExpl + 4;
+      if (rec) {
+        doc.fillColor(text).fontSize(8.5).font('Helvetica-Oblique').text(rec, 60, yy, { width: 475 });
+      }
+      doc.y = startY + cardH + 4;
     });
   }
 
@@ -1876,11 +1887,15 @@ app.post('/api/export/pdf', optionalAuth, async (req: any, res) => {
   } else {
     reputation.forEach((r: any) => {
       if (doc.y > 750) { doc.addPage(); }
+      const name = r.listName || 'Lista';
+      doc.fontSize(9.5).font('Helvetica-Bold');
+      const hName = doc.heightOfString(name, { width: 330 });
+      const rowH = Math.max(26, hName + 14);
       const startY = doc.y;
-      doc.rect(50, startY, 495, 26).fillAndStroke(light, '#e2e8f0');
-      doc.fillColor(dark).fontSize(9.5).font('Helvetica-Bold').text(r.listName || 'Lista', 60, startY + 7, { width: 330 });
+      doc.rect(50, startY, 495, rowH).fillAndStroke(light, '#e2e8f0');
+      doc.fillColor(dark).font('Helvetica-Bold').text(name, 60, startY + 7, { width: 330 });
       doc.fillColor(r.clean ? '#059669' : '#dc2626').fontSize(9).font('Helvetica-Bold').text(r.clean ? 'LIMPIA' : 'LISTADA', 440, startY + 7, { width: 95, align: 'right' });
-      doc.y = startY + 28;
+      doc.y = startY + rowH + 3;
     });
   }
 
