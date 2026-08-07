@@ -17,6 +17,10 @@
 - **Seguridad/privacidad**: auditoría externa GDPR/LOPDGDD resuelta, política de cookies, DPO/trazabilidad, `X-Powered-By` off, rate-limit anti-abuso por IP + fingerprint (guest 3 scans de por vida, free 1/24h).
 - **UI**: SPA por tabs, errores graceful, botón Ko-fi, privacidad honesta.
 
+## Seguridad (07-Ago): CSP estricta — el grado bajó de A+ a B (`securityheaders.com`: unsafe-inline en script-src)
+- **Fix**: extraído el registro del Service Worker a `public/sw-register.js` (script externo, commit `721213f`) → HTML construido sin scripts inline → CSP sin `unsafe-inline` en script-src.
+- **nginx** (`/etc/nginx/sites-enabled/myip.viajeinteligencia.com`): `script-src 'self' https://cdnjs.cloudflare.com` (sin unsafe-inline) + `object-src 'none'` + `base-uri 'self'` + `frame-ancestors 'none'`. Verificado: app carga sin violaciones CSP (headless, #root renderizado, sin errores JS). **Nota**: este cambio es infraestructura (nginx), no está en el repo.
+
 ## Backlog priorizado
 1. **Sprint 6 — Exportar Reporte PDF** (prioridad alta) → detallado abajo.
 2. **Sprint C — Blog técnico SEO** ✅ (06-Ago): 3 nuevas guías (7 puertos más atacados · DNSBL/blacklist · escaneo de puertos) + duplicado PWA eliminado → **13 guías**. Commit `37eabfc`. (Continuo: más contenido SEO a demanda.)
@@ -34,6 +38,7 @@
 
 **HECHO**: endpoint `POST /api/export/pdf` (pdfkit, 2-3 páginas: score, datos del análisis, puertos con estado/riesgo/recomendación, blacklist, resumen ejecutivo) + botón **"📄 Exportar PDF"** en la dashboard del historial. Verificado: PDF válido con contenido correcto. Commit `320bfab`.
 **FIX 07-Ago (`006c2a6`)**: el PDF salía deformado/mal alineado — las tarjetas de puertos (60px) y filas de blacklist (26px) tenían altura fija y el texto largo (explicaciones/recomendaciones) se salía del recuadro y se solapaba. Arreglado con **alturas dinámicas** (`heightOfString`) para puertos y blacklist. Verificado: tsc OK + PDF de prueba válido (header/xref/EOF) + redesplegado (Docker rebuild healthy, `heightOfString` en dist).
+**FIX RAÍZ 07-Ago (`258508d`)**: el cuerpo seguía desalineado — pdfkit deja `doc.x` en la última x usada (440 tras los badges con `align:right`) y `drawSection` no la reseteaba → los títulos de sección se dibujaban desplazados a la derecha (p. ej. «Resumen ejecutivo» a x=440). `drawSection` ahora fija `doc.x=50`; flecha `→` reemplazada por `»` (Helvetica no soporta U+2192 y salía como caja). Verificado por bbox: títulos a x=50.
 
 **Objetivo original**: el usuario puede guardar/compartir su análisis de seguridad en PDF (un clic, desde el dashboard o el historial).
 
