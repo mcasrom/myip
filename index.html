@@ -66,16 +66,8 @@
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
     
-    <!-- Register Service Worker -->
-    <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js')
-            .then((reg) => console.log('[PWA] Service Worker registrado con éxito:', reg.scope))
-            .catch((err) => console.error('[PWA] Error registrando el Service Worker:', err));
-        });
-      }
-    </script>
+    <!-- Register Service Worker (externo para CSP estricta sin unsafe-inline) -->
+    <script src="/sw-register.js" defer></script>
 <a href="https://ko-fi.com/m_castillo" target="_blank" rel="noopener noreferrer" class="kofi-fixed" title="Invítame un café en Ko-fi" aria-label="Apoya MyIP en Ko-fi">
   <svg class="w-6 h-6" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M23.881 8.948c-.773-4.085-4.859-4.593-4.859-4.593H.723c-.604 0-.679.798-.679.798s-.082 7.324-.026 11.822c.033 2.568 2.289 4.336 4.785 4.336h11.552c4.232 0 6.327-2.733 6.327-2.733s3.267-3.443 3.199-7.63zm-6.724 5.048c-.595 1.028-1.952 1.414-2.952 1.414H7.635c-.999 0-1.807-.386-1.807-.386s-.79-1.183-1.184-2.651c-.272-.994-.272-1.68-.272-1.68h12.315s.54 1.847-.54 3.303z"/></svg>
 </a>
