@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://myip.viajeinteligencia.com/sitemap.xml
