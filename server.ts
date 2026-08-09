@@ -2266,6 +2266,9 @@ async function startServer() {
     app.use(express.static(distPath));
     // Páginas SEO estáticas: servir el archivo .html con URL limpia (antes del
     // fallback SPA). El artículo no está en el bundle React.
+    app.get('/wifi-publica', (_req, res) => {
+      res.sendFile(path.join(distPath, 'wifi-publica.html'));
+    });
     app.get('/email-filtrado', (_req, res) => {
       res.sendFile(path.join(distPath, 'email-filtrado.html'));
     });
