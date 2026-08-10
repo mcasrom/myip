@@ -79,3 +79,15 @@
 - **Seguro de vida**: backups de dist y DB hechos antes (`myip-backups-dist-20260810`, `myip-backups-db-20260810.sqlite3`).
 - **Commit**: `483e911`.
 
+## Sprint SEO — MyIP: fuga-dns y vpn-check (10 Ago 2026)
+
+- **Objetivo**: fase 3 del plan 30 días — atraer búsqueda de seguridad ("fuga de DNS", "comprobar VPN").
+- **2 posts evergreen** (public/*.html, servidos con URL limpia vía server.ts antes del fallback SPA):
+  - `/fuga-dns` — qué es una fuga de DNS, por qué ocurre, test gratuito, cómo protegerte.
+  - `/vpn-check` — los 5 chequeos clave (IP, DNS leak, SSL/TLS, blacklist, geo) + qué hacer según resultado.
+- **Server**: añadidas 2 rutas `app.get` en server.ts + rebuild (vite + esbuild server.cjs).
+- **Sitemap**: 2 → 4 URLs. IndexNow enviado (HTTP 202).
+- **Verificado**: 5 URLs de myip 200, render puppeteer 0 errores, API 200, ecosistema intacto.
+- **Seguro de vida**: backup server.ts antes de modificar.
+- **Commit**: `5769cd9`. Coste ~0.
+
