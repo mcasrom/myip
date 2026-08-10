@@ -70,3 +70,12 @@
 ### Fuera de alcance (este sprint)
 - PDFs programados/por email (si se quiere, sprint posterior como funcionalidad gratuita).
 - Rediseño visual del informe.
+## Fix — Pantalla en blanco PWA (10 Ago 2026)
+
+- **Síntoma**: pantalla en blanco total. F12: CSP bloqueaba inline script + "Failed to load /src/main.tsx. A ServiceWorker intercepted the request".
+- **Causa raíz**: el `dist/index.html` del contenedor apuntaba a `src/main.tsx` (ruta de DESARROLLO) en vez del build compilado `assets/index-*.js`. El index.html se sobrescribió el 9-Ago 19:37 con una versión de dev. El ServiceWorker cacheaba ese HTML roto.
+- **Fix**: rebuild `vite build` (dist correcto, apunta a assets/index-C7IA1x_u.js) + copiar al contenedor + **bump SW a `myip-pwa-v4`** (fuerza que el navegador descargue el index nuevo y elimine la caché vieja).
+- **Verificado** con puppeteer: render completo (MyIP V2.6, IP visible, menús), 0 errores JS. Ecosistema intacto.
+- **Seguro de vida**: backups de dist y DB hechos antes (`myip-backups-dist-20260810`, `myip-backups-db-20260810.sqlite3`).
+- **Commit**: `483e911`.
+
