@@ -2272,6 +2272,13 @@ async function startServer() {
     app.get('/email-filtrado', (_req, res) => {
       res.sendFile(path.join(distPath, 'email-filtrado.html'));
     });
+    app.get('/fuga-dns', (_req, res) => {
+      res.sendFile(path.join(distPath, 'fuga-dns.html'));
+    });
+    app.get('/vpn-check', (_req, res) => {
+      res.sendFile(path.join(distPath, 'vpn-check.html'));
+    });
+    app.get('*', (req, res) => { res.sendFile(path.join(distPath, 'index.html')); });
     app.get('*', (req, res) => { res.sendFile(path.join(distPath, 'index.html')); });
     console.log('Serving production build.');
   }

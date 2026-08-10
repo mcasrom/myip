@@ -3,4 +3,6 @@
   <url><loc>https://myip.viajeinteligencia.com/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
   <url><loc>https://myip.viajeinteligencia.com/email-filtrado</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://myip.viajeinteligencia.com/wifi-publica</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://myip.viajeinteligencia.com/fuga-dns</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://myip.viajeinteligencia.com/vpn-check</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
 </urlset>
