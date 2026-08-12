@@ -1226,11 +1226,13 @@ export default function App() {
               </div>
 
             </div>
+          </div>
+        )}
 
-            {/* Scan History Dashboard */}
-            <div className="mt-8">
-              <ScanHistoryDashboard />
-            </div>
+        {/* Scan History Dashboard — visible con sesión, independiente del resultado */}
+        {activeTab === 'dashboard' && (
+          <div className="mt-8">
+            <ScanHistoryDashboard />
           </div>
         )}
 
@@ -1238,7 +1240,6 @@ export default function App() {
         {activeTab === 'guides' && (
           <HowToGuides />
         )}
-
         {/* TAB 4: ABOUT MANIFESTO */}
         {activeTab === 'about' && (
           <div className="max-w-4xl mx-auto space-y-10 py-4">

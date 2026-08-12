@@ -481,29 +481,29 @@ const fpRateLimit: Record<string, RateRecord> = {};
 function checkRateLimit(ip: string, fingerprint: string, isGuest: boolean): { allowed: boolean; error?: string; hoursRemaining?: number } {
   const now = Date.now();
 
-  // Guest: max 3 scans lifetime
+  // Guest: max 10 scans lifetime
   if (isGuest) {
     const fpRecord = fpRateLimit[fingerprint];
-    if (fpRecord && fpRecord.count >= 3) {
-      return { allowed: false, error: 'Límite de invitado alcanzado (3 escaneos). Crea una cuenta con email para continuar.' };
+    if (fpRecord && fpRecord.count >= 10) {
+      return { allowed: false, error: 'Límite de invitado alcanzado (10 escaneos). Crea una cuenta con email para continuar.' };
     }
   }
 
-  // IP rate limit: 1 scan per 24h for free users (relaxed to 5 min in dev)
+  // IP rate limit: 3 scans per day for free users (relaxed to 5 min in dev)
   const ipRecord = ipRateLimit[ip];
   if (ipRecord && !isGuest) {
     const hoursSince = (now - ipRecord.lastScan) / (1000 * 60 * 60);
-    const limitHours = process.env.NODE_ENV === 'production' ? 24 : 0.083; // 5 min in dev
+    const limitHours = process.env.NODE_ENV === 'production' ? 8 : 0.083; // 8h = 3/día
     if (hoursSince < limitHours) {
       const remaining = Math.ceil((limitHours - hoursSince) * 60);
       return { allowed: false, error: `Espera ${remaining} minuto(s) antes del próximo escaneo.`, hoursRemaining: remaining };
     }
   }
 
-  // Fingerprint rate limit: max 3 scans per 7 days (relaxed in dev)
+  // Fingerprint rate limit: max 10 scans per 7 days (relaxed in dev)
   const fpRecord = fpRateLimit[fingerprint];
   if (fpRecord) {
-    const maxScans = process.env.NODE_ENV === 'production' ? 3 : 50;
+    const maxScans = process.env.NODE_ENV === 'production' ? 10 : 50;
     const daysWindow = process.env.NODE_ENV === 'production' ? 7 : 0.003; // ~5 min window in dev
     const daysSinceFirst = (now - fpRecord.firstScan) / (1000 * 60 * 60 * 24);
     if (daysSinceFirst < daysWindow && fpRecord.count >= maxScans) {
