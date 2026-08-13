@@ -346,13 +346,26 @@ async function generateGroqReport(scanData: any): Promise<string> {
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) return '';
   try {
+    // Contexto reducido: solo lo relevante, para no quemar la cuota diaria de tokens.
+    // El 70b tiene 100k tokens/día y se agota; el mini (8b) tiene cuota independiente.
+    const ports = Array.isArray(scanData.ports) ? scanData.ports : [];
+    const openPorts = ports.filter((p: any) => p.status === 'open' || p.open);
+    const summary = {
+      ip: scanData.ip,
+      score: scanData.score,
+      scoreReason: scanData.scoreReason || scanData.score_reason,
+      geo: scanData.geo ? { country: scanData.geo.country, city: scanData.geo.city, isp: scanData.geo.isp } : undefined,
+      puertosAbiertos: openPorts.slice(0, 15).map((p: any) => ({ port: p.port, service: p.service, risk: p.risk, recommendation: p.recommendation })),
+      puertosCerrados: ports.filter((p: any) => p.status === 'closed' || p.status === 'filtered').slice(0, 10).map((p: any) => ({ port: p.port, service: p.service, status: p.status, risk: p.risk })),
+      blacklist: Array.isArray(scanData.reputation) ? scanData.reputation.filter((r: any) => !r.clean) : [],
+    };
     const data = await postJson('https://api.groq.com/openai/v1/chat/completions', {
-      model: 'llama-3.3-70b-versatile',
+      model: 'llama-3.1-8b-instant',
       messages: [
-        { role: 'system', content: 'Eres un analista senior de ciberseguridad. Genera informes ejecutivos precisos basados exclusivamente en los datos proporcionados. NO inventes información. Escribe en español profesional.' },
-        { role: 'user', content: `Genera un informe ejecutivo de seguridad para la IP ${scanData.ip}. Datos:\n${JSON.stringify(scanData, null, 2)}\n\nEstructura: 1) Resumen ejecutivo, 2) Hallazgos críticos, 3) Recomendaciones prioritarias.` }
+        { role: 'system', content: 'Eres un analista senior de ciberseguridad. Genera informes ejecutivos precisos basados EXCLUSIVAMENTE en los datos proporcionados. NO inventes información ni nombres de empresas. Escribe en español profesional, conciso y accionable.' },
+        { role: 'user', content: `Genera un informe ejecutivo de seguridad para la IP ${summary.ip}. Datos:\n${JSON.stringify(summary, null, 1)}\n\nEstructura: 1) Resumen ejecutivo, 2) Hallazgos críticos (si los hay), 3) Recomendaciones prioritarias.` }
       ],
-      max_tokens: 1500, temperature: 0.3,
+      max_tokens: 800, temperature: 0.3,
     }, { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' });
     return data.choices?.[0]?.message?.content || '';
   } catch (err) { console.log('[GROQ] Error:', err); }
@@ -1880,6 +1893,62 @@ app.get('/api/scan/history/:id', optionalAuth, async (req: any, res) => {
     analysisText: r.analysis_text, scanSource: r.scan_source,
     geo: JSON.parse(r.geo_json || '{}'), createdAt: r.created_at,
   });
+});
+
+// Asistente conversacional sobre un scan guardado (interpreta SOLO los datos reales del scan).
+// Modelo mini (8b): cuota diaria independiente del 70b, no necesita web search.
+app.post('/api/chat', optionalAuth, async (req: any, res) => {
+  const email = req.authUser || req.body.email;
+  if (!email) return res.status(401).json({ error: 'No autenticado.' });
+  const user = authDb.getUserByEmail(email.toLowerCase().trim());
+  if (!user) return res.status(404).json({ error: 'Usuario no encontrado.' });
+  const scanId = parseInt(req.body.scanId, 10);
+  const question = String(req.body.question || '').trim().slice(0, 500);
+  const history = Array.isArray(req.body.history) ? req.body.history.slice(-6) : [];
+  if (!scanId || !question) return res.status(400).json({ error: 'Faltan scanId o question.' });
+
+  const record = authDb.getScanRecord(scanId, user.email);
+  if (!record) return res.status(404).json({ error: 'Escaneo no encontrado.' });
+  const r = record as any;
+  const ports = JSON.parse(r.ports_json || '[]');
+  const reputation = JSON.parse(r.reputation_json || '[]');
+  const geo = JSON.parse(r.geo_json || '{}');
+
+  // Contexto reducido a lo relevante (no todo el JSON) para no quemar cuota diaria
+  const ctxScan = {
+    ip: r.target_ip, score: r.score, scoreReason: r.score_reason || '',
+    geo: geo.country ? { country: geo.country, city: geo.city, isp: geo.isp } : undefined,
+    puertosAbiertos: ports.filter((p: any) => p.status === 'open' || p.open).slice(0, 15)
+      .map((p: any) => ({ port: p.port, service: p.service, risk: p.risk, recommendation: p.recommendation })),
+    puertosCerrados: ports.filter((p: any) => p.status === 'closed' || p.status === 'filtered').slice(0, 10)
+      .map((p: any) => ({ port: p.port, service: p.service, risk: p.risk })),
+    blacklist: reputation.filter((x: any) => !x.clean).slice(0, 5),
+  };
+
+  const GROQ_KEY = process.env.GROQ_API_KEY;
+  if (!GROQ_KEY) return res.json({ answer: 'La IA no está configurada. Pero con estos datos: puertos ' + ctxScan.puertosAbiertos.length + ' abiertos, ' + ctxScan.blacklist.length + ' lista(s) negras.' });
+
+  const messages = [
+    { role: 'system', content: 'Eres un analista senior de ciberseguridad. Responde SOLO con los datos del escaneo proporcionados. NO inventes información. En español, conciso y accionable (máx ~200 palabras). Si el usuario pregunta algo que no está en los datos, dilo.' },
+    { role: 'user', content: 'Datos de mi escaneo de seguridad:\n' + JSON.stringify(ctxScan, null, 1) },
+    ...history.map((h: any) => ({ role: h.role === 'user' ? 'user' : 'assistant', content: String(h.content).slice(0, 500) })),
+    { role: 'user', content: question },
+  ];
+
+  try {
+    const data = await postJson('https://api.groq.com/openai/v1/chat/completions', {
+      model: 'llama-3.1-8b-instant',
+      messages,
+      max_tokens: 400, temperature: 0.3,
+    }, { 'Authorization': `Bearer ${GROQ_KEY}`, 'Content-Type': 'application/json' });
+    res.json({ answer: data.choices?.[0]?.message?.content || 'Sin respuesta.' });
+  } catch (err: any) {
+    console.log('[CHAT] Error:', err.message);
+    // Fallback determinista honesto (nunca dejar mudo al usuario)
+    const open = ctxScan.puertosAbiertos.length;
+    const bl = ctxScan.blacklist.length;
+    res.json({ answer: `No pude consultar la IA ahora mismo (cuota). Respuesta básica con tus datos: ${open} puerto(s) abierto(s), ${bl} lista(s) negras. El score es ${ctxScan.score}.` });
+  }
 });
 
 // Scan History Dashboard (all authenticated users, not just premium)

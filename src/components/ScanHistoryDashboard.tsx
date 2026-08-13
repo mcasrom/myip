@@ -22,7 +22,10 @@ import {
   ArrowRight,
   Loader2,
   FileDown,
+  Send,
+  Bot,
 } from 'lucide-react';
+import MarkdownRenderer from './MarkdownRenderer';
 
 interface ScanRecord {
   id: number;
@@ -72,6 +75,10 @@ export default function ScanHistoryDashboard() {
   const [scans, setScans] = useState<ScanRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatMsgs, setChatMsgs] = useState<{ role: 'user' | 'assistant'; content: string }[]>([]);
+  const [chatInput, setChatInput] = useState('');
+  const [chatLoading, setChatLoading] = useState(false);
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -175,18 +182,97 @@ export default function ScanHistoryDashboard() {
     }
   };
 
+  const sendChat = async () => {
+    const q = chatInput.trim();
+    if (!q || chatLoading || !lastScan) return;
+    const next = [...chatMsgs, { role: 'user' as const, content: q }];
+    setChatMsgs(next);
+    setChatInput('');
+    setChatLoading(true);
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scanId: lastScan.id, question: q, history: chatMsgs }),
+      });
+      const d = await res.json();
+      setChatMsgs([...next, { role: 'assistant', content: d.answer || 'Sin respuesta.' }]);
+    } catch {
+      setChatMsgs([...next, { role: 'assistant', content: 'No se pudo conectar con el analista. Inténtalo de nuevo.' }]);
+    } finally {
+      setChatLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Export toolbar */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <span className="text-xs font-mono tracking-widest text-slate-500 uppercase font-bold">Tu historial de seguridad</span>
-        <button
-          onClick={exportPdf}
-          className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2 rounded-lg transition-colors shadow-sm"
-        >
-          <FileDown className="w-4 h-4" /> Exportar PDF
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setChatOpen(!chatOpen)}
+            className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2 rounded-lg transition-colors shadow-sm"
+          >
+            <Bot className="w-4 h-4" /> {chatOpen ? 'Cerrar analista' : 'Preguntar a tu analista'}
+          </button>
+          <button
+            onClick={exportPdf}
+            className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2 rounded-lg transition-colors shadow-sm"
+          >
+            <FileDown className="w-4 h-4" /> Exportar PDF
+          </button>
+        </div>
       </div>
+
+      {/* Asistente conversacional (sobre el último scan) */}
+      {chatOpen && lastScan && (
+        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+          <div className="flex items-center gap-2 px-4 py-3 bg-slate-900 text-white">
+            <Bot className="w-4 h-4 text-emerald-400" />
+            <span className="text-xs font-bold uppercase tracking-wider font-mono">Tu analista de seguridad</span>
+            <span className="ml-auto text-[10px] text-slate-400 font-mono">Scan #{lastScan.id} · {lastScan.targetIp}</span>
+          </div>
+          <div className="h-64 overflow-y-auto p-4 space-y-3 bg-slate-50/50">
+            {chatMsgs.length === 0 && (
+              <p className="text-xs text-slate-400 text-center pt-16">
+                Pregunta sobre tu último escaneo. Ej: "¿Qué puerto debo vigilar primero?" o "¿Qué significa mi score?"
+              </p>
+            )}
+            {chatMsgs.map((m, i) => (
+              <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                <div className={`max-w-[85%] px-3 py-2 rounded-xl text-xs ${m.role === 'user' ? 'bg-indigo-600 text-white' : 'bg-white border border-slate-200 text-slate-700'}`}>
+                  <MarkdownRenderer content={m.content} />
+                </div>
+              </div>
+            ))}
+            {chatLoading && (
+              <div className="flex justify-start">
+                <div className="px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs text-slate-400 inline-flex items-center gap-1">
+                  <Loader2 className="w-3 h-3 animate-spin" /> Analizando tu escaneo...
+                </div>
+              </div>
+            )}
+          </div>
+          <div className="flex items-center gap-2 p-3 border-t border-slate-200">
+            <input
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') sendChat(); }}
+              placeholder="Pregunta sobre tu escaneo..."
+              className="flex-1 text-xs px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+            <button
+              onClick={sendChat}
+              disabled={chatLoading || !chatInput.trim()}
+              className="inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-bold px-3 py-2 rounded-lg transition-colors"
+            >
+              <Send className="w-3.5 h-3.5" /> Enviar
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

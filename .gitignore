@@ -74,3 +74,7 @@ diag_local.sh
 diag_local_OUTPUT.txt
 /data/
 *.bak-*
+
+*.sqlite3-shm
+*.sqlite3-wal
+audit*.mjs
