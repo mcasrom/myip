@@ -91,3 +91,8 @@
 - **Seguro de vida**: backup server.ts antes de modificar.
 - **Commit**: `5769cd9`. Coste ~0.
 
+
+## Footer: enlace al Ecosistema (14/Ago)
+- Añadido enlace "🌐 Ecosistema" → https://viajeinteligencia.com en el footer (src/App.tsx).
+- Build + docker compose build/up (healthy). Verificado: bundle live con el enlace, endpoints 200.
+- Backup imagen: myip-backup-20260814-footer.

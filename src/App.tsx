@@ -1892,6 +1892,7 @@ export default function App() {
             <p>Todos los derechos reservados. Diseñado para empoderar al usuario final en la protección de su red.</p>
           </div>
           <div className="flex flex-wrap justify-center gap-x-6 gap-y-2">
+            <a href="https://viajeinteligencia.com" target="_blank" rel="noopener noreferrer" className="hover:text-slate-600 font-semibold text-slate-500">🌐 Ecosistema</a>
             <a href="#manifesto-section" onClick={() => setActiveTab('about')} className="hover:text-slate-600 font-semibold text-slate-500">Sobre Misión</a>
             <a href="#how-to" onClick={() => setActiveTab('guides')} className="hover:text-slate-600 font-semibold text-slate-500">Biblioteca How-To</a>
             <a href="#manual" onClick={() => setActiveTab('manual')} className="hover:text-emerald-600 font-semibold text-emerald-600">Manual Ciberseguridad</a>
